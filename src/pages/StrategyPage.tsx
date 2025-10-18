@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useProduct } from "@/contexts/ProductContext";
 
 interface Metric {
   id: string;
@@ -20,14 +21,12 @@ interface Track {
 }
 
 const StrategyPage = () => {
+  const { metrics, setMetrics, tracks, setTracks } = useProduct();
   const [productFormula, setProductFormula] = useState("");
   const [isEditingFormula, setIsEditingFormula] = useState(false);
   
   const [values, setValues] = useState<string[]>([]);
   const [editingValueIndex, setEditingValueIndex] = useState<number | null>(null);
-  
-  const [metrics, setMetrics] = useState<Metric[]>([]);
-  const [tracks, setTracks] = useState<Track[]>([]);
 
   const addValue = () => {
     setValues([...values, ""]);

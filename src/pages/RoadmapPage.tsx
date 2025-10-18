@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
+import { useProduct } from "@/contexts/ProductContext";
 
 interface Epic {
   id: string;
@@ -20,16 +21,10 @@ interface Epic {
 }
 
 const RoadmapPage = () => {
+  const { tracks } = useProduct();
   const [epics, setEpics] = useState<Epic[]>([]);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // Mock tracks - in real app, this would come from Strategy page
-  const tracks = [
-    { id: "track-1", name: "Track 1" },
-    { id: "track-2", name: "Track 2" },
-    { id: "track-3", name: "Track 3" },
-  ];
 
   const quarters = [
     { id: "current", label: "Current Quarter" },
