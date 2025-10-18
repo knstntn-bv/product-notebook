@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
+import { useProduct } from "@/contexts/ProductContext";
+import { MetricTagInput } from "@/components/MetricTagInput";
 
 type Status = "new" | "inProgress" | "accepted" | "rejected";
 
@@ -19,6 +21,7 @@ interface Hypothesis {
 }
 
 const HypothesesPage = () => {
+  const { metrics } = useProduct();
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
 
   const statuses: { value: Status; label: string }[] = [
@@ -144,16 +147,11 @@ const HypothesesPage = () => {
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    value={hypothesis.impactMetrics.join(", ")}
-                    onChange={(e) =>
-                      updateHypothesis(
-                        hypothesis.id,
-                        "impactMetrics",
-                        e.target.value.split(",").map(s => s.trim()).filter(Boolean)
-                      )
-                    }
-                    placeholder="Enter metrics (comma-separated)..."
+                  <MetricTagInput
+                    value={hypothesis.impactMetrics}
+                    onChange={(tags) => updateHypothesis(hypothesis.id, "impactMetrics", tags)}
+                    suggestions={metrics.map(m => m.name).filter(Boolean)}
+                    placeholder="Type to add metrics..."
                   />
                 </TableCell>
                 <TableCell>

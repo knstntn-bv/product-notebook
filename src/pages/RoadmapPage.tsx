@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
+import { MetricTagInput } from "@/components/MetricTagInput";
 
 interface Epic {
   id: string;
@@ -21,7 +22,7 @@ interface Epic {
 }
 
 const RoadmapPage = () => {
-  const { tracks } = useProduct();
+  const { tracks, metrics } = useProduct();
   const [epics, setEpics] = useState<Epic[]>([]);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -158,15 +159,12 @@ const RoadmapPage = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="targetMetrics">Target Metrics (comma-separated)</Label>
-                <Input
-                  id="targetMetrics"
-                  value={editingEpic.targetMetrics.join(", ")}
-                  onChange={(e) => setEditingEpic({ 
-                    ...editingEpic, 
-                    targetMetrics: e.target.value.split(",").map(s => s.trim()).filter(Boolean) 
-                  })}
-                  placeholder="Enter target metrics..."
+                <Label htmlFor="targetMetrics">Target Metrics</Label>
+                <MetricTagInput
+                  value={editingEpic.targetMetrics}
+                  onChange={(tags) => setEditingEpic({ ...editingEpic, targetMetrics: tags })}
+                  suggestions={metrics.map(m => m.name).filter(Boolean)}
+                  placeholder="Type to add metrics..."
                 />
               </div>
               <div className="flex items-center gap-2">
