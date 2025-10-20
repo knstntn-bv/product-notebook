@@ -14,7 +14,247 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      epics: {
+        Row: {
+          achieved_result: string | null
+          created_at: string | null
+          done: boolean | null
+          expected_result: string | null
+          goal: string
+          id: string
+          quarter: string
+          target_metrics: string[] | null
+          track_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achieved_result?: string | null
+          created_at?: string | null
+          done?: boolean | null
+          expected_result?: string | null
+          goal: string
+          id?: string
+          quarter: string
+          target_metrics?: string[] | null
+          track_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achieved_result?: string | null
+          created_at?: string | null
+          done?: boolean | null
+          expected_result?: string | null
+          goal?: string
+          id?: string
+          quarter?: string
+          target_metrics?: string[] | null
+          track_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epics_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      features: {
+        Row: {
+          board_column: string
+          created_at: string | null
+          description: string | null
+          id: string
+          linked_epic: string | null
+          linked_track: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          board_column: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          linked_epic?: string | null
+          linked_track: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          board_column?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          linked_epic?: string | null
+          linked_track?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hypotheses: {
+        Row: {
+          created_at: string | null
+          id: string
+          impact_metrics: string[] | null
+          insight: string | null
+          problem_hypothesis: string | null
+          problem_validation: string | null
+          solution_hypothesis: string | null
+          solution_validation: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          impact_metrics?: string[] | null
+          insight?: string | null
+          problem_hypothesis?: string | null
+          problem_validation?: string | null
+          solution_hypothesis?: string | null
+          solution_validation?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          impact_metrics?: string[] | null
+          insight?: string | null
+          problem_hypothesis?: string | null
+          problem_validation?: string | null
+          solution_hypothesis?: string | null
+          solution_validation?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      metrics: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          parent_metric_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          parent_metric_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          parent_metric_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metrics_parent_metric_id_fkey"
+            columns: ["parent_metric_id"]
+            isOneToOne: false
+            referencedRelation: "metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_formulas: {
+        Row: {
+          created_at: string | null
+          formula: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          formula?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          formula?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tracks: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      values: {
+        Row: {
+          created_at: string | null
+          id: string
+          position: number
+          updated_at: string | null
+          user_id: string
+          value_text: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          position?: number
+          updated_at?: string | null
+          user_id: string
+          value_text: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          position?: number
+          updated_at?: string | null
+          user_id?: string
+          value_text?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
