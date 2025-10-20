@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,65 +7,185 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
-
-interface Metric {
-  id: string;
-  name: string;
-  parentMetricId?: string;
-}
-
-interface Track {
-  id: string;
-  name: string;
-  description: string;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const StrategyPage = () => {
-  const { metrics, setMetrics, tracks, setTracks } = useProduct();
+  const { metrics, tracks, refetchMetrics, refetchTracks } = useProduct();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const [productFormula, setProductFormula] = useState("");
   const [isEditingFormula, setIsEditingFormula] = useState(false);
-  
-  const [values, setValues] = useState<string[]>([]);
   const [editingValueIndex, setEditingValueIndex] = useState<number | null>(null);
 
-  const addValue = () => {
-    setValues([...values, ""]);
-    setEditingValueIndex(values.length);
-  };
+  // Fetch product formula
+  const { data: formulaData } = useQuery({
+    queryKey: ["product_formula", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from("product_formulas")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
-  const updateValue = (index: number, value: string) => {
-    const newValues = [...values];
-    newValues[index] = value;
-    setValues(newValues);
-  };
+  useEffect(() => {
+    if (formulaData) {
+      setProductFormula(formulaData.formula || "");
+    }
+  }, [formulaData]);
 
-  const deleteValue = (index: number) => {
-    setValues(values.filter((_, i) => i !== index));
-  };
+  // Fetch values
+  const { data: values = [] } = useQuery({
+    queryKey: ["values", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("values")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("position", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
 
-  const addMetric = () => {
-    setMetrics([...metrics, { id: `metric-${Date.now()}`, name: "", parentMetricId: undefined }]);
-  };
+  // Save formula mutation
+  const saveFormulaMutation = useMutation({
+    mutationFn: async (formula: string) => {
+      if (!user) throw new Error("No user");
+      const { error } = await supabase
+        .from("product_formulas")
+        .upsert({ user_id: user.id, formula }, { onConflict: "user_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product_formula"] });
+      setIsEditingFormula(false);
+      toast({ title: "Formula saved successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
-  const updateMetric = (id: string, field: keyof Metric, value: string) => {
-    setMetrics(metrics.map(m => m.id === id ? { ...m, [field]: value } : m));
-  };
+  // Value mutations
+  const addValueMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("No user");
+      const position = values.length;
+      const { error } = await supabase
+        .from("values")
+        .insert({ user_id: user.id, value_text: "", position });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["values"] });
+    },
+  });
 
-  const deleteMetric = (id: string) => {
-    setMetrics(metrics.filter(m => m.id !== id));
-  };
+  const updateValueMutation = useMutation({
+    mutationFn: async ({ id, value_text }: { id: string; value_text: string }) => {
+      const { error } = await supabase
+        .from("values")
+        .update({ value_text })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["values"] });
+    },
+  });
 
-  const addTrack = () => {
-    setTracks([...tracks, { id: `track-${Date.now()}`, name: "", description: "" }]);
-  };
+  const deleteValueMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("values").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["values"] });
+    },
+  });
 
-  const updateTrack = (id: string, field: keyof Track, value: string) => {
-    setTracks(tracks.map(t => t.id === id ? { ...t, [field]: value } : t));
-  };
+  // Metric mutations
+  const addMetricMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("No user");
+      const { error } = await supabase
+        .from("metrics")
+        .insert({ user_id: user.id, name: "" });
+      if (error) throw error;
+    },
+    onSuccess: () => refetchMetrics(),
+  });
 
-  const deleteTrack = (id: string) => {
-    setTracks(tracks.filter(t => t.id !== id));
-  };
+  const updateMetricMutation = useMutation({
+    mutationFn: async ({ id, name, parent_metric_id }: { id: string; name?: string; parent_metric_id?: string | null }) => {
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (parent_metric_id !== undefined) updates.parent_metric_id = parent_metric_id || null;
+      
+      const { error } = await supabase
+        .from("metrics")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchMetrics(),
+  });
+
+  const deleteMetricMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("metrics").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchMetrics(),
+  });
+
+  // Track mutations
+  const addTrackMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("No user");
+      const { error } = await supabase
+        .from("tracks")
+        .insert({ user_id: user.id, name: "", description: "" });
+      if (error) throw error;
+    },
+    onSuccess: () => refetchTracks(),
+  });
+
+  const updateTrackMutation = useMutation({
+    mutationFn: async ({ id, name, description }: { id: string; name?: string; description?: string }) => {
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      
+      const { error } = await supabase
+        .from("tracks")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchTracks(),
+  });
+
+  const deleteTrackMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("tracks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchTracks(),
+  });
 
   return (
     <div className="space-y-6">
@@ -84,7 +204,7 @@ const StrategyPage = () => {
                 maxLength={500}
                 placeholder="Enter product formula..."
               />
-              <Button onClick={() => setIsEditingFormula(false)} size="sm">
+              <Button onClick={() => saveFormulaMutation.mutate(productFormula)} size="sm">
                 Save
               </Button>
             </div>
@@ -107,7 +227,7 @@ const StrategyPage = () => {
               <CardTitle>Values</CardTitle>
               <CardDescription>Define your product values</CardDescription>
             </div>
-            <Button onClick={addValue} size="sm">
+            <Button onClick={() => addValueMutation.mutate()} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Value
             </Button>
@@ -115,12 +235,12 @@ const StrategyPage = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {values.map((value, index) => (
-            <div key={index} className="flex gap-2">
+            <div key={value.id} className="flex gap-2">
               {editingValueIndex === index ? (
                 <>
                   <Textarea
-                    value={value}
-                    onChange={(e) => updateValue(index, e.target.value)}
+                    value={value.value_text}
+                    onChange={(e) => updateValueMutation.mutate({ id: value.id, value_text: e.target.value })}
                     maxLength={1000}
                     placeholder="Enter value..."
                     className="flex-1"
@@ -131,11 +251,11 @@ const StrategyPage = () => {
                 </>
               ) : (
                 <>
-                  <p className="flex-1 text-foreground">{value || "Click edit to add value"}</p>
+                  <p className="flex-1 text-foreground">{value.value_text || "Click edit to add value"}</p>
                   <Button variant="ghost" size="sm" onClick={() => setEditingValueIndex(index)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => deleteValue(index)}>
+                  <Button variant="ghost" size="sm" onClick={() => deleteValueMutation.mutate(value.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </>
@@ -153,7 +273,7 @@ const StrategyPage = () => {
               <CardTitle>Metrics</CardTitle>
               <CardDescription>Define your product metrics hierarchy</CardDescription>
             </div>
-            <Button onClick={addMetric} size="sm">
+            <Button onClick={() => addMetricMutation.mutate()} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Metric
             </Button>
@@ -174,15 +294,15 @@ const StrategyPage = () => {
                   <TableCell>
                     <Input
                       value={metric.name}
-                      onChange={(e) => updateMetric(metric.id, "name", e.target.value)}
+                      onChange={(e) => updateMetricMutation.mutate({ id: metric.id, name: e.target.value })}
                       maxLength={100}
                       placeholder="Enter metric name..."
                     />
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={metric.parentMetricId || "none"}
-                      onValueChange={(value) => updateMetric(metric.id, "parentMetricId", value === "none" ? "" : value)}
+                      value={metric.parent_metric_id || "none"}
+                      onValueChange={(value) => updateMetricMutation.mutate({ id: metric.id, parent_metric_id: value === "none" ? null : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select parent metric" />
@@ -198,7 +318,7 @@ const StrategyPage = () => {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => deleteMetric(metric.id)}>
+                    <Button variant="ghost" size="sm" onClick={() => deleteMetricMutation.mutate(metric.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -217,7 +337,7 @@ const StrategyPage = () => {
               <CardTitle>Tracks</CardTitle>
               <CardDescription>Define your product tracks</CardDescription>
             </div>
-            <Button onClick={addTrack} size="sm">
+            <Button onClick={() => addTrackMutation.mutate()} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Track
             </Button>
@@ -238,7 +358,7 @@ const StrategyPage = () => {
                   <TableCell>
                     <Input
                       value={track.name}
-                      onChange={(e) => updateTrack(track.id, "name", e.target.value)}
+                      onChange={(e) => updateTrackMutation.mutate({ id: track.id, name: e.target.value })}
                       maxLength={100}
                       placeholder="Enter track name..."
                     />
@@ -246,13 +366,13 @@ const StrategyPage = () => {
                   <TableCell>
                     <Input
                       value={track.description}
-                      onChange={(e) => updateTrack(track.id, "description", e.target.value)}
+                      onChange={(e) => updateTrackMutation.mutate({ id: track.id, description: e.target.value })}
                       maxLength={500}
                       placeholder="Enter description..."
                     />
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => deleteTrack(track.id)}>
+                    <Button variant="ghost" size="sm" onClick={() => deleteTrackMutation.mutate(track.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>

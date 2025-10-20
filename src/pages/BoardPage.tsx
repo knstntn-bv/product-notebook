@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
 
@@ -14,14 +18,16 @@ interface Feature {
   id: string;
   title: string;
   description: string;
-  linkedEpic?: string;
-  linkedTrack: string;
-  column: ColumnId;
+  linked_epic?: string;
+  linked_track: string;
+  board_column: ColumnId;
 }
 
 const BoardPage = () => {
-  const [features, setFeatures] = useState<Feature[]>([]);
-  const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const columns: { id: ColumnId; label: string }[] = [
@@ -35,32 +41,82 @@ const BoardPage = () => {
     { id: "cancelled", label: "Cancelled" },
   ];
 
+  // Fetch features
+  const { data: features = [] } = useQuery({
+    queryKey: ["features", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("features")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Save feature mutation
+  const saveFeatureMutation = useMutation({
+    mutationFn: async (feature: Partial<Feature>) => {
+      if (!user) throw new Error("No user");
+      
+      if (feature.id) {
+        const { error } = await supabase
+          .from("features")
+          .update({
+            title: feature.title,
+            description: feature.description,
+            linked_epic: feature.linked_epic,
+            linked_track: feature.linked_track,
+            board_column: feature.board_column,
+          })
+          .eq("id", feature.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("features")
+          .insert({
+            user_id: user.id,
+            title: feature.title!,
+            description: feature.description || "",
+            linked_epic: feature.linked_epic || "",
+            linked_track: feature.linked_track!,
+            board_column: feature.board_column!,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["features"] });
+      setEditingFeature(null);
+      setIsDialogOpen(false);
+      toast({ title: "Feature saved successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const createFeature = (columnId: ColumnId) => {
-    const newFeature: Feature = {
-      id: `feature-${Date.now()}`,
+    setEditingFeature({
       title: "",
       description: "",
-      linkedTrack: "",
-      column: columnId,
-    };
-    setEditingFeature(newFeature);
+      linked_track: "",
+      board_column: columnId,
+    });
     setIsDialogOpen(true);
   };
 
   const saveFeature = () => {
-    if (editingFeature && editingFeature.title && editingFeature.linkedTrack) {
-      if (features.find(f => f.id === editingFeature.id)) {
-        setFeatures(features.map(f => f.id === editingFeature.id ? editingFeature : f));
-      } else {
-        setFeatures([editingFeature, ...features]);
-      }
-      setEditingFeature(null);
-      setIsDialogOpen(false);
+    if (editingFeature?.title && editingFeature?.linked_track) {
+      saveFeatureMutation.mutate(editingFeature);
     }
   };
 
   const getFeaturesForColumn = (columnId: ColumnId) => {
-    return features.filter(f => f.column === columnId);
+    return features.filter(f => f.board_column === columnId);
   };
 
   return (
@@ -77,13 +133,13 @@ const BoardPage = () => {
                   key={feature.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => {
-                    setEditingFeature(feature);
+                    setEditingFeature(feature as Feature);
                     setIsDialogOpen(true);
                   }}
                 >
                   <CardContent className="p-3">
                     <p className="font-medium text-sm mb-1">{feature.title}</p>
-                    <p className="text-xs text-muted-foreground">{feature.linkedTrack}</p>
+                    <p className="text-xs text-muted-foreground">{feature.linked_track}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -130,8 +186,8 @@ const BoardPage = () => {
                 <Label htmlFor="linkedEpic">Linked Epic</Label>
                 <Input
                   id="linkedEpic"
-                  value={editingFeature.linkedEpic || ""}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, linkedEpic: e.target.value })}
+                  value={editingFeature.linked_epic || ""}
+                  onChange={(e) => setEditingFeature({ ...editingFeature, linked_epic: e.target.value })}
                   placeholder="Enter linked epic..."
                 />
               </div>
@@ -139,16 +195,16 @@ const BoardPage = () => {
                 <Label htmlFor="linkedTrack">Linked Track *</Label>
                 <Input
                   id="linkedTrack"
-                  value={editingFeature.linkedTrack}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, linkedTrack: e.target.value })}
+                  value={editingFeature.linked_track}
+                  onChange={(e) => setEditingFeature({ ...editingFeature, linked_track: e.target.value })}
                   placeholder="Enter linked track..."
                 />
               </div>
               <div>
                 <Label htmlFor="column">Column</Label>
                 <Select
-                  value={editingFeature.column}
-                  onValueChange={(value: ColumnId) => setEditingFeature({ ...editingFeature, column: value })}
+                  value={editingFeature.board_column}
+                  onValueChange={(value: ColumnId) => setEditingFeature({ ...editingFeature, board_column: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
