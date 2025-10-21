@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface Epic {
+interface Initiative {
   id: string;
   goal: string;
   expected_result: string;
@@ -30,7 +30,7 @@ const RoadmapPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [editingEpic, setEditingEpic] = useState<Partial<Epic> | null>(null);
+  const [editingInitiative, setEditingInitiative] = useState<Partial<Initiative> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const quarters = [
@@ -39,13 +39,13 @@ const RoadmapPage = () => {
     { id: "halfYear", label: "Next Half-Year" },
   ];
 
-  // Fetch epics
-  const { data: epics = [] } = useQuery({
-    queryKey: ["epics", user?.id],
+  // Fetch initiatives
+  const { data: initiatives = [] } = useQuery({
+    queryKey: ["initiatives", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
-        .from("epics")
+        .from("initiatives")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
@@ -55,52 +55,52 @@ const RoadmapPage = () => {
     enabled: !!user,
   });
 
-  // Save epic mutation
-  const saveEpicMutation = useMutation({
-    mutationFn: async (epic: Partial<Epic>) => {
+  // Save initiative mutation
+  const saveInitiativeMutation = useMutation({
+    mutationFn: async (initiative: Partial<Initiative>) => {
       if (!user) throw new Error("No user");
       
-      if (epic.id) {
+      if (initiative.id) {
         const { error } = await supabase
-          .from("epics")
+          .from("initiatives")
           .update({
-            goal: epic.goal,
-            expected_result: epic.expected_result,
-            achieved_result: epic.achieved_result,
-            done: epic.done,
-            target_metrics: epic.target_metrics,
+            goal: initiative.goal,
+            expected_result: initiative.expected_result,
+            achieved_result: initiative.achieved_result,
+            done: initiative.done,
+            target_metrics: initiative.target_metrics,
           })
-          .eq("id", epic.id);
+          .eq("id", initiative.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("epics")
+          .from("initiatives")
           .insert({
             user_id: user.id,
-            track_id: epic.track_id!,
-            goal: epic.goal!,
-            expected_result: epic.expected_result || "",
-            achieved_result: epic.achieved_result || "",
-            done: epic.done || false,
-            target_metrics: epic.target_metrics || [],
-            quarter: epic.quarter!,
+            track_id: initiative.track_id!,
+            goal: initiative.goal!,
+            expected_result: initiative.expected_result || "",
+            achieved_result: initiative.achieved_result || "",
+            done: initiative.done || false,
+            target_metrics: initiative.target_metrics || [],
+            quarter: initiative.quarter!,
           });
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["epics"] });
-      setEditingEpic(null);
+      queryClient.invalidateQueries({ queryKey: ["initiatives"] });
+      setEditingInitiative(null);
       setIsDialogOpen(false);
-      toast({ title: "Epic saved successfully" });
+      toast({ title: "Initiative saved successfully" });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  const createEpic = (trackId: string, quarter: "current" | "next" | "halfYear") => {
-    setEditingEpic({
+  const createInitiative = (trackId: string, quarter: "current" | "next" | "halfYear") => {
+    setEditingInitiative({
       goal: "",
       expected_result: "",
       achieved_result: "",
@@ -112,14 +112,14 @@ const RoadmapPage = () => {
     setIsDialogOpen(true);
   };
 
-  const saveEpic = () => {
-    if (editingEpic?.goal) {
-      saveEpicMutation.mutate(editingEpic);
+  const saveInitiative = () => {
+    if (editingInitiative?.goal) {
+      saveInitiativeMutation.mutate(editingInitiative);
     }
   };
 
-  const getEpicsForCell = (trackId: string, quarter: "current" | "next" | "halfYear") => {
-    return epics.filter(e => e.track_id === trackId && e.quarter === quarter);
+  const getInitiativesForCell = (trackId: string, quarter: "current" | "next" | "halfYear") => {
+    return initiatives.filter(i => i.track_id === trackId && i.quarter === quarter);
   };
 
   return (
@@ -145,19 +145,19 @@ const RoadmapPage = () => {
                 {quarters.map(quarter => (
                   <td key={quarter.id} className="border border-border bg-card p-4 align-top">
                     <div className="space-y-2 min-h-[200px]">
-                      {getEpicsForCell(track.id, quarter.id as any).map(epic => (
+                      {getInitiativesForCell(track.id, quarter.id as any).map(initiative => (
                         <Card
-                          key={epic.id}
+                          key={initiative.id}
                           className="cursor-pointer hover:shadow-md transition-shadow"
                           onClick={() => {
-                            setEditingEpic(epic as Epic);
+                            setEditingInitiative(initiative as Initiative);
                             setIsDialogOpen(true);
                           }}
                         >
                           <CardContent className="p-3">
                             <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-medium">{epic.goal || "Untitled Epic"}</p>
-                              {epic.done && (
+                              <p className="text-sm font-medium">{initiative.goal || "Untitled Initiative"}</p>
+                              {initiative.done && (
                                 <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
                               )}
                             </div>
@@ -168,10 +168,10 @@ const RoadmapPage = () => {
                         variant="outline"
                         size="sm"
                         className="w-full"
-                        onClick={() => createEpic(track.id, quarter.id as any)}
+                        onClick={() => createInitiative(track.id, quarter.id as any)}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Epic
+                        Add Initiative
                       </Button>
                     </div>
                   </td>
@@ -185,25 +185,25 @@ const RoadmapPage = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Epic Details</DialogTitle>
+            <DialogTitle>Initiative Details</DialogTitle>
           </DialogHeader>
-          {editingEpic && (
+          {editingInitiative && (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="goal">Goal *</Label>
                 <Input
                   id="goal"
-                  value={editingEpic.goal}
-                  onChange={(e) => setEditingEpic({ ...editingEpic, goal: e.target.value })}
-                  placeholder="Enter epic goal..."
+                  value={editingInitiative.goal}
+                  onChange={(e) => setEditingInitiative({ ...editingInitiative, goal: e.target.value })}
+                  placeholder="Enter initiative goal..."
                 />
               </div>
               <div>
                 <Label htmlFor="expectedResult">Expected Result</Label>
                 <Textarea
                   id="expectedResult"
-                  value={editingEpic.expected_result}
-                  onChange={(e) => setEditingEpic({ ...editingEpic, expected_result: e.target.value })}
+                  value={editingInitiative.expected_result}
+                  onChange={(e) => setEditingInitiative({ ...editingInitiative, expected_result: e.target.value })}
                   placeholder="Enter expected result..."
                 />
               </div>
@@ -211,16 +211,16 @@ const RoadmapPage = () => {
                 <Label htmlFor="achievedResult">Achieved Result</Label>
                 <Textarea
                   id="achievedResult"
-                  value={editingEpic.achieved_result}
-                  onChange={(e) => setEditingEpic({ ...editingEpic, achieved_result: e.target.value })}
+                  value={editingInitiative.achieved_result}
+                  onChange={(e) => setEditingInitiative({ ...editingInitiative, achieved_result: e.target.value })}
                   placeholder="Enter achieved result..."
                 />
               </div>
               <div>
                 <Label htmlFor="targetMetrics">Target Metrics</Label>
                 <MetricTagInput
-                  value={editingEpic.target_metrics || []}
-                  onChange={(tags) => setEditingEpic({ ...editingEpic, target_metrics: tags })}
+                  value={editingInitiative.target_metrics || []}
+                  onChange={(tags) => setEditingInitiative({ ...editingInitiative, target_metrics: tags })}
                   suggestions={metrics.map(m => m.name).filter(Boolean)}
                   placeholder="Type to add metrics..."
                 />
@@ -228,8 +228,8 @@ const RoadmapPage = () => {
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="done"
-                  checked={editingEpic.done}
-                  onCheckedChange={(checked) => setEditingEpic({ ...editingEpic, done: checked as boolean })}
+                  checked={editingInitiative.done}
+                  onCheckedChange={(checked) => setEditingInitiative({ ...editingInitiative, done: checked as boolean })}
                 />
                 <Label htmlFor="done">Done</Label>
               </div>
@@ -237,8 +237,8 @@ const RoadmapPage = () => {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={saveEpic}>
-                  Save Epic
+                <Button onClick={saveInitiative}>
+                  Save Initiative
                 </Button>
               </div>
             </div>

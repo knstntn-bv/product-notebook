@@ -14,63 +14,13 @@ export type Database = {
   }
   public: {
     Tables: {
-      epics: {
-        Row: {
-          achieved_result: string | null
-          created_at: string | null
-          done: boolean | null
-          expected_result: string | null
-          goal: string
-          id: string
-          quarter: string
-          target_metrics: string[] | null
-          track_id: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          achieved_result?: string | null
-          created_at?: string | null
-          done?: boolean | null
-          expected_result?: string | null
-          goal: string
-          id?: string
-          quarter: string
-          target_metrics?: string[] | null
-          track_id: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          achieved_result?: string | null
-          created_at?: string | null
-          done?: boolean | null
-          expected_result?: string | null
-          goal?: string
-          id?: string
-          quarter?: string
-          target_metrics?: string[] | null
-          track_id?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "epics_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "tracks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       features: {
         Row: {
           board_column: string
           created_at: string | null
           description: string | null
-          epic_id: string | null
           id: string
+          initiative_id: string | null
           title: string
           track_id: string | null
           updated_at: string | null
@@ -80,8 +30,8 @@ export type Database = {
           board_column: string
           created_at?: string | null
           description?: string | null
-          epic_id?: string | null
           id?: string
+          initiative_id?: string | null
           title: string
           track_id?: string | null
           updated_at?: string | null
@@ -91,8 +41,8 @@ export type Database = {
           board_column?: string
           created_at?: string | null
           description?: string | null
-          epic_id?: string | null
           id?: string
+          initiative_id?: string | null
           title?: string
           track_id?: string | null
           updated_at?: string | null
@@ -100,10 +50,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "features_epic_id_fkey"
-            columns: ["epic_id"]
+            foreignKeyName: "features_initiative_id_fkey"
+            columns: ["initiative_id"]
             isOneToOne: false
-            referencedRelation: "epics"
+            referencedRelation: "initiatives"
             referencedColumns: ["id"]
           },
           {
@@ -156,6 +106,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      initiatives: {
+        Row: {
+          achieved_result: string | null
+          created_at: string | null
+          done: boolean | null
+          expected_result: string | null
+          goal: string
+          id: string
+          quarter: string
+          target_metrics: string[] | null
+          track_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achieved_result?: string | null
+          created_at?: string | null
+          done?: boolean | null
+          expected_result?: string | null
+          goal: string
+          id?: string
+          quarter: string
+          target_metrics?: string[] | null
+          track_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achieved_result?: string | null
+          created_at?: string | null
+          done?: boolean | null
+          expected_result?: string | null
+          goal?: string
+          id?: string
+          quarter?: string
+          target_metrics?: string[] | null
+          track_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epics_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       metrics: {
         Row: {

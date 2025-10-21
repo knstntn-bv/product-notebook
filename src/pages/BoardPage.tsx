@@ -21,12 +21,12 @@ interface Feature {
   id: string;
   title: string;
   description: string;
-  epic_id?: string;
+  initiative_id?: string;
   track_id?: string;
   board_column: ColumnId;
 }
 
-interface Epic {
+interface Initiative {
   id: string;
   goal: string;
   track_id: string;
@@ -43,7 +43,7 @@ const BoardPage = () => {
   const queryClient = useQueryClient();
   const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [epicOpen, setEpicOpen] = useState(false);
+  const [initiativeOpen, setInitiativeOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
 
   const columns: { id: ColumnId; label: string }[] = [
@@ -73,13 +73,13 @@ const BoardPage = () => {
     enabled: !!user,
   });
 
-  // Fetch epics
-  const { data: epics = [] } = useQuery({
-    queryKey: ["epics", user?.id],
+  // Fetch initiatives
+  const { data: initiatives = [] } = useQuery({
+    queryKey: ["initiatives", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
-        .from("epics")
+        .from("initiatives")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
@@ -116,7 +116,7 @@ const BoardPage = () => {
           .update({
             title: feature.title,
             description: feature.description,
-            epic_id: feature.epic_id,
+            initiative_id: feature.initiative_id,
             track_id: feature.track_id,
             board_column: feature.board_column,
           })
@@ -129,7 +129,7 @@ const BoardPage = () => {
             user_id: user.id,
             title: feature.title!,
             description: feature.description || "",
-            epic_id: feature.epic_id,
+            initiative_id: feature.initiative_id,
             track_id: feature.track_id,
             board_column: feature.board_column!,
           });
@@ -162,14 +162,14 @@ const BoardPage = () => {
     }
   };
 
-  const handleEpicSelect = (epicId: string) => {
-    const selectedEpic = epics.find(e => e.id === epicId);
+  const handleInitiativeSelect = (initiativeId: string) => {
+    const selectedInitiative = initiatives.find(i => i.id === initiativeId);
     setEditingFeature({
       ...editingFeature,
-      epic_id: epicId,
-      track_id: selectedEpic?.track_id,
+      initiative_id: initiativeId,
+      track_id: selectedInitiative?.track_id,
     });
-    setEpicOpen(false);
+    setInitiativeOpen(false);
   };
 
   const handleTrackSelect = (trackId: string) => {
@@ -180,8 +180,8 @@ const BoardPage = () => {
     setTrackOpen(false);
   };
 
-  const getEpicName = (epicId?: string) => {
-    return epics.find(e => e.id === epicId)?.goal || "";
+  const getInitiativeName = (initiativeId?: string) => {
+    return initiatives.find(i => i.id === initiativeId)?.goal || "";
   };
 
   const getTrackName = (trackId?: string) => {
@@ -256,40 +256,40 @@ const BoardPage = () => {
                 />
               </div>
               <div>
-                <Label>Linked Epic</Label>
-                <Popover open={epicOpen} onOpenChange={setEpicOpen}>
+                <Label>Linked Initiative</Label>
+                <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       role="combobox"
-                      aria-expanded={epicOpen}
+                      aria-expanded={initiativeOpen}
                       className="w-full justify-between"
                     >
-                      {editingFeature.epic_id
-                        ? getEpicName(editingFeature.epic_id)
-                        : "Select epic..."}
+                      {editingFeature.initiative_id
+                        ? getInitiativeName(editingFeature.initiative_id)
+                        : "Select initiative..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0">
                     <Command>
-                      <CommandInput placeholder="Search epics..." />
+                      <CommandInput placeholder="Search initiatives..." />
                       <CommandList>
-                        <CommandEmpty>No epic found.</CommandEmpty>
+                        <CommandEmpty>No initiative found.</CommandEmpty>
                         <CommandGroup>
-                          {epics.map((epic) => (
+                          {initiatives.map((initiative) => (
                             <CommandItem
-                              key={epic.id}
-                              value={epic.goal}
-                              onSelect={() => handleEpicSelect(epic.id)}
+                              key={initiative.id}
+                              value={initiative.goal}
+                              onSelect={() => handleInitiativeSelect(initiative.id)}
                             >
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  editingFeature.epic_id === epic.id ? "opacity-100" : "opacity-0"
+                                  editingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
                                 )}
                               />
-                              {epic.goal}
+                              {initiative.goal}
                             </CommandItem>
                           ))}
                         </CommandGroup>
