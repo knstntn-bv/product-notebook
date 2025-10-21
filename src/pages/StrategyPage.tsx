@@ -21,6 +21,9 @@ const StrategyPage = () => {
   const [productFormula, setProductFormula] = useState("");
   const [isEditingFormula, setIsEditingFormula] = useState(false);
   const [editingValueIndex, setEditingValueIndex] = useState<number | null>(null);
+  const [editingValueText, setEditingValueText] = useState("");
+  const [editingMetrics, setEditingMetrics] = useState<Record<string, { name: string; parent_metric_id: string | null }>>({});
+  const [editingTracks, setEditingTracks] = useState<Record<string, { name: string; description: string }>>({});
 
   // Fetch product formula
   const { data: formulaData } = useQuery({
@@ -239,20 +242,33 @@ const StrategyPage = () => {
               {editingValueIndex === index ? (
                 <>
                   <Textarea
-                    value={value.value_text}
-                    onChange={(e) => updateValueMutation.mutate({ id: value.id, value_text: e.target.value })}
+                    value={editingValueText}
+                    onChange={(e) => setEditingValueText(e.target.value)}
                     maxLength={1000}
                     placeholder="Enter value..."
                     className="flex-1"
                   />
-                  <Button onClick={() => setEditingValueIndex(null)} size="sm">
+                  <Button 
+                    onClick={() => {
+                      updateValueMutation.mutate({ id: value.id, value_text: editingValueText });
+                      setEditingValueIndex(null);
+                    }} 
+                    size="sm"
+                  >
                     Save
                   </Button>
                 </>
               ) : (
                 <>
                   <p className="flex-1 text-foreground">{value.value_text || "Click edit to add value"}</p>
-                  <Button variant="ghost" size="sm" onClick={() => setEditingValueIndex(index)}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setEditingValueIndex(index);
+                      setEditingValueText(value.value_text);
+                    }}
+                  >
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => deleteValueMutation.mutate(value.id)}>
@@ -289,41 +305,73 @@ const StrategyPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {metrics.map((metric) => (
-                <TableRow key={metric.id}>
-                  <TableCell>
-                    <Input
-                      value={metric.name}
-                      onChange={(e) => updateMetricMutation.mutate({ id: metric.id, name: e.target.value })}
-                      maxLength={100}
-                      placeholder="Enter metric name..."
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={metric.parent_metric_id || "none"}
-                      onValueChange={(value) => updateMetricMutation.mutate({ id: metric.id, parent_metric_id: value === "none" ? null : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select parent metric" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {metrics.filter(m => m.id !== metric.id).map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.name || "Unnamed Metric"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => deleteMetricMutation.mutate(metric.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {metrics.map((metric) => {
+                const editing = editingMetrics[metric.id] || { name: metric.name, parent_metric_id: metric.parent_metric_id || null };
+                const hasChanges = editing.name !== metric.name || editing.parent_metric_id !== (metric.parent_metric_id || null);
+                
+                return (
+                  <TableRow key={metric.id}>
+                    <TableCell>
+                      <Input
+                        value={editing.name}
+                        onChange={(e) => setEditingMetrics(prev => ({
+                          ...prev,
+                          [metric.id]: { ...editing, name: e.target.value }
+                        }))}
+                        maxLength={100}
+                        placeholder="Enter metric name..."
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={editing.parent_metric_id || "none"}
+                        onValueChange={(value) => setEditingMetrics(prev => ({
+                          ...prev,
+                          [metric.id]: { ...editing, parent_metric_id: value === "none" ? null : value }
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select parent metric" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {metrics.filter(m => m.id !== metric.id).map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name || "Unnamed Metric"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {hasChanges && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              updateMetricMutation.mutate({ 
+                                id: metric.id, 
+                                name: editing.name,
+                                parent_metric_id: editing.parent_metric_id
+                              });
+                              setEditingMetrics(prev => {
+                                const newState = { ...prev };
+                                delete newState[metric.id];
+                                return newState;
+                              });
+                            }}
+                          >
+                            Save
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => deleteMetricMutation.mutate(metric.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -353,31 +401,63 @@ const StrategyPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tracks.map((track) => (
-                <TableRow key={track.id}>
-                  <TableCell>
-                    <Input
-                      value={track.name}
-                      onChange={(e) => updateTrackMutation.mutate({ id: track.id, name: e.target.value })}
-                      maxLength={100}
-                      placeholder="Enter track name..."
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={track.description}
-                      onChange={(e) => updateTrackMutation.mutate({ id: track.id, description: e.target.value })}
-                      maxLength={500}
-                      placeholder="Enter description..."
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => deleteTrackMutation.mutate(track.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {tracks.map((track) => {
+                const editing = editingTracks[track.id] || { name: track.name, description: track.description };
+                const hasChanges = editing.name !== track.name || editing.description !== track.description;
+                
+                return (
+                  <TableRow key={track.id}>
+                    <TableCell>
+                      <Input
+                        value={editing.name}
+                        onChange={(e) => setEditingTracks(prev => ({
+                          ...prev,
+                          [track.id]: { ...editing, name: e.target.value }
+                        }))}
+                        maxLength={100}
+                        placeholder="Enter track name..."
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={editing.description}
+                        onChange={(e) => setEditingTracks(prev => ({
+                          ...prev,
+                          [track.id]: { ...editing, description: e.target.value }
+                        }))}
+                        maxLength={500}
+                        placeholder="Enter description..."
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {hasChanges && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              updateTrackMutation.mutate({ 
+                                id: track.id, 
+                                name: editing.name,
+                                description: editing.description
+                              });
+                              setEditingTracks(prev => {
+                                const newState = { ...prev };
+                                delete newState[track.id];
+                                return newState;
+                              });
+                            }}
+                          >
+                            Save
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => deleteTrackMutation.mutate(track.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
