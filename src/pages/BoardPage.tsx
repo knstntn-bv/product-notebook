@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
 
@@ -18,9 +21,20 @@ interface Feature {
   id: string;
   title: string;
   description: string;
-  linked_epic?: string;
-  linked_track: string;
+  epic_id?: string;
+  track_id?: string;
   board_column: ColumnId;
+}
+
+interface Epic {
+  id: string;
+  goal: string;
+  track_id: string;
+}
+
+interface Track {
+  id: string;
+  name: string;
 }
 
 const BoardPage = () => {
@@ -29,6 +43,8 @@ const BoardPage = () => {
   const queryClient = useQueryClient();
   const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [epicOpen, setEpicOpen] = useState(false);
+  const [trackOpen, setTrackOpen] = useState(false);
 
   const columns: { id: ColumnId; label: string }[] = [
     { id: "inbox", label: "Inbox" },
@@ -57,6 +73,38 @@ const BoardPage = () => {
     enabled: !!user,
   });
 
+  // Fetch epics
+  const { data: epics = [] } = useQuery({
+    queryKey: ["epics", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("epics")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch tracks
+  const { data: tracks = [] } = useQuery({
+    queryKey: ["tracks", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("tracks")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   // Save feature mutation
   const saveFeatureMutation = useMutation({
     mutationFn: async (feature: Partial<Feature>) => {
@@ -68,8 +116,8 @@ const BoardPage = () => {
           .update({
             title: feature.title,
             description: feature.description,
-            linked_epic: feature.linked_epic,
-            linked_track: feature.linked_track,
+            epic_id: feature.epic_id,
+            track_id: feature.track_id,
             board_column: feature.board_column,
           })
           .eq("id", feature.id);
@@ -81,8 +129,8 @@ const BoardPage = () => {
             user_id: user.id,
             title: feature.title!,
             description: feature.description || "",
-            linked_epic: feature.linked_epic || "",
-            linked_track: feature.linked_track!,
+            epic_id: feature.epic_id,
+            track_id: feature.track_id,
             board_column: feature.board_column!,
           });
         if (error) throw error;
@@ -103,16 +151,41 @@ const BoardPage = () => {
     setEditingFeature({
       title: "",
       description: "",
-      linked_track: "",
       board_column: columnId,
     });
     setIsDialogOpen(true);
   };
 
   const saveFeature = () => {
-    if (editingFeature?.title && editingFeature?.linked_track) {
+    if (editingFeature?.title) {
       saveFeatureMutation.mutate(editingFeature);
     }
+  };
+
+  const handleEpicSelect = (epicId: string) => {
+    const selectedEpic = epics.find(e => e.id === epicId);
+    setEditingFeature({
+      ...editingFeature,
+      epic_id: epicId,
+      track_id: selectedEpic?.track_id,
+    });
+    setEpicOpen(false);
+  };
+
+  const handleTrackSelect = (trackId: string) => {
+    setEditingFeature({
+      ...editingFeature,
+      track_id: trackId,
+    });
+    setTrackOpen(false);
+  };
+
+  const getEpicName = (epicId?: string) => {
+    return epics.find(e => e.id === epicId)?.goal || "";
+  };
+
+  const getTrackName = (trackId?: string) => {
+    return tracks.find(t => t.id === trackId)?.name || "";
   };
 
   const getFeaturesForColumn = (columnId: ColumnId) => {
@@ -139,7 +212,7 @@ const BoardPage = () => {
                 >
                   <CardContent className="p-3">
                     <p className="font-medium text-sm mb-1">{feature.title}</p>
-                    <p className="text-xs text-muted-foreground">{feature.linked_track}</p>
+                    <p className="text-xs text-muted-foreground">{getTrackName(feature.track_id)}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -183,22 +256,90 @@ const BoardPage = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="linkedEpic">Linked Epic</Label>
-                <Input
-                  id="linkedEpic"
-                  value={editingFeature.linked_epic || ""}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, linked_epic: e.target.value })}
-                  placeholder="Enter linked epic..."
-                />
+                <Label>Linked Epic</Label>
+                <Popover open={epicOpen} onOpenChange={setEpicOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={epicOpen}
+                      className="w-full justify-between"
+                    >
+                      {editingFeature.epic_id
+                        ? getEpicName(editingFeature.epic_id)
+                        : "Select epic..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search epics..." />
+                      <CommandList>
+                        <CommandEmpty>No epic found.</CommandEmpty>
+                        <CommandGroup>
+                          {epics.map((epic) => (
+                            <CommandItem
+                              key={epic.id}
+                              value={epic.goal}
+                              onSelect={() => handleEpicSelect(epic.id)}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  editingFeature.epic_id === epic.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {epic.goal}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
-                <Label htmlFor="linkedTrack">Linked Track *</Label>
-                <Input
-                  id="linkedTrack"
-                  value={editingFeature.linked_track}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, linked_track: e.target.value })}
-                  placeholder="Enter linked track..."
-                />
+                <Label>Linked Track</Label>
+                <Popover open={trackOpen} onOpenChange={setTrackOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={trackOpen}
+                      className="w-full justify-between"
+                    >
+                      {editingFeature.track_id
+                        ? getTrackName(editingFeature.track_id)
+                        : "Select track..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search tracks..." />
+                      <CommandList>
+                        <CommandEmpty>No track found.</CommandEmpty>
+                        <CommandGroup>
+                          {tracks.map((track) => (
+                            <CommandItem
+                              key={track.id}
+                              value={track.name}
+                              onSelect={() => handleTrackSelect(track.id)}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  editingFeature.track_id === track.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {track.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label htmlFor="column">Column</Label>

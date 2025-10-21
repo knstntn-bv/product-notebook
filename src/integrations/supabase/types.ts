@@ -69,10 +69,10 @@ export type Database = {
           board_column: string
           created_at: string | null
           description: string | null
+          epic_id: string | null
           id: string
-          linked_epic: string | null
-          linked_track: string
           title: string
+          track_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -80,10 +80,10 @@ export type Database = {
           board_column: string
           created_at?: string | null
           description?: string | null
+          epic_id?: string | null
           id?: string
-          linked_epic?: string | null
-          linked_track: string
           title: string
+          track_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -91,14 +91,29 @@ export type Database = {
           board_column?: string
           created_at?: string | null
           description?: string | null
+          epic_id?: string | null
           id?: string
-          linked_epic?: string | null
-          linked_track?: string
           title?: string
+          track_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "features_epic_id_fkey"
+            columns: ["epic_id"]
+            isOneToOne: false
+            referencedRelation: "epics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "features_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hypotheses: {
         Row: {
