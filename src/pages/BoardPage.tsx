@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -194,41 +195,44 @@ const BoardPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {columns.map(column => (
-          <div key={column.id} className="flex flex-col">
-            <div className="bg-muted p-4 rounded-t-lg border border-border">
-              <h3 className="font-semibold text-sm">{column.label}</h3>
-            </div>
-            <div className="bg-card border-x border-b border-border rounded-b-lg p-4 min-h-[500px] space-y-2">
-              {getFeaturesForColumn(column.id).map(feature => (
-                <Card
-                  key={feature.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => {
-                    setEditingFeature(feature as Feature);
-                    setIsDialogOpen(true);
-                  }}
+      <ScrollArea className="w-full whitespace-nowrap">
+        <div className="flex gap-4 pb-4">
+          {columns.map(column => (
+            <div key={column.id} className="flex flex-col w-80 flex-shrink-0">
+              <div className="bg-muted p-4 rounded-t-lg border border-border">
+                <h3 className="font-semibold text-sm">{column.label}</h3>
+              </div>
+              <div className="bg-card border-x border-b border-border rounded-b-lg p-4 min-h-[500px] space-y-2">
+                {getFeaturesForColumn(column.id).map(feature => (
+                  <Card
+                    key={feature.id}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => {
+                      setEditingFeature(feature as Feature);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm mb-1">{feature.title}</p>
+                      <p className="text-xs text-muted-foreground">{getTrackName(feature.track_id)}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => createFeature(column.id)}
                 >
-                  <CardContent className="p-3">
-                    <p className="font-medium text-sm mb-1">{feature.title}</p>
-                    <p className="text-xs text-muted-foreground">{getTrackName(feature.track_id)}</p>
-                  </CardContent>
-                </Card>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => createFeature(column.id)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Feature
-              </Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Feature
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
