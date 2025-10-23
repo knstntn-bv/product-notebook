@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Plus, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Check, ChevronsUpDown, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
 
@@ -46,6 +48,7 @@ const BoardPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [initiativeOpen, setInitiativeOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const columns: { id: ColumnId; label: string }[] = [
     { id: "inbox", label: "Inbox" },
@@ -193,30 +196,51 @@ const BoardPage = () => {
     return features.filter(f => f.board_column === columnId);
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const featureId = active.id as string;
+    const newColumnId = over.id as ColumnId;
+    const feature = features.find(f => f.id === featureId);
+
+    if (feature && feature.board_column !== newColumnId) {
+      saveFeatureMutation.mutate({
+        id: feature.id,
+        title: feature.title,
+        description: feature.description,
+        initiative_id: feature.initiative_id,
+        track_id: feature.track_id,
+        board_column: newColumnId,
+      });
+    }
+  };
+
+  const activeFeature = activeId ? features.find(f => f.id === activeId) : null;
+
   return (
-    <div className="space-y-6">
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex gap-4 pb-4">
-          {columns.map(column => (
-            <div key={column.id} className="flex flex-col w-80 flex-shrink-0">
-              <div className="bg-muted p-4 rounded-t-lg border border-border">
-                <h3 className="font-semibold text-sm">{column.label}</h3>
-              </div>
-              <div className="bg-card border-x border-b border-border rounded-b-lg p-4 min-h-[500px] space-y-2">
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="space-y-6">
+        <ScrollArea className="w-full whitespace-nowrap">
+          <div className="flex gap-4 pb-4">
+            {columns.map(column => (
+              <DroppableColumn key={column.id} column={column}>
                 {getFeaturesForColumn(column.id).map(feature => (
-                  <Card
+                  <DraggableFeature
                     key={feature.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    feature={feature as Feature}
+                    trackName={getTrackName(feature.track_id)}
                     onClick={() => {
                       setEditingFeature(feature as Feature);
                       setIsDialogOpen(true);
                     }}
-                  >
-                    <CardContent className="p-3">
-                      <p className="font-medium text-sm mb-1">{feature.title}</p>
-                      <p className="text-xs text-muted-foreground">{getTrackName(feature.track_id)}</p>
-                    </CardContent>
-                  </Card>
+                  />
                 ))}
                 <Button
                   variant="outline"
@@ -227,12 +251,23 @@ const BoardPage = () => {
                   <Plus className="h-4 w-4 mr-2" />
                   Add Feature
                 </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+              </DroppableColumn>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </div>
+
+      <DragOverlay>
+        {activeFeature ? (
+          <Card className="w-80 opacity-90 shadow-lg rotate-3">
+            <CardContent className="p-3">
+              <p className="font-medium text-sm mb-1">{activeFeature.title}</p>
+              <p className="text-xs text-muted-foreground">{getTrackName(activeFeature.track_id)}</p>
+            </CardContent>
+          </Card>
+        ) : null}
+      </DragOverlay>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -375,7 +410,76 @@ const BoardPage = () => {
           )}
         </DialogContent>
       </Dialog>
+    </DndContext>
+  );
+};
+
+interface DroppableColumnProps {
+  column: { id: ColumnId; label: string };
+  children: React.ReactNode;
+}
+
+const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+  });
+
+  return (
+    <div className="flex flex-col w-80 flex-shrink-0">
+      <div className="bg-muted p-4 rounded-t-lg border border-border">
+        <h3 className="font-semibold text-sm">{column.label}</h3>
+      </div>
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "bg-card border-x border-b border-border rounded-b-lg p-4 min-h-[500px] space-y-2 transition-colors",
+          isOver && "bg-muted/50"
+        )}
+      >
+        {children}
+      </div>
     </div>
+  );
+};
+
+interface DraggableFeatureProps {
+  feature: Feature;
+  trackName: string;
+  onClick: () => void;
+}
+
+const DraggableFeature = ({ feature, trackName, onClick }: DraggableFeatureProps) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: feature.id,
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "cursor-move hover:shadow-md transition-shadow group",
+        isDragging && "opacity-50"
+      )}
+      {...attributes}
+      {...listeners}
+    >
+      <CardContent className="p-3 flex items-start gap-2" onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}>
+        <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm mb-1">{feature.title}</p>
+          <p className="text-xs text-muted-foreground">{trackName}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
