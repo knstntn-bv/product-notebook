@@ -458,6 +458,33 @@ const DraggableFeature = ({ feature, trackName, onClick }: DraggableFeatureProps
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let hasMoved = false;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = Math.abs(moveEvent.clientX - startX);
+      const deltaY = Math.abs(moveEvent.clientY - startY);
+      
+      if (deltaX > 5 || deltaY > 5) {
+        hasMoved = true;
+      }
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      
+      if (!hasMoved) {
+        onClick();
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
   return (
     <Card
       ref={setNodeRef}
@@ -466,13 +493,11 @@ const DraggableFeature = ({ feature, trackName, onClick }: DraggableFeatureProps
         "cursor-move hover:shadow-md transition-shadow group",
         isDragging && "opacity-50"
       )}
+      onPointerDown={handlePointerDown}
       {...attributes}
       {...listeners}
     >
-      <CardContent className="p-3 flex items-start gap-2" onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}>
+      <CardContent className="p-3 flex items-start gap-2">
         <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm mb-1 break-words hyphens-auto">{feature.title}</p>
