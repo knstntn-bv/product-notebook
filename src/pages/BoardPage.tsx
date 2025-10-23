@@ -262,8 +262,8 @@ const BoardPage = () => {
         {activeFeature ? (
           <Card className="w-80 opacity-90 shadow-lg rotate-3">
             <CardContent className="p-3">
-              <p className="font-medium text-sm mb-1">{activeFeature.title}</p>
-              <p className="text-xs text-muted-foreground">{getTrackName(activeFeature.track_id)}</p>
+              <p className="font-medium text-sm mb-1 break-words hyphens-auto">{activeFeature.title}</p>
+              <p className="text-xs text-muted-foreground break-words">{getTrackName(activeFeature.track_id)}</p>
             </CardContent>
           </Card>
         ) : null}
@@ -473,10 +473,10 @@ const DraggableFeature = ({ feature, trackName, onClick }: DraggableFeatureProps
         e.stopPropagation();
         onClick();
       }}>
-        <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5" />
+        <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm mb-1">{feature.title}</p>
-          <p className="text-xs text-muted-foreground">{trackName}</p>
+          <p className="font-medium text-sm mb-1 break-words hyphens-auto">{feature.title}</p>
+          <p className="text-xs text-muted-foreground break-words">{trackName}</p>
         </div>
       </CardContent>
     </Card>
