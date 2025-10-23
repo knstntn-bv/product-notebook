@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
@@ -49,6 +49,14 @@ const BoardPage = () => {
   const [initiativeOpen, setInitiativeOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const columns: { id: ColumnId; label: string }[] = [
     { id: "inbox", label: "Inbox" },
@@ -225,7 +233,11 @@ const BoardPage = () => {
   const activeFeature = activeId ? features.find(f => f.id === activeId) : null;
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext 
+      sensors={sensors}
+      onDragStart={handleDragStart} 
+      onDragEnd={handleDragEnd}
+    >
       <div className="space-y-6">
         <ScrollArea className="w-full whitespace-nowrap">
           <div className="flex gap-4 pb-4">
@@ -458,42 +470,15 @@ const DraggableFeature = ({ feature, trackName, onClick }: DraggableFeatureProps
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let hasMoved = false;
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      const deltaX = Math.abs(moveEvent.clientX - startX);
-      const deltaY = Math.abs(moveEvent.clientY - startY);
-      
-      if (deltaX > 5 || deltaY > 5) {
-        hasMoved = true;
-      }
-    };
-
-    const handlePointerUp = () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      
-      if (!hasMoved) {
-        onClick();
-      }
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-  };
-
   return (
     <Card
       ref={setNodeRef}
       style={style}
       className={cn(
-        "cursor-move hover:shadow-md transition-shadow group",
-        isDragging && "opacity-50"
+        "cursor-pointer hover:shadow-md transition-shadow group",
+        isDragging && "opacity-50 cursor-move"
       )}
-      onPointerDown={handlePointerDown}
+      onClick={onClick}
       {...attributes}
       {...listeners}
     >
