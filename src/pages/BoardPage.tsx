@@ -39,6 +39,7 @@ interface Initiative {
 interface Track {
   id: string;
   name: string;
+  color?: string;
 }
 
 const BoardPage = () => {
@@ -224,6 +225,10 @@ const BoardPage = () => {
     return tracks.find(t => t.id === trackId)?.name || "";
   };
 
+  const getTrackColor = (trackId?: string) => {
+    return tracks.find(t => t.id === trackId)?.color || "#8B5CF6";
+  };
+
   const getFeaturesForColumn = (columnId: ColumnId) => {
     return features.filter(f => f.board_column === columnId);
   };
@@ -272,6 +277,7 @@ const BoardPage = () => {
                     key={feature.id}
                     feature={feature as Feature}
                     trackName={getTrackName(feature.track_id)}
+                    trackColor={getTrackColor(feature.track_id)}
                     onClick={() => {
                       setEditingFeature(feature as Feature);
                       setIsDialogOpen(true);
@@ -299,7 +305,13 @@ const BoardPage = () => {
           <Card className="w-80 opacity-90 shadow-lg rotate-3">
             <CardContent className="p-3">
               <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{activeFeature.title}</p>
-              <p className="text-xs text-muted-foreground break-words whitespace-normal">{getTrackName(activeFeature.track_id)}</p>
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0" 
+                  style={{ backgroundColor: getTrackColor(activeFeature.track_id) }}
+                />
+                <p className="text-xs text-muted-foreground break-words whitespace-normal">{getTrackName(activeFeature.track_id)}</p>
+              </div>
             </CardContent>
           </Card>
         ) : null}
@@ -512,10 +524,11 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
 interface DraggableFeatureProps {
   feature: Feature;
   trackName: string;
+  trackColor: string;
   onClick: () => void;
 }
 
-const DraggableFeature = ({ feature, trackName, onClick }: DraggableFeatureProps) => {
+const DraggableFeature = ({ feature, trackName, trackColor, onClick }: DraggableFeatureProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: feature.id,
   });
@@ -541,7 +554,13 @@ const DraggableFeature = ({ feature, trackName, onClick }: DraggableFeatureProps
         <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{feature.title}</p>
-          <p className="text-xs text-muted-foreground break-words whitespace-normal">{trackName}</p>
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-3 h-3 rounded-full flex-shrink-0" 
+              style={{ backgroundColor: trackColor }}
+            />
+            <p className="text-xs text-muted-foreground break-words whitespace-normal">{trackName}</p>
+          </div>
         </div>
       </CardContent>
     </Card>

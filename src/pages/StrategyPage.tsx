@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
+import { ColorPicker } from "@/components/ColorPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +24,7 @@ const StrategyPage = () => {
   const [editingValueIndex, setEditingValueIndex] = useState<number | null>(null);
   const [editingValueText, setEditingValueText] = useState("");
   const [editingMetrics, setEditingMetrics] = useState<Record<string, { name: string; parent_metric_id: string | null }>>({});
-  const [editingTracks, setEditingTracks] = useState<Record<string, { name: string; description: string }>>({});
+  const [editingTracks, setEditingTracks] = useState<Record<string, { name: string; description: string; color: string }>>({});
 
   // Fetch product formula
   const { data: formulaData } = useQuery({
@@ -168,10 +169,11 @@ const StrategyPage = () => {
   });
 
   const updateTrackMutation = useMutation({
-    mutationFn: async ({ id, name, description }: { id: string; name?: string; description?: string }) => {
+    mutationFn: async ({ id, name, description, color }: { id: string; name?: string; description?: string; color?: string }) => {
       const updates: any = {};
       if (name !== undefined) updates.name = name;
       if (description !== undefined) updates.description = description;
+      if (color !== undefined) updates.color = color;
       
       const { error } = await supabase
         .from("tracks")
@@ -397,13 +399,14 @@ const StrategyPage = () => {
               <TableRow>
                 <TableHead>Track</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Color</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tracks.map((track) => {
-                const editing = editingTracks[track.id] || { name: track.name, description: track.description };
-                const hasChanges = editing.name !== track.name || editing.description !== track.description;
+                const editing = editingTracks[track.id] || { name: track.name, description: track.description, color: track.color || "#8B5CF6" };
+                const hasChanges = editing.name !== track.name || editing.description !== track.description || editing.color !== (track.color || "#8B5CF6");
                 
                 return (
                   <TableRow key={track.id}>
@@ -430,6 +433,15 @@ const StrategyPage = () => {
                       />
                     </TableCell>
                     <TableCell>
+                      <ColorPicker
+                        value={editing.color}
+                        onChange={(color) => setEditingTracks(prev => ({
+                          ...prev,
+                          [track.id]: { ...editing, color }
+                        }))}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-2">
                         {hasChanges && (
                           <Button 
@@ -438,7 +450,8 @@ const StrategyPage = () => {
                               updateTrackMutation.mutate({ 
                                 id: track.id, 
                                 name: editing.name,
-                                description: editing.description
+                                description: editing.description,
+                                color: editing.color
                               });
                               setEditingTracks(prev => {
                                 const newState = { ...prev };
