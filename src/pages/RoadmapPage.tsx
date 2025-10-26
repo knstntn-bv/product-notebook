@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
@@ -69,6 +70,7 @@ const RoadmapPage = () => {
             achieved_result: initiative.achieved_result,
             done: initiative.done,
             target_metrics: initiative.target_metrics,
+            quarter: initiative.quarter,
           })
           .eq("id", initiative.id);
         if (error) throw error;
@@ -197,6 +199,24 @@ const RoadmapPage = () => {
                   onChange={(e) => setEditingInitiative({ ...editingInitiative, goal: e.target.value })}
                   placeholder="Enter initiative goal..."
                 />
+              </div>
+              <div>
+                <Label htmlFor="quarter">Quarter *</Label>
+                <Select
+                  value={editingInitiative.quarter}
+                  onValueChange={(value) => setEditingInitiative({ ...editingInitiative, quarter: value as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select quarter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {quarters.map(quarter => (
+                      <SelectItem key={quarter.id} value={quarter.id}>
+                        {quarter.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="expectedResult">Expected Result</Label>
