@@ -276,7 +276,7 @@ const BoardPage = () => {
                   <DraggableFeature
                     key={feature.id}
                     feature={feature as Feature}
-                    trackName={getTrackName(feature.track_id)}
+                    initiativeName={getInitiativeName(feature.initiative_id)}
                     trackColor={getTrackColor(feature.track_id)}
                     onClick={() => {
                       setEditingFeature(feature as Feature);
@@ -311,8 +311,8 @@ const BoardPage = () => {
             )}
             <CardContent className="p-3 pl-4">
               <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{activeFeature.title}</p>
-              {activeFeature.track_id && (
-                <p className="text-xs text-muted-foreground break-words whitespace-normal">{getTrackName(activeFeature.track_id)}</p>
+              {activeFeature.initiative_id && (
+                <p className="text-xs text-muted-foreground break-words whitespace-normal">{getInitiativeName(activeFeature.initiative_id)}</p>
               )}
             </CardContent>
           </Card>
@@ -525,12 +525,12 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
 
 interface DraggableFeatureProps {
   feature: Feature;
-  trackName: string;
+  initiativeName: string;
   trackColor: string;
   onClick: () => void;
 }
 
-const DraggableFeature = ({ feature, trackName, trackColor, onClick }: DraggableFeatureProps) => {
+const DraggableFeature = ({ feature, initiativeName, trackColor, onClick }: DraggableFeatureProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: feature.id,
   });
@@ -562,8 +562,8 @@ const DraggableFeature = ({ feature, trackName, trackColor, onClick }: Draggable
         <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{feature.title}</p>
-          {trackName && (
-            <p className="text-xs text-muted-foreground break-words whitespace-normal">{trackName}</p>
+          {initiativeName && (
+            <p className="text-xs text-muted-foreground break-words whitespace-normal">{initiativeName}</p>
           )}
         </div>
       </CardContent>
