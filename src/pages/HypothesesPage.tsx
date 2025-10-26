@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Save } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 
 type Status = "new" | "inProgress" | "accepted" | "rejected";
 
@@ -28,6 +29,7 @@ const HypothesesPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [editedHypotheses, setEditedHypotheses] = useState<Record<string, Partial<Hypothesis>>>({});
 
   const statuses: { value: Status; label: string }[] = [
     { value: "new", label: "New" },
@@ -47,7 +49,7 @@ const HypothesesPage = () => {
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data || [];
+      return (data || []) as Hypothesis[];
     },
     enabled: !!user,
   });
@@ -77,15 +79,21 @@ const HypothesesPage = () => {
 
   // Update hypothesis mutation
   const updateHypothesisMutation = useMutation({
-    mutationFn: async ({ id, field, value }: { id: string; field: string; value: any }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Hypothesis> }) => {
       const { error } = await supabase
         .from("hypotheses")
-        .update({ [field]: value })
+        .update(updates)
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
+      setEditedHypotheses(prev => {
+        const next = { ...prev };
+        delete next[variables.id];
+        return next;
+      });
+      toast({ title: "Hypothesis saved successfully" });
     },
   });
 
@@ -97,8 +105,34 @@ const HypothesesPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
+      toast({ title: "Hypothesis deleted" });
     },
   });
+
+  const handleFieldChange = (id: string, field: keyof Hypothesis, value: any) => {
+    setEditedHypotheses(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSave = (id: string) => {
+    const updates = editedHypotheses[id];
+    if (updates) {
+      updateHypothesisMutation.mutate({ id, updates });
+    }
+  };
+
+  const getHypothesisValue = (hypothesis: Hypothesis, field: keyof Hypothesis) => {
+    return editedHypotheses[hypothesis.id]?.[field] ?? hypothesis[field];
+  };
+
+  const hasUnsavedChanges = (id: string) => {
+    return !!editedHypotheses[id];
+  };
 
   return (
     <div className="space-y-6">
@@ -121,7 +155,7 @@ const HypothesesPage = () => {
               <TableHead className="min-w-[200px]">Solution Hypothesis</TableHead>
               <TableHead className="min-w-[200px]">Solution Validation</TableHead>
               <TableHead className="min-w-[200px]">Impact Metrics</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[150px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -129,9 +163,9 @@ const HypothesesPage = () => {
               <TableRow key={hypothesis.id}>
                 <TableCell>
                   <Select
-                    value={hypothesis.status}
+                    value={getHypothesisValue(hypothesis, "status") as Status}
                     onValueChange={(value: Status) =>
-                      updateHypothesisMutation.mutate({ id: hypothesis.id, field: "status", value })
+                      handleFieldChange(hypothesis.id, "status", value)
                     }
                   >
                     <SelectTrigger>
@@ -148,65 +182,77 @@ const HypothesesPage = () => {
                 </TableCell>
                 <TableCell>
                   <Input
-                    value={hypothesis.insight || ""}
+                    value={getHypothesisValue(hypothesis, "insight") as string || ""}
                     onChange={(e) =>
-                      updateHypothesisMutation.mutate({ id: hypothesis.id, field: "insight", value: e.target.value })
+                      handleFieldChange(hypothesis.id, "insight", e.target.value)
                     }
                     placeholder="Enter insight..."
                   />
                 </TableCell>
                 <TableCell>
                   <Input
-                    value={hypothesis.problem_hypothesis || ""}
+                    value={getHypothesisValue(hypothesis, "problem_hypothesis") as string || ""}
                     onChange={(e) =>
-                      updateHypothesisMutation.mutate({ id: hypothesis.id, field: "problem_hypothesis", value: e.target.value })
+                      handleFieldChange(hypothesis.id, "problem_hypothesis", e.target.value)
                     }
                     placeholder="Enter problem hypothesis..."
                   />
                 </TableCell>
                 <TableCell>
                   <Input
-                    value={hypothesis.problem_validation || ""}
+                    value={getHypothesisValue(hypothesis, "problem_validation") as string || ""}
                     onChange={(e) =>
-                      updateHypothesisMutation.mutate({ id: hypothesis.id, field: "problem_validation", value: e.target.value })
+                      handleFieldChange(hypothesis.id, "problem_validation", e.target.value)
                     }
                     placeholder="Enter validation (links supported)..."
                   />
                 </TableCell>
                 <TableCell>
                   <Input
-                    value={hypothesis.solution_hypothesis || ""}
+                    value={getHypothesisValue(hypothesis, "solution_hypothesis") as string || ""}
                     onChange={(e) =>
-                      updateHypothesisMutation.mutate({ id: hypothesis.id, field: "solution_hypothesis", value: e.target.value })
+                      handleFieldChange(hypothesis.id, "solution_hypothesis", e.target.value)
                     }
                     placeholder="Enter solution hypothesis..."
                   />
                 </TableCell>
                 <TableCell>
                   <Input
-                    value={hypothesis.solution_validation || ""}
+                    value={getHypothesisValue(hypothesis, "solution_validation") as string || ""}
                     onChange={(e) =>
-                      updateHypothesisMutation.mutate({ id: hypothesis.id, field: "solution_validation", value: e.target.value })
+                      handleFieldChange(hypothesis.id, "solution_validation", e.target.value)
                     }
                     placeholder="Enter validation (links supported)..."
                   />
                 </TableCell>
                 <TableCell>
                   <MetricTagInput
-                    value={hypothesis.impact_metrics || []}
-                    onChange={(tags) => updateHypothesisMutation.mutate({ id: hypothesis.id, field: "impact_metrics", value: tags })}
+                    value={getHypothesisValue(hypothesis, "impact_metrics") as string[] || []}
+                    onChange={(tags) => handleFieldChange(hypothesis.id, "impact_metrics", tags)}
                     suggestions={metrics.map(m => m.name).filter(Boolean)}
                     placeholder="Type to add metrics..."
                   />
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteHypothesisMutation.mutate(hypothesis.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    {hasUnsavedChanges(hypothesis.id) && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleSave(hypothesis.id)}
+                        disabled={updateHypothesisMutation.isPending}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteHypothesisMutation.mutate(hypothesis.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
