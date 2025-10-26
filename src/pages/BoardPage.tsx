@@ -302,16 +302,14 @@ const BoardPage = () => {
 
       <DragOverlay>
         {activeFeature ? (
-          <Card className="w-80 opacity-90 shadow-lg rotate-3">
-            <CardContent className="p-3">
+          <Card className="w-80 opacity-90 shadow-lg rotate-3 relative overflow-hidden">
+            <div 
+              className="absolute left-0 top-0 bottom-0 w-1" 
+              style={{ backgroundColor: getTrackColor(activeFeature.track_id) }}
+            />
+            <CardContent className="p-3 pl-4">
               <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{activeFeature.title}</p>
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full flex-shrink-0" 
-                  style={{ backgroundColor: getTrackColor(activeFeature.track_id) }}
-                />
-                <p className="text-xs text-muted-foreground break-words whitespace-normal">{getTrackName(activeFeature.track_id)}</p>
-              </div>
+              <p className="text-xs text-muted-foreground break-words whitespace-normal">{getTrackName(activeFeature.track_id)}</p>
             </CardContent>
           </Card>
         ) : null}
@@ -543,24 +541,22 @@ const DraggableFeature = ({ feature, trackName, trackColor, onClick }: Draggable
       ref={setNodeRef}
       style={style}
       className={cn(
-        "cursor-pointer hover:shadow-md transition-shadow group overflow-hidden",
+        "cursor-pointer hover:shadow-md transition-shadow group relative overflow-hidden",
         isDragging && "opacity-50 cursor-move"
       )}
       onClick={onClick}
       {...attributes}
       {...listeners}
     >
-      <CardContent className="p-3 flex items-start gap-2">
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-1" 
+        style={{ backgroundColor: trackColor }}
+      />
+      <CardContent className="p-3 pl-4 flex items-start gap-2">
         <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{feature.title}</p>
-          <div className="flex items-center gap-2">
-            <div 
-              className="w-3 h-3 rounded-full flex-shrink-0" 
-              style={{ backgroundColor: trackColor }}
-            />
-            <p className="text-xs text-muted-foreground break-words whitespace-normal">{trackName}</p>
-          </div>
+          <p className="text-xs text-muted-foreground break-words whitespace-normal">{trackName}</p>
         </div>
       </CardContent>
     </Card>
