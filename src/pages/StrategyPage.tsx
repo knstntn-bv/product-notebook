@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,37 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+const AutoResizeTextarea = memo(function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const resize = () => {
+    if (!ref.current) return;
+    ref.current.style.height = "auto";
+    ref.current.style.height = `${ref.current.scrollHeight}px`;
+  };
+  useEffect(() => {
+    resize();
+  }, [value]);
+  return (
+    <Textarea
+      ref={ref}
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      onInput={resize}
+      placeholder={placeholder}
+      rows={1}
+      className="w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5 min-h-0"
+    />
+  );
+});
 
 const StrategyPage = () => {
   const { metrics, tracks, refetchMetrics, refetchTracks } = useProduct();
@@ -193,52 +224,50 @@ const StrategyPage = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-0"> {/* Remove card spacing. Use manual spacing and dividers */}
       {/* Product Formula */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Product Formula</CardTitle>
-          <CardDescription>Define your product's core formula</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isEditingFormula ? (
-            <div className="space-y-2">
-              <Input
-                value={productFormula}
-                onChange={(e) => setProductFormula(e.target.value)}
-                maxLength={500}
-                placeholder="Enter product formula..."
-              />
-              <Button onClick={() => saveFormulaMutation.mutate(productFormula)} size="sm">
-                Save
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-foreground">{productFormula || "Click edit to add product formula"}</p>
-              <Button variant="ghost" size="sm" onClick={() => setIsEditingFormula(true)}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Values */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Values</CardTitle>
-              <CardDescription>Define your product values</CardDescription>
-            </div>
-            <Button onClick={() => addValueMutation.mutate()} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Value
+      <div className="py-8">
+        <div className="mb-2">
+          <h2 className="text-xl font-bold">Product Formula</h2>
+          <p className="text-muted-foreground text-sm">Define your product's core formula</p>
+        </div>
+        {isEditingFormula ? (
+          <div className="space-y-2">
+            <Input
+              value={productFormula}
+              onChange={(e) => setProductFormula(e.target.value)}
+              maxLength={500}
+              placeholder="Enter product formula..."
+            />
+            <Button onClick={() => saveFormulaMutation.mutate(productFormula)} size="sm">
+              Save
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        ) : (
+          <div className="flex items-center justify-between">
+            <p className="text-foreground">{productFormula || "Click edit to add product formula"}</p>
+            <Button variant="ghost" size="sm" onClick={() => setIsEditingFormula(true)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="border-b border-border" />
+
+      {/* Values */}
+      <div className="py-8">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-xl font-bold">Values</h2>
+            <p className="text-muted-foreground text-sm">Define your product values</p>
+          </div>
+          <Button onClick={() => addValueMutation.mutate()} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Value
+          </Button>
+        </div>
+        <div className="space-y-4">
           {values.map((value, index) => (
             <div key={value.id} className="flex gap-2">
               {editingValueIndex === index ? (
@@ -250,11 +279,11 @@ const StrategyPage = () => {
                     placeholder="Enter value..."
                     className="flex-1"
                   />
-                  <Button 
+                  <Button
                     onClick={() => {
                       updateValueMutation.mutate({ id: value.id, value_text: editingValueText });
                       setEditingValueIndex(null);
-                    }} 
+                    }}
                     size="sm"
                   >
                     Save
@@ -263,9 +292,9 @@ const StrategyPage = () => {
               ) : (
                 <>
                   <p className="flex-1 text-foreground">{value.value_text || "Click edit to add value"}</p>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setEditingValueIndex(index);
                       setEditingValueText(value.value_text);
@@ -280,25 +309,24 @@ const StrategyPage = () => {
               )}
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      <div className="border-b border-border" />
 
       {/* Metrics Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Metrics</CardTitle>
-              <CardDescription>Define your product metrics hierarchy</CardDescription>
-            </div>
-            <Button onClick={() => addMetricMutation.mutate()} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Metric
-            </Button>
+      <div className="py-8">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-xl font-bold">Metrics</h2>
+            <p className="text-muted-foreground text-sm">Define your product metrics hierarchy</p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
+          <Button onClick={() => addMetricMutation.mutate()} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Metric
+          </Button>
+        </div>
+        <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Metric</TableHead>
@@ -322,6 +350,7 @@ const StrategyPage = () => {
                         }))}
                         maxLength={100}
                         placeholder="Enter metric name..."
+                        className="border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
                       />
                     </TableCell>
                     <TableCell>
@@ -376,25 +405,23 @@ const StrategyPage = () => {
               })}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </div>
+
+      <div className="border-b border-border" />
 
       {/* Tracks Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Tracks</CardTitle>
-              <CardDescription>Define your product tracks</CardDescription>
-            </div>
-            <Button onClick={() => addTrackMutation.mutate()} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Track
-            </Button>
+      <div className="py-8">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-xl font-bold">Tracks</h2>
+            <p className="text-muted-foreground text-sm">Define your product tracks</p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
+          <Button onClick={() => addTrackMutation.mutate()} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Track
+          </Button>
+        </div>
+        <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Track</TableHead>
@@ -419,18 +446,20 @@ const StrategyPage = () => {
                         }))}
                         maxLength={100}
                         placeholder="Enter track name..."
+                        className="border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
                       />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        value={editing.description}
-                        onChange={(e) => setEditingTracks(prev => ({
-                          ...prev,
-                          [track.id]: { ...editing, description: e.target.value }
-                        }))}
-                        maxLength={500}
-                        placeholder="Enter description..."
-                      />
+                      <div className="flex items-center">
+                        <AutoResizeTextarea
+                          value={editing.description}
+                          onChange={(v) => setEditingTracks(prev => ({
+                            ...prev,
+                            [track.id]: { ...editing, description: v }
+                          }))}
+                          placeholder="Enter description..."
+                        />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <ColorPicker
@@ -473,8 +502,7 @@ const StrategyPage = () => {
               })}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };

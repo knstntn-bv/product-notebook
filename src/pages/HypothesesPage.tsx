@@ -9,7 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 type Status = "new" | "inProgress" | "accepted" | "rejected";
 
@@ -134,6 +135,41 @@ const HypothesesPage = () => {
     return !!editedHypotheses[id];
   };
 
+  const AutoResizeTextarea = ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+  }) => {
+    const ref = useRef<HTMLTextAreaElement | null>(null);
+
+    const resize = () => {
+      if (!ref.current) return;
+      ref.current.style.height = "auto";
+      ref.current.style.height = `${ref.current.scrollHeight}px`;
+    };
+
+    useEffect(() => {
+      resize();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [value]);
+
+    return (
+      <Textarea
+        ref={ref}
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        onInput={resize}
+        placeholder={placeholder}
+        rows={2}
+        className="w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5"
+      />
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -181,53 +217,43 @@ const HypothesesPage = () => {
                   </Select>
                 </TableCell>
                 <TableCell>
-                  <Input
-                    value={getHypothesisValue(hypothesis, "insight") as string || ""}
-                    onChange={(e) =>
-                      handleFieldChange(hypothesis.id, "insight", e.target.value)
-                    }
+                  <AutoResizeTextarea
+                    value={(getHypothesisValue(hypothesis, "insight") as string) || ""}
+                    onChange={(v) => handleFieldChange(hypothesis.id, "insight", v)}
                     placeholder="Enter insight..."
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    value={getHypothesisValue(hypothesis, "problem_hypothesis") as string || ""}
-                    onChange={(e) =>
-                      handleFieldChange(hypothesis.id, "problem_hypothesis", e.target.value)
-                    }
+                  <AutoResizeTextarea
+                    value={(getHypothesisValue(hypothesis, "problem_hypothesis") as string) || ""}
+                    onChange={(v) => handleFieldChange(hypothesis.id, "problem_hypothesis", v)}
                     placeholder="Enter problem hypothesis..."
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    value={getHypothesisValue(hypothesis, "problem_validation") as string || ""}
-                    onChange={(e) =>
-                      handleFieldChange(hypothesis.id, "problem_validation", e.target.value)
-                    }
+                  <AutoResizeTextarea
+                    value={(getHypothesisValue(hypothesis, "problem_validation") as string) || ""}
+                    onChange={(v) => handleFieldChange(hypothesis.id, "problem_validation", v)}
                     placeholder="Enter validation (links supported)..."
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    value={getHypothesisValue(hypothesis, "solution_hypothesis") as string || ""}
-                    onChange={(e) =>
-                      handleFieldChange(hypothesis.id, "solution_hypothesis", e.target.value)
-                    }
+                  <AutoResizeTextarea
+                    value={(getHypothesisValue(hypothesis, "solution_hypothesis") as string) || ""}
+                    onChange={(v) => handleFieldChange(hypothesis.id, "solution_hypothesis", v)}
                     placeholder="Enter solution hypothesis..."
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    value={getHypothesisValue(hypothesis, "solution_validation") as string || ""}
-                    onChange={(e) =>
-                      handleFieldChange(hypothesis.id, "solution_validation", e.target.value)
-                    }
+                  <AutoResizeTextarea
+                    value={(getHypothesisValue(hypothesis, "solution_validation") as string) || ""}
+                    onChange={(v) => handleFieldChange(hypothesis.id, "solution_validation", v)}
                     placeholder="Enter validation (links supported)..."
                   />
                 </TableCell>
                 <TableCell>
                   <MetricTagInput
-                    value={getHypothesisValue(hypothesis, "impact_metrics") as string[] || []}
+                    value={(getHypothesisValue(hypothesis, "impact_metrics") as string[]) || []}
                     onChange={(tags) => handleFieldChange(hypothesis.id, "impact_metrics", tags)}
                     suggestions={metrics.map(m => m.name).filter(Boolean)}
                     placeholder="Type to add metrics..."

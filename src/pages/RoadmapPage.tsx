@@ -141,7 +141,11 @@ const RoadmapPage = () => {
           <tbody>
             {tracks.map(track => (
               <tr key={track.id}>
-                <td className="border border-border bg-card p-4 font-medium">
+                <td className="border border-border bg-card p-4 font-medium relative pl-4">
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1"
+                    style={{ backgroundColor: track.color || "#8B5CF6" }}
+                  />
                   {track.name}
                 </td>
                 {quarters.map(quarter => (
