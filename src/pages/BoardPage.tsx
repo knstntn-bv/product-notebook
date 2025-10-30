@@ -506,14 +506,14 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
   });
 
   return (
-    <div className="flex flex-col w-80 flex-shrink-0">
+    <div className="flex flex-col w-80 flex-shrink-0 h-[calc(100vh-7rem)]">
       <div className="bg-muted p-4 rounded-t-lg border border-border">
         <h3 className="font-semibold text-sm">{column.label}</h3>
       </div>
       <div
         ref={setNodeRef}
         className={cn(
-          "bg-card border-x border-b border-border rounded-b-lg p-4 min-h-[500px] space-y-2 transition-colors",
+          "bg-card border-x border-b border-border rounded-b-lg p-4 flex-1 min-h-0 overflow-y-auto space-y-2 transition-colors",
           isOver && "bg-muted/50"
         )}
       >
