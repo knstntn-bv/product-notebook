@@ -8,7 +8,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate("/auth");
+      navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
 
@@ -21,7 +21,11 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Redirecting to login...</p>
+      </div>
+    );
   }
 
   return <>{children}</>;
