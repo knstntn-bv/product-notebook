@@ -25,6 +25,41 @@ interface Hypothesis {
   impact_metrics: string[];
 }
 
+const AutoResizeTextarea = ({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) => {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+
+  const resize = () => {
+    if (!ref.current) return;
+    ref.current.style.height = "auto";
+    ref.current.style.height = `${ref.current.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    resize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <Textarea
+      ref={ref}
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      onInput={resize}
+      placeholder={placeholder}
+      rows={2}
+      className="w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5"
+    />
+  );
+};
+
 const HypothesesPage = () => {
   const { metrics } = useProduct();
   const { user } = useAuth();
@@ -133,41 +168,6 @@ const HypothesesPage = () => {
 
   const hasUnsavedChanges = (id: string) => {
     return !!editedHypotheses[id];
-  };
-
-  const AutoResizeTextarea = ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-  }) => {
-    const ref = useRef<HTMLTextAreaElement | null>(null);
-
-    const resize = () => {
-      if (!ref.current) return;
-      ref.current.style.height = "auto";
-      ref.current.style.height = `${ref.current.scrollHeight}px`;
-    };
-
-    useEffect(() => {
-      resize();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [value]);
-
-    return (
-      <Textarea
-        ref={ref}
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        onInput={resize}
-        placeholder={placeholder}
-        rows={2}
-        className="w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5"
-      />
-    );
   };
 
   return (
