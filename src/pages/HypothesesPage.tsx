@@ -1,16 +1,16 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Trash2, Save } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
+import { AutoResizeTextarea } from "@/components/AutoResizeTextarea";
+import { SectionHeader } from "@/components/SectionHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useRef } from "react";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
 
 type Status = "new" | "inProgress" | "accepted" | "rejected";
 
@@ -24,41 +24,6 @@ interface Hypothesis {
   solution_validation: string;
   impact_metrics: string[];
 }
-
-const AutoResizeTextarea = ({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) => {
-  const ref = useRef<HTMLTextAreaElement | null>(null);
-
-  const resize = () => {
-    if (!ref.current) return;
-    ref.current.style.height = "auto";
-    ref.current.style.height = `${ref.current.scrollHeight}px`;
-  };
-
-  useEffect(() => {
-    resize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  return (
-    <Textarea
-      ref={ref}
-      value={value || ""}
-      onChange={(e) => onChange(e.target.value)}
-      onInput={resize}
-      placeholder={placeholder}
-      rows={2}
-      className="w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5"
-    />
-  );
-};
 
 const HypothesesPage = () => {
   const { metrics } = useProduct();
@@ -172,13 +137,11 @@ const HypothesesPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Hypotheses Portfolio</h2>
-        <Button onClick={() => addHypothesisMutation.mutate()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Hypothesis
-        </Button>
-      </div>
+      <SectionHeader 
+        title="Hypotheses Portfolio"
+        onAdd={() => addHypothesisMutation.mutate()}
+        addLabel="Add Hypothesis"
+      />
 
       <div className="overflow-x-auto">
         <Table>
@@ -221,6 +184,7 @@ const HypothesesPage = () => {
                     value={(getHypothesisValue(hypothesis, "insight") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "insight", v)}
                     placeholder="Enter insight..."
+                    rows={2}
                   />
                 </TableCell>
                 <TableCell>
@@ -228,6 +192,7 @@ const HypothesesPage = () => {
                     value={(getHypothesisValue(hypothesis, "problem_hypothesis") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "problem_hypothesis", v)}
                     placeholder="Enter problem hypothesis..."
+                    rows={2}
                   />
                 </TableCell>
                 <TableCell>
@@ -235,6 +200,7 @@ const HypothesesPage = () => {
                     value={(getHypothesisValue(hypothesis, "problem_validation") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "problem_validation", v)}
                     placeholder="Enter validation (links supported)..."
+                    rows={2}
                   />
                 </TableCell>
                 <TableCell>
@@ -242,6 +208,7 @@ const HypothesesPage = () => {
                     value={(getHypothesisValue(hypothesis, "solution_hypothesis") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "solution_hypothesis", v)}
                     placeholder="Enter solution hypothesis..."
+                    rows={2}
                   />
                 </TableCell>
                 <TableCell>
@@ -249,6 +216,7 @@ const HypothesesPage = () => {
                     value={(getHypothesisValue(hypothesis, "solution_validation") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "solution_validation", v)}
                     placeholder="Enter validation (links supported)..."
+                    rows={2}
                   />
                 </TableCell>
                 <TableCell>

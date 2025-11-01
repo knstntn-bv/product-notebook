@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
+import { EntityDialog } from "@/components/EntityDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -188,87 +188,80 @@ const RoadmapPage = () => {
         </table>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Initiative Details</DialogTitle>
-          </DialogHeader>
-          {editingInitiative && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="goal">Goal *</Label>
-                <Input
-                  id="goal"
-                  value={editingInitiative.goal}
-                  onChange={(e) => setEditingInitiative({ ...editingInitiative, goal: e.target.value })}
-                  placeholder="Enter initiative goal..."
-                />
-              </div>
-              <div>
-                <Label htmlFor="quarter">Quarter *</Label>
-                <Select
-                  value={editingInitiative.quarter}
-                  onValueChange={(value) => setEditingInitiative({ ...editingInitiative, quarter: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select quarter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {quarters.map(quarter => (
-                      <SelectItem key={quarter.id} value={quarter.id}>
-                        {quarter.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="expectedResult">Expected Result</Label>
-                <Textarea
-                  id="expectedResult"
-                  value={editingInitiative.expected_result}
-                  onChange={(e) => setEditingInitiative({ ...editingInitiative, expected_result: e.target.value })}
-                  placeholder="Enter expected result..."
-                />
-              </div>
-              <div>
-                <Label htmlFor="achievedResult">Achieved Result</Label>
-                <Textarea
-                  id="achievedResult"
-                  value={editingInitiative.achieved_result}
-                  onChange={(e) => setEditingInitiative({ ...editingInitiative, achieved_result: e.target.value })}
-                  placeholder="Enter achieved result..."
-                />
-              </div>
-              <div>
-                <Label htmlFor="targetMetrics">Target Metrics</Label>
-                <MetricTagInput
-                  value={editingInitiative.target_metrics || []}
-                  onChange={(tags) => setEditingInitiative({ ...editingInitiative, target_metrics: tags })}
-                  suggestions={metrics.map(m => m.name).filter(Boolean)}
-                  placeholder="Type to add metrics..."
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="done"
-                  checked={editingInitiative.done}
-                  onCheckedChange={(checked) => setEditingInitiative({ ...editingInitiative, done: checked as boolean })}
-                />
-                <Label htmlFor="done">Done</Label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={saveInitiative}>
-                  Save Initiative
-                </Button>
-              </div>
+      <EntityDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        title="Initiative Details"
+        onSave={saveInitiative}
+        saveLabel="Save Initiative"
+      >
+        {editingInitiative && (
+          <>
+            <div>
+              <Label htmlFor="goal">Goal *</Label>
+              <Input
+                id="goal"
+                value={editingInitiative.goal}
+                onChange={(e) => setEditingInitiative({ ...editingInitiative, goal: e.target.value })}
+                placeholder="Enter initiative goal..."
+              />
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            <div>
+              <Label htmlFor="quarter">Quarter *</Label>
+              <Select
+                value={editingInitiative.quarter}
+                onValueChange={(value) => setEditingInitiative({ ...editingInitiative, quarter: value as any })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select quarter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {quarters.map(quarter => (
+                    <SelectItem key={quarter.id} value={quarter.id}>
+                      {quarter.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="expectedResult">Expected Result</Label>
+              <Textarea
+                id="expectedResult"
+                value={editingInitiative.expected_result}
+                onChange={(e) => setEditingInitiative({ ...editingInitiative, expected_result: e.target.value })}
+                placeholder="Enter expected result..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="achievedResult">Achieved Result</Label>
+              <Textarea
+                id="achievedResult"
+                value={editingInitiative.achieved_result}
+                onChange={(e) => setEditingInitiative({ ...editingInitiative, achieved_result: e.target.value })}
+                placeholder="Enter achieved result..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="targetMetrics">Target Metrics</Label>
+              <MetricTagInput
+                value={editingInitiative.target_metrics || []}
+                onChange={(tags) => setEditingInitiative({ ...editingInitiative, target_metrics: tags })}
+                suggestions={metrics.map(m => m.name).filter(Boolean)}
+                placeholder="Type to add metrics..."
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="done"
+                checked={editingInitiative.done}
+                onCheckedChange={(checked) => setEditingInitiative({ ...editingInitiative, done: checked as boolean })}
+              />
+              <Label htmlFor="done">Done</Label>
+            </div>
+          </>
+        )}
+      </EntityDialog>
     </div>
   );
 };

@@ -1,48 +1,19 @@
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { ColorPicker } from "@/components/ColorPicker";
+import { AutoResizeTextarea } from "@/components/AutoResizeTextarea";
+import { InlineEditInput } from "@/components/InlineEditInput";
+import { SectionHeader } from "@/components/SectionHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-const AutoResizeTextarea = memo(function AutoResizeTextarea({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  const ref = useRef<HTMLTextAreaElement | null>(null);
-  const resize = () => {
-    if (!ref.current) return;
-    ref.current.style.height = "auto";
-    ref.current.style.height = `${ref.current.scrollHeight}px`;
-  };
-  useEffect(() => {
-    resize();
-  }, [value]);
-  return (
-    <Textarea
-      ref={ref}
-      value={value || ""}
-      onChange={(e) => onChange(e.target.value)}
-      onInput={resize}
-      placeholder={placeholder}
-      rows={1}
-      className="w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5 min-h-0"
-    />
-  );
-});
 
 const StrategyPage = () => {
   const { metrics, tracks, refetchMetrics, refetchTracks } = useProduct();
@@ -227,10 +198,10 @@ const StrategyPage = () => {
     <div className="space-y-0"> {/* Remove card spacing. Use manual spacing and dividers */}
       {/* Product Formula */}
       <div className="py-8">
-        <div className="mb-2">
-          <h2 className="text-xl font-bold">Product Formula</h2>
-          <p className="text-muted-foreground text-sm">Define your product's core formula</p>
-        </div>
+        <SectionHeader 
+          title="Product Formula" 
+          description="Define your product's core formula"
+        />
         {isEditingFormula ? (
           <div className="space-y-2">
             <Input
@@ -257,16 +228,12 @@ const StrategyPage = () => {
 
       {/* Values */}
       <div className="py-8">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h2 className="text-xl font-bold">Values</h2>
-            <p className="text-muted-foreground text-sm">Define your product values</p>
-          </div>
-          <Button onClick={() => addValueMutation.mutate()} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Value
-          </Button>
-        </div>
+        <SectionHeader 
+          title="Values" 
+          description="Define your product values"
+          onAdd={() => addValueMutation.mutate()}
+          addLabel="Add Value"
+        />
         <div className="space-y-4">
           {values.map((value, index) => (
             <div key={value.id} className="flex gap-2">
@@ -316,16 +283,12 @@ const StrategyPage = () => {
 
       {/* Metrics Table */}
       <div className="py-8">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h2 className="text-xl font-bold">Metrics</h2>
-            <p className="text-muted-foreground text-sm">Define your product metrics hierarchy</p>
-          </div>
-          <Button onClick={() => addMetricMutation.mutate()} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Metric
-          </Button>
-        </div>
+        <SectionHeader 
+          title="Metrics" 
+          description="Define your product metrics hierarchy"
+          onAdd={() => addMetricMutation.mutate()}
+          addLabel="Add Metric"
+        />
         <Table>
             <TableHeader>
               <TableRow>
@@ -342,15 +305,14 @@ const StrategyPage = () => {
                 return (
                   <TableRow key={metric.id}>
                     <TableCell>
-                      <Input
+                      <InlineEditInput
                         value={editing.name}
-                        onChange={(e) => setEditingMetrics(prev => ({
+                        onChange={(value) => setEditingMetrics(prev => ({
                           ...prev,
-                          [metric.id]: { ...editing, name: e.target.value }
+                          [metric.id]: { ...editing, name: value }
                         }))}
                         maxLength={100}
                         placeholder="Enter metric name..."
-                        className="border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
                       />
                     </TableCell>
                     <TableCell>
@@ -411,16 +373,12 @@ const StrategyPage = () => {
 
       {/* Tracks Table */}
       <div className="py-8">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h2 className="text-xl font-bold">Tracks</h2>
-            <p className="text-muted-foreground text-sm">Define your product tracks</p>
-          </div>
-          <Button onClick={() => addTrackMutation.mutate()} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Track
-          </Button>
-        </div>
+        <SectionHeader 
+          title="Tracks" 
+          description="Define your product tracks"
+          onAdd={() => addTrackMutation.mutate()}
+          addLabel="Add Track"
+        />
         <Table>
             <TableHeader>
               <TableRow>
@@ -438,15 +396,14 @@ const StrategyPage = () => {
                 return (
                   <TableRow key={track.id}>
                     <TableCell>
-                      <Input
+                      <InlineEditInput
                         value={editing.name}
-                        onChange={(e) => setEditingTracks(prev => ({
+                        onChange={(value) => setEditingTracks(prev => ({
                           ...prev,
-                          [track.id]: { ...editing, name: e.target.value }
+                          [track.id]: { ...editing, name: value }
                         }))}
                         maxLength={100}
                         placeholder="Enter track name..."
-                        className="border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
                       />
                     </TableCell>
                     <TableCell>

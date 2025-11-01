@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Plus, Check, ChevronsUpDown, GripVertical, Trash2 } from "lucide-react";
+import { EntityDialog } from "@/components/EntityDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -319,158 +319,142 @@ const BoardPage = () => {
         ) : null}
       </DragOverlay>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Feature Details</DialogTitle>
-          </DialogHeader>
-          {editingFeature && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  value={editingFeature.title}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, title: e.target.value })}
-                  placeholder="Enter feature title..."
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={editingFeature.description}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, description: e.target.value })}
-                  placeholder="Enter feature description..."
-                />
-              </div>
-              <div>
-                <Label>Linked Initiative</Label>
-                <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={initiativeOpen}
-                      className="w-full justify-between"
-                    >
-                      {editingFeature.initiative_id
-                        ? getInitiativeName(editingFeature.initiative_id)
-                        : "Select initiative..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Search initiatives..." />
-                      <CommandList>
-                        <CommandEmpty>No initiative found.</CommandEmpty>
-                        <CommandGroup>
-                          {initiatives.map((initiative) => (
-                            <CommandItem
-                              key={initiative.id}
-                              value={initiative.goal}
-                              onSelect={() => handleInitiativeSelect(initiative.id)}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  editingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {initiative.goal}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Label>Linked Track</Label>
-                <Popover open={trackOpen} onOpenChange={setTrackOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={trackOpen}
-                      className="w-full justify-between"
-                    >
-                      {editingFeature.track_id
-                        ? getTrackName(editingFeature.track_id)
-                        : "Select track..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Search tracks..." />
-                      <CommandList>
-                        <CommandEmpty>No track found.</CommandEmpty>
-                        <CommandGroup>
-                          {tracks.map((track) => (
-                            <CommandItem
-                              key={track.id}
-                              value={track.name}
-                              onSelect={() => handleTrackSelect(track.id)}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  editingFeature.track_id === track.id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {track.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Label htmlFor="column">Column</Label>
-                <Select
-                  value={editingFeature.board_column}
-                  onValueChange={(value: ColumnId) => setEditingFeature({ ...editingFeature, board_column: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {columns.map(col => (
-                      <SelectItem key={col.id} value={col.id}>
-                        {col.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-between gap-2">
-                {editingFeature.id && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => setDeleteAlertOpen(true)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                )}
-                <div className="flex gap-2 ml-auto">
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={saveFeature}>
-                    Save Feature
-                  </Button>
-                </div>
-              </div>
+      <EntityDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        title="Feature Details"
+        onSave={saveFeature}
+        onDelete={editingFeature?.id ? () => setDeleteAlertOpen(true) : undefined}
+        isEditing={!!editingFeature?.id}
+        saveLabel="Save Feature"
+      >
+        {editingFeature && (
+          <>
+            <div>
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                value={editingFeature.title}
+                onChange={(e) => setEditingFeature({ ...editingFeature, title: e.target.value })}
+                placeholder="Enter feature title..."
+              />
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={editingFeature.description}
+                onChange={(e) => setEditingFeature({ ...editingFeature, description: e.target.value })}
+                placeholder="Enter feature description..."
+              />
+            </div>
+            <div>
+              <Label>Linked Initiative</Label>
+              <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={initiativeOpen}
+                    className="w-full justify-between"
+                  >
+                    {editingFeature.initiative_id
+                      ? getInitiativeName(editingFeature.initiative_id)
+                      : "Select initiative..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search initiatives..." />
+                    <CommandList>
+                      <CommandEmpty>No initiative found.</CommandEmpty>
+                      <CommandGroup>
+                        {initiatives.map((initiative) => (
+                          <CommandItem
+                            key={initiative.id}
+                            value={initiative.goal}
+                            onSelect={() => handleInitiativeSelect(initiative.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                editingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {initiative.goal}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>Linked Track</Label>
+              <Popover open={trackOpen} onOpenChange={setTrackOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={trackOpen}
+                    className="w-full justify-between"
+                  >
+                    {editingFeature.track_id
+                      ? getTrackName(editingFeature.track_id)
+                      : "Select track..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search tracks..." />
+                    <CommandList>
+                      <CommandEmpty>No track found.</CommandEmpty>
+                      <CommandGroup>
+                        {tracks.map((track) => (
+                          <CommandItem
+                            key={track.id}
+                            value={track.name}
+                            onSelect={() => handleTrackSelect(track.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                editingFeature.track_id === track.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {track.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label htmlFor="column">Column</Label>
+              <Select
+                value={editingFeature.board_column}
+                onValueChange={(value: ColumnId) => setEditingFeature({ ...editingFeature, board_column: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {columns.map(col => (
+                    <SelectItem key={col.id} value={col.id}>
+                      {col.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+      </EntityDialog>
 
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
