@@ -41,7 +41,7 @@ export const AutoResizeTextarea = ({
       rows={rows}
       maxLength={maxLength}
       className={cn(
-        "w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5 min-h-0",
+        "w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5 min-h-0 whitespace-pre-wrap",
         className
       )}
     />
