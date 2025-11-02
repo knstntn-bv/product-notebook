@@ -21,6 +21,7 @@ export type Database = {
           description: string | null
           id: string
           initiative_id: string | null
+          position: number
           title: string
           track_id: string | null
           updated_at: string | null
@@ -32,6 +33,7 @@ export type Database = {
           description?: string | null
           id?: string
           initiative_id?: string | null
+          position?: number
           title: string
           track_id?: string | null
           updated_at?: string | null
@@ -43,6 +45,7 @@ export type Database = {
           description?: string | null
           id?: string
           initiative_id?: string | null
+          position?: number
           title?: string
           track_id?: string | null
           updated_at?: string | null

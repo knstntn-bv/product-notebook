@@ -16,7 +16,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, PointerSensor, closestCenter, useDroppable } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
@@ -28,6 +29,7 @@ interface Feature {
   initiative_id?: string;
   track_id?: string;
   board_column: ColumnId;
+  position: number;
 }
 
 interface Initiative {
@@ -81,9 +83,9 @@ const BoardPage = () => {
         .from("features")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: true });
+        .order("position", { ascending: true });
       if (error) throw error;
-      return data || [];
+      return (data || []) as Feature[];
     },
     enabled: !!user,
   });
@@ -134,10 +136,17 @@ const BoardPage = () => {
             initiative_id: feature.initiative_id,
             track_id: feature.track_id,
             board_column: feature.board_column,
+            position: feature.position,
           })
           .eq("id", feature.id);
         if (error) throw error;
       } else {
+        // Get the max position for the column
+        const columnFeatures = features.filter(f => f.board_column === feature.board_column);
+        const maxPosition = columnFeatures.length > 0 
+          ? Math.max(...columnFeatures.map(f => f.position)) 
+          : -1;
+        
         const { error } = await supabase
           .from("features")
           .insert({
@@ -147,6 +156,7 @@ const BoardPage = () => {
             initiative_id: feature.initiative_id,
             track_id: feature.track_id,
             board_column: feature.board_column!,
+            position: maxPosition + 1,
           });
         if (error) throw error;
       }
@@ -237,24 +247,71 @@ const BoardPage = () => {
     setActiveId(event.active.id as string);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Find if we're over a column or a feature
+    const overColumn = columns.find(col => col.id === overId);
+    const overFeature = features.find(f => f.id === overId);
+    const activeFeature = features.find(f => f.id === activeId);
+    
+    if (!activeFeature) return;
+
+    // If dragging over a column, move to that column
+    if (overColumn && activeFeature.board_column !== overColumn.id) {
+      const targetColumnFeatures = getFeaturesForColumn(overColumn.id);
+      const newPosition = targetColumnFeatures.length;
+      
+      saveFeatureMutation.mutate({
+        ...activeFeature,
+        board_column: overColumn.id,
+        position: newPosition,
+      });
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
     if (!over) return;
 
-    const featureId = active.id as string;
-    const newColumnId = over.id as ColumnId;
-    const feature = features.find(f => f.id === featureId);
+    const activeId = active.id as string;
+    const overId = over.id as string;
 
-    if (feature && feature.board_column !== newColumnId) {
-      saveFeatureMutation.mutate({
+    const activeFeature = features.find(f => f.id === activeId);
+    const overFeature = features.find(f => f.id === overId);
+
+    if (!activeFeature) return;
+
+    // If dropped on another feature in the same column, reorder
+    if (overFeature && activeFeature.board_column === overFeature.board_column && activeId !== overId) {
+      const columnFeatures = getFeaturesForColumn(activeFeature.board_column);
+      const oldIndex = columnFeatures.findIndex(f => f.id === activeId);
+      const newIndex = columnFeatures.findIndex(f => f.id === overId);
+      
+      const reorderedFeatures = arrayMove(columnFeatures, oldIndex, newIndex);
+      
+      // Update positions for all affected features
+      const updates = reorderedFeatures.map((feature, index) => ({
         id: feature.id,
-        title: feature.title,
-        description: feature.description,
-        initiative_id: feature.initiative_id,
-        track_id: feature.track_id,
-        board_column: newColumnId,
+        position: index,
+      }));
+
+      // Batch update positions
+      Promise.all(
+        updates.map(update =>
+          supabase
+            .from("features")
+            .update({ position: update.position })
+            .eq("id", update.id)
+        )
+      ).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["features"] });
       });
     }
   };
@@ -264,37 +321,44 @@ const BoardPage = () => {
   return (
     <DndContext 
       sensors={sensors}
-      onDragStart={handleDragStart} 
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
         <ScrollArea className="w-full whitespace-nowrap">
           <div className="flex gap-4 pb-4">
-            {columns.map(column => (
-              <DroppableColumn key={column.id} column={column}>
-                {getFeaturesForColumn(column.id).map(feature => (
-                  <DraggableFeature
-                    key={feature.id}
-                    feature={feature as Feature}
-                    initiativeName={getInitiativeName(feature.initiative_id)}
-                    trackColor={getTrackColor(feature.track_id)}
-                    onClick={() => {
-                      setEditingFeature(feature as Feature);
-                      setIsDialogOpen(true);
-                    }}
-                  />
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => createFeature(column.id)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Feature
-                </Button>
-              </DroppableColumn>
-            ))}
+            {columns.map(column => {
+              const columnFeatures = getFeaturesForColumn(column.id);
+              return (
+                <DroppableColumn key={column.id} column={column}>
+                  <SortableContext items={columnFeatures.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                    {columnFeatures.map(feature => (
+                      <SortableFeature
+                        key={feature.id}
+                        feature={feature as Feature}
+                        initiativeName={getInitiativeName(feature.initiative_id)}
+                        trackColor={getTrackColor(feature.track_id)}
+                        onClick={() => {
+                          setEditingFeature(feature as Feature);
+                          setIsDialogOpen(true);
+                        }}
+                      />
+                    ))}
+                  </SortableContext>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => createFeature(column.id)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Feature
+                  </Button>
+                </DroppableColumn>
+              );
+            })}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -507,20 +571,21 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
   );
 };
 
-interface DraggableFeatureProps {
+interface SortableFeatureProps {
   feature: Feature;
   initiativeName: string;
   trackColor: string;
   onClick: () => void;
 }
 
-const DraggableFeature = ({ feature, initiativeName, trackColor, onClick }: DraggableFeatureProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: SortableFeatureProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: feature.id,
   });
 
   const style = {
-    transform: CSS.Translate.toString(transform),
+    transform: CSS.Transform.toString(transform),
+    transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
@@ -530,11 +595,9 @@ const DraggableFeature = ({ feature, initiativeName, trackColor, onClick }: Drag
       style={style}
       className={cn(
         "cursor-pointer hover:shadow-md transition-shadow group relative overflow-hidden",
-        isDragging && "opacity-50 cursor-move"
+        isDragging && "opacity-50 cursor-move z-50"
       )}
       onClick={onClick}
-      {...attributes}
-      {...listeners}
     >
       {feature.track_id && (
         <div 
@@ -543,7 +606,9 @@ const DraggableFeature = ({ feature, initiativeName, trackColor, onClick }: Drag
         />
       )}
       <CardContent className="p-3 pl-4 flex items-start gap-2">
-        <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0" />
+        <div {...attributes} {...listeners}>
+          <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing" />
+        </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{feature.title}</p>
           {initiativeName && (
