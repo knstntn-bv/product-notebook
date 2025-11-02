@@ -248,30 +248,7 @@ const BoardPage = () => {
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    // Find if we're over a column or a feature
-    const overColumn = columns.find(col => col.id === overId);
-    const overFeature = features.find(f => f.id === overId);
-    const activeFeature = features.find(f => f.id === activeId);
-    
-    if (!activeFeature) return;
-
-    // If dragging over a column, move to that column
-    if (overColumn && activeFeature.board_column !== overColumn.id) {
-      const targetColumnFeatures = getFeaturesForColumn(overColumn.id);
-      const newPosition = targetColumnFeatures.length;
-      
-      saveFeatureMutation.mutate({
-        ...activeFeature,
-        board_column: overColumn.id,
-        position: newPosition,
-      });
-    }
+    // We'll handle everything in handleDragEnd
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -283,34 +260,101 @@ const BoardPage = () => {
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    if (activeId === overId) return;
+
     const activeFeature = features.find(f => f.id === activeId);
     const overFeature = features.find(f => f.id === overId);
+    const overColumn = columns.find(col => col.id === overId);
 
     if (!activeFeature) return;
 
-    // If dropped on another feature in the same column, reorder
-    if (overFeature && activeFeature.board_column === overFeature.board_column && activeId !== overId) {
-      const columnFeatures = getFeaturesForColumn(activeFeature.board_column);
-      const oldIndex = columnFeatures.findIndex(f => f.id === activeId);
-      const newIndex = columnFeatures.findIndex(f => f.id === overId);
+    // Case 1: Dropped on a feature (same or different column)
+    if (overFeature) {
+      const isSameColumn = activeFeature.board_column === overFeature.board_column;
       
-      const reorderedFeatures = arrayMove(columnFeatures, oldIndex, newIndex);
+      if (isSameColumn) {
+        // Reorder within the same column
+        const columnFeatures = getFeaturesForColumn(activeFeature.board_column);
+        const oldIndex = columnFeatures.findIndex(f => f.id === activeId);
+        const newIndex = columnFeatures.findIndex(f => f.id === overId);
+        
+        const reorderedFeatures = arrayMove(columnFeatures, oldIndex, newIndex);
+        
+        // Batch update positions
+        Promise.all(
+          reorderedFeatures.map((feature, index) =>
+            supabase
+              .from("features")
+              .update({ position: index })
+              .eq("id", feature.id)
+          )
+        ).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["features"] });
+        });
+      } else {
+        // Move to different column at the position of overFeature
+        const sourceColumnFeatures = getFeaturesForColumn(activeFeature.board_column).filter(f => f.id !== activeId);
+        const targetColumnFeatures = getFeaturesForColumn(overFeature.board_column);
+        const insertIndex = targetColumnFeatures.findIndex(f => f.id === overId);
+        
+        // Update source column positions
+        const sourceUpdates = sourceColumnFeatures.map((feature, index) => ({
+          id: feature.id,
+          position: index,
+        }));
+        
+        // Update target column positions
+        const targetUpdates: { id: string; position: number; board_column?: string }[] = [];
+        targetColumnFeatures.forEach((feature, index) => {
+          if (index >= insertIndex) {
+            targetUpdates.push({ id: feature.id, position: index + 1 });
+          }
+        });
+        
+        // Update the active feature with new column and position
+        targetUpdates.push({
+          id: activeId,
+          position: insertIndex,
+          board_column: overFeature.board_column,
+        });
+        
+        // Batch update all positions
+        Promise.all([
+          ...sourceUpdates.map(update =>
+            supabase.from("features").update({ position: update.position }).eq("id", update.id)
+          ),
+          ...targetUpdates.map(update =>
+            supabase.from("features").update({ 
+              position: update.position,
+              ...(update.board_column && { board_column: update.board_column })
+            }).eq("id", update.id)
+          ),
+        ]).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["features"] });
+        });
+      }
+    } 
+    // Case 2: Dropped on an empty column
+    else if (overColumn && activeFeature.board_column !== overColumn.id) {
+      const sourceColumnFeatures = getFeaturesForColumn(activeFeature.board_column).filter(f => f.id !== activeId);
+      const targetColumnFeatures = getFeaturesForColumn(overColumn.id);
       
-      // Update positions for all affected features
-      const updates = reorderedFeatures.map((feature, index) => ({
+      // Update source column positions
+      const sourceUpdates = sourceColumnFeatures.map((feature, index) => ({
         id: feature.id,
         position: index,
       }));
-
-      // Batch update positions
-      Promise.all(
-        updates.map(update =>
-          supabase
-            .from("features")
-            .update({ position: update.position })
-            .eq("id", update.id)
-        )
-      ).then(() => {
+      
+      // Batch update
+      Promise.all([
+        ...sourceUpdates.map(update =>
+          supabase.from("features").update({ position: update.position }).eq("id", update.id)
+        ),
+        supabase.from("features").update({ 
+          board_column: overColumn.id,
+          position: targetColumnFeatures.length,
+        }).eq("id", activeId),
+      ]).then(() => {
         queryClient.invalidateQueries({ queryKey: ["features"] });
       });
     }
