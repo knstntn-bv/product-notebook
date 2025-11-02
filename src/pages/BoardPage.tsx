@@ -490,7 +490,7 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
   });
 
   return (
-    <div className="flex flex-col w-80 flex-shrink-0 h-[calc(100vh-8.5rem)] mb-6">
+    <div className="flex flex-col w-80 flex-shrink-0 h-[calc(90vh-10rem)] mb-6">
       <div className="bg-muted p-4 rounded-t-lg border border-border">
         <h3 className="font-semibold text-sm">{column.label}</h3>
       </div>
@@ -556,3 +556,5 @@ const DraggableFeature = ({ feature, initiativeName, trackColor, onClick }: Drag
 };
 
 export default BoardPage;
+
+
