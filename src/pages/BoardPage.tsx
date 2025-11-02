@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Plus, Check, ChevronsUpDown, GripVertical, Trash2 } from "lucide-react";
+import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { EntityDialog } from "@/components/EntityDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -593,9 +593,11 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
     <Card
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "cursor-pointer hover:shadow-md transition-shadow group relative overflow-hidden",
-        isDragging && "opacity-50 cursor-move z-50"
+        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden",
+        isDragging && "opacity-50 z-50"
       )}
       onClick={onClick}
     >
@@ -605,16 +607,11 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
           style={{ backgroundColor: trackColor }}
         />
       )}
-      <CardContent className="p-3 pl-4 flex items-start gap-2">
-        <div {...attributes} {...listeners}>
-          <GripVertical className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{feature.title}</p>
-          {initiativeName && (
-            <p className="text-xs text-muted-foreground break-words whitespace-normal">{initiativeName}</p>
-          )}
-        </div>
+      <CardContent className="p-3 pl-4">
+        <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{feature.title}</p>
+        {initiativeName && (
+          <p className="text-xs text-muted-foreground break-words whitespace-normal">{initiativeName}</p>
+        )}
       </CardContent>
     </Card>
   );
