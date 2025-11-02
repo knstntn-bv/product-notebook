@@ -1,28 +1,44 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { FileText, Map, Trello, Lightbulb, LogOut } from "lucide-react";
+import { FileText, Map, Trello, Lightbulb, LogOut, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import StrategyPage from "./StrategyPage";
 import RoadmapPage from "./RoadmapPage";
 import BoardPage from "./BoardPage";
 import HypothesesPage from "./HypothesesPage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("strategy");
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   return (
     <ProductProvider>
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-foreground">Product Management</h1>
-            <Button variant="outline" onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
+            <h1 className="text-2xl font-bold text-foreground">Product Notebook</h1>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
             </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -70,3 +86,6 @@ const Index = () => {
 };
 
 export default Index;
+
+
+
