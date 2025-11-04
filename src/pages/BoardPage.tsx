@@ -376,7 +376,7 @@ const BoardPage = () => {
             {columns.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
-                <DroppableColumn key={column.id} column={column}>
+                <DroppableColumn key={column.id} column={column} onAddFeature={createFeature}>
                   <SortableContext items={columnFeatures.map(f => f.id)} strategy={verticalListSortingStrategy}>
                     {columnFeatures.map(feature => (
                       <SortableFeature
@@ -582,9 +582,10 @@ const BoardPage = () => {
 interface DroppableColumnProps {
   column: { id: ColumnId; label: string };
   children: React.ReactNode;
+  onAddFeature: (columnId: ColumnId) => void;
 }
 
-const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
+const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -597,7 +598,7 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
             <Button
                 variant="outline"
                 size="sm"
-                onClick={() => createFeature(column.id)}
+                onClick={() => onAddFeature(column.id)}
                 className="p-2 h-auto min-h-0"
             >
             Add
