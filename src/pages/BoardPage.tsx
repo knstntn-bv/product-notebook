@@ -598,9 +598,9 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
                 variant="outline"
                 size="sm"
                 onClick={() => createFeature(column.id)}
-                className="p-0 h-auto min-h-0"
-                >
-                <Plus className="h-4 w-4" />
+                className="p-2 h-auto min-h-0"
+            >
+            Add
             </Button>
         </div>
       </div>
