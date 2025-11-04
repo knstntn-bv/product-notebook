@@ -161,11 +161,15 @@ const RoadmapPage = () => {
                           }}
                         >
                           <CardContent className="p-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-semibold">{initiative.goal || "Untitled Initiative"}</p>
-                              {initiative.done && (
-                                <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
-                              )}
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-bold">{initiative.goal || "Untitled Initiative"}</p>
+                                {initiative.done && (
+                                  <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
+                                )}
+                              </div>
+                              <div className="text-xs">{initiative.expected_result}</div>
+                              <div className="text-xs">{initiative.achieved_result}</div>
                             </div>
                           </CardContent>
                         </Card>
