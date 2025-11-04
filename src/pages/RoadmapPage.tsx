@@ -162,7 +162,7 @@ const RoadmapPage = () => {
                         >
                           <CardContent className="p-3">
                             <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-medium">{initiative.goal || "Untitled Initiative"}</p>
+                              <p className="text-sm font-semibold">{initiative.goal || "Untitled Initiative"}</p>
                               {initiative.done && (
                                 <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
                               )}
