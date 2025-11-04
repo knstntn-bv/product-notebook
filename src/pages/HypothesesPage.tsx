@@ -26,8 +26,9 @@ interface Hypothesis {
 }
 
 const HypothesesPage = () => {
-  const { metrics } = useProduct();
+  const { metrics, isReadOnly, sharedUserId } = useProduct();
   const { user } = useAuth();
+  const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editedHypotheses, setEditedHypotheses] = useState<Record<string, Partial<Hypothesis>>>({});
@@ -41,18 +42,18 @@ const HypothesesPage = () => {
 
   // Fetch hypotheses
   const { data: hypotheses = [] } = useQuery({
-    queryKey: ["hypotheses", user?.id],
+    queryKey: ["hypotheses", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("hypotheses")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data || []) as Hypothesis[];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Add hypothesis mutation
@@ -139,7 +140,7 @@ const HypothesesPage = () => {
     <div className="space-y-6">
       <SectionHeader 
         title="Hypotheses Portfolio"
-        onAdd={() => addHypothesisMutation.mutate()}
+        onAdd={!isReadOnly ? () => addHypothesisMutation.mutate() : undefined}
         addLabel="Add Hypothesis"
       />
 

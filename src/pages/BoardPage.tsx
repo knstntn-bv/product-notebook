@@ -13,6 +13,7 @@ import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { EntityDialog } from "@/components/EntityDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,9 @@ interface Track {
 }
 
 const BoardPage = () => {
+  const { isReadOnly, sharedUserId } = useProduct();
   const { user } = useAuth();
+  const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
@@ -76,18 +79,18 @@ const BoardPage = () => {
 
   // Fetch features
   const { data: features = [] } = useQuery({
-    queryKey: ["features", user?.id],
+    queryKey: ["features", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("features")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("position", { ascending: true });
       if (error) throw error;
       return (data || []) as Feature[];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Fetch initiatives
@@ -376,7 +379,7 @@ const BoardPage = () => {
             {columns.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
-                <DroppableColumn key={column.id} column={column} onAddFeature={createFeature}>
+                <DroppableColumn key={column.id} column={column} onAddFeature={!isReadOnly ? createFeature : undefined}>
                   <SortableContext items={columnFeatures.map(f => f.id)} strategy={verticalListSortingStrategy}>
                     {columnFeatures.map(feature => (
                       <SortableFeature
@@ -385,8 +388,10 @@ const BoardPage = () => {
                         initiativeName={getInitiativeName(feature.initiative_id)}
                         trackColor={getTrackColor(feature.track_id)}
                         onClick={() => {
-                          setEditingFeature(feature as Feature);
-                          setIsDialogOpen(true);
+                          if (!isReadOnly) {
+                            setEditingFeature(feature as Feature);
+                            setIsDialogOpen(true);
+                          }
                         }}
                       />
                     ))}
@@ -582,7 +587,7 @@ const BoardPage = () => {
 interface DroppableColumnProps {
   column: { id: ColumnId; label: string };
   children: React.ReactNode;
-  onAddFeature: (columnId: ColumnId) => void;
+  onAddFeature?: (columnId: ColumnId) => void;
 }
 
 const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProps) => {

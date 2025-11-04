@@ -219,6 +219,33 @@ export type Database = {
         }
         Relationships: []
       }
+      project_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_public: boolean
+          share_token: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_public?: boolean
+          share_token?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_public?: boolean
+          share_token?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tracks: {
         Row: {
           color: string | null

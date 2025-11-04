@@ -16,8 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const StrategyPage = () => {
-  const { metrics, tracks, refetchMetrics, refetchTracks } = useProduct();
+  const { metrics, tracks, refetchMetrics, refetchTracks, isReadOnly, sharedUserId } = useProduct();
   const { user } = useAuth();
+  const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -30,18 +31,18 @@ const StrategyPage = () => {
 
   // Fetch product formula
   const { data: formulaData } = useQuery({
-    queryKey: ["product_formula", user?.id],
+    queryKey: ["product_formula", effectiveUserId],
     queryFn: async () => {
-      if (!user) return null;
+      if (!effectiveUserId) return null;
       const { data, error } = await supabase
         .from("product_formulas")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   useEffect(() => {
@@ -52,18 +53,18 @@ const StrategyPage = () => {
 
   // Fetch values
   const { data: values = [] } = useQuery({
-    queryKey: ["values", user?.id],
+    queryKey: ["values", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("values")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("position", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Save formula mutation
@@ -216,10 +217,12 @@ const StrategyPage = () => {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-foreground">{productFormula || "Click edit to add product formula"}</p>
-            <Button variant="ghost" size="sm" onClick={() => setIsEditingFormula(true)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
+            <p className="text-foreground">{productFormula || "No product formula"}</p>
+            {!isReadOnly && (
+              <Button variant="ghost" size="sm" onClick={() => setIsEditingFormula(true)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -231,7 +234,7 @@ const StrategyPage = () => {
         <SectionHeader 
           title="Values" 
           description="Define your product values"
-          onAdd={() => addValueMutation.mutate()}
+          onAdd={!isReadOnly ? () => addValueMutation.mutate() : undefined}
           addLabel="Add Value"
         />
         <div className="space-y-4">
@@ -258,20 +261,24 @@ const StrategyPage = () => {
                 </>
               ) : (
                 <>
-                  <p className="flex-1 text-foreground">{value.value_text || "Click edit to add value"}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditingValueIndex(index);
-                      setEditingValueText(value.value_text);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => deleteValueMutation.mutate(value.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <p className="flex-1 text-foreground">{value.value_text || "No value"}</p>
+                  {!isReadOnly && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingValueIndex(index);
+                          setEditingValueText(value.value_text);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteValueMutation.mutate(value.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -286,7 +293,7 @@ const StrategyPage = () => {
         <SectionHeader 
           title="Metrics" 
           description="Define your product metrics hierarchy"
-          onAdd={() => addMetricMutation.mutate()}
+          onAdd={!isReadOnly ? () => addMetricMutation.mutate() : undefined}
           addLabel="Add Metric"
         />
         <Table>
@@ -305,62 +312,74 @@ const StrategyPage = () => {
                 return (
                   <TableRow key={metric.id}>
                     <TableCell>
-                      <InlineEditInput
-                        value={editing.name}
-                        onChange={(value) => setEditingMetrics(prev => ({
-                          ...prev,
-                          [metric.id]: { ...editing, name: value }
-                        }))}
-                        maxLength={100}
-                        placeholder="Enter metric name..."
-                      />
+                      {isReadOnly ? (
+                        <span className="text-foreground">{metric.name || "Unnamed Metric"}</span>
+                      ) : (
+                        <InlineEditInput
+                          value={editing.name}
+                          onChange={(value) => setEditingMetrics(prev => ({
+                            ...prev,
+                            [metric.id]: { ...editing, name: value }
+                          }))}
+                          maxLength={100}
+                          placeholder="Enter metric name..."
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={editing.parent_metric_id || "none"}
-                        onValueChange={(value) => setEditingMetrics(prev => ({
-                          ...prev,
-                          [metric.id]: { ...editing, parent_metric_id: value === "none" ? null : value }
-                        }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select parent metric" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {metrics.filter(m => m.id !== metric.id).map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name || "Unnamed Metric"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {isReadOnly ? (
+                        <span className="text-foreground">
+                          {metrics.find(m => m.id === metric.parent_metric_id)?.name || "None"}
+                        </span>
+                      ) : (
+                        <Select
+                          value={editing.parent_metric_id || "none"}
+                          onValueChange={(value) => setEditingMetrics(prev => ({
+                            ...prev,
+                            [metric.id]: { ...editing, parent_metric_id: value === "none" ? null : value }
+                          }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select parent metric" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {metrics.filter(m => m.id !== metric.id).map((m) => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.name || "Unnamed Metric"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        {hasChanges && (
-                          <Button 
-                            size="sm" 
-                            onClick={() => {
-                              updateMetricMutation.mutate({ 
-                                id: metric.id, 
-                                name: editing.name,
-                                parent_metric_id: editing.parent_metric_id
-                              });
-                              setEditingMetrics(prev => {
-                                const newState = { ...prev };
-                                delete newState[metric.id];
-                                return newState;
-                              });
-                            }}
-                          >
-                            Save
+                      {!isReadOnly && (
+                        <div className="flex gap-2">
+                          {hasChanges && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                updateMetricMutation.mutate({ 
+                                  id: metric.id, 
+                                  name: editing.name,
+                                  parent_metric_id: editing.parent_metric_id
+                                });
+                                setEditingMetrics(prev => {
+                                  const newState = { ...prev };
+                                  delete newState[metric.id];
+                                  return newState;
+                                });
+                              }}
+                            >
+                              Save
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" onClick={() => deleteMetricMutation.mutate(metric.id)}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button variant="ghost" size="sm" onClick={() => deleteMetricMutation.mutate(metric.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -376,7 +395,7 @@ const StrategyPage = () => {
         <SectionHeader 
           title="Tracks" 
           description="Define your product tracks"
-          onAdd={() => addTrackMutation.mutate()}
+          onAdd={!isReadOnly ? () => addTrackMutation.mutate() : undefined}
           addLabel="Add Track"
         />
         <Table>
@@ -396,63 +415,77 @@ const StrategyPage = () => {
                 return (
                   <TableRow key={track.id}>
                     <TableCell>
-                      <InlineEditInput
-                        value={editing.name}
-                        onChange={(value) => setEditingTracks(prev => ({
-                          ...prev,
-                          [track.id]: { ...editing, name: value }
-                        }))}
-                        maxLength={100}
-                        placeholder="Enter track name..."
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <AutoResizeTextarea
-                          value={editing.description}
-                          onChange={(v) => setEditingTracks(prev => ({
+                      {isReadOnly ? (
+                        <span className="text-foreground">{track.name || "Unnamed Track"}</span>
+                      ) : (
+                        <InlineEditInput
+                          value={editing.name}
+                          onChange={(value) => setEditingTracks(prev => ({
                             ...prev,
-                            [track.id]: { ...editing, description: v }
+                            [track.id]: { ...editing, name: value }
                           }))}
-                          placeholder="Enter description..."
+                          maxLength={100}
+                          placeholder="Enter track name..."
                         />
-                      </div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <ColorPicker
-                        value={editing.color}
-                        onChange={(color) => setEditingTracks(prev => ({
-                          ...prev,
-                          [track.id]: { ...editing, color }
-                        }))}
-                      />
+                      {isReadOnly ? (
+                        <span className="text-foreground whitespace-pre-line">{track.description}</span>
+                      ) : (
+                        <div className="flex items-center">
+                          <AutoResizeTextarea
+                            value={editing.description}
+                            onChange={(v) => setEditingTracks(prev => ({
+                              ...prev,
+                              [track.id]: { ...editing, description: v }
+                            }))}
+                            placeholder="Enter description..."
+                          />
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        {hasChanges && (
-                          <Button 
-                            size="sm" 
-                            onClick={() => {
-                              updateTrackMutation.mutate({ 
-                                id: track.id, 
-                                name: editing.name,
-                                description: editing.description,
-                                color: editing.color
-                              });
-                              setEditingTracks(prev => {
-                                const newState = { ...prev };
-                                delete newState[track.id];
-                                return newState;
-                              });
-                            }}
-                          >
-                            Save
+                      {isReadOnly ? (
+                        <div className="w-6 h-6 rounded border" style={{ backgroundColor: track.color || "#8B5CF6" }} />
+                      ) : (
+                        <ColorPicker
+                          value={editing.color}
+                          onChange={(color) => setEditingTracks(prev => ({
+                            ...prev,
+                            [track.id]: { ...editing, color }
+                          }))}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {!isReadOnly && (
+                        <div className="flex gap-2">
+                          {hasChanges && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                updateTrackMutation.mutate({ 
+                                  id: track.id, 
+                                  name: editing.name,
+                                  description: editing.description,
+                                  color: editing.color
+                                });
+                                setEditingTracks(prev => {
+                                  const newState = { ...prev };
+                                  delete newState[track.id];
+                                  return newState;
+                                });
+                              }}
+                            >
+                              Save
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" onClick={() => deleteTrackMutation.mutate(track.id)}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button variant="ghost" size="sm" onClick={() => deleteTrackMutation.mutate(track.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

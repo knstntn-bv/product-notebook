@@ -1,7 +1,8 @@
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "react-router-dom";
 
 interface Metric {
   id: string;
@@ -22,41 +23,73 @@ interface ProductContextType {
   isLoading: boolean;
   refetchMetrics: () => void;
   refetchTracks: () => void;
+  isReadOnly: boolean;
+  sharedUserId: string | null;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [sharedUserId, setSharedUserId] = useState<string | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  const shareToken = searchParams.get("share");
+
+  useEffect(() => {
+    const fetchSharedUser = async () => {
+      if (shareToken && !user) {
+        const { data, error } = await supabase
+          .from("project_settings")
+          .select("user_id")
+          .eq("share_token", shareToken)
+          .eq("is_public", true)
+          .maybeSingle();
+
+        if (data && !error) {
+          setSharedUserId(data.user_id);
+          setIsReadOnly(true);
+        }
+      } else if (user) {
+        setSharedUserId(null);
+        setIsReadOnly(false);
+      }
+    };
+
+    fetchSharedUser();
+  }, [shareToken, user]);
+
+  const effectiveUserId = sharedUserId || user?.id;
 
   const { data: metrics = [], isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
-    queryKey: ["metrics", user?.id],
+    queryKey: ["metrics", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("metrics")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const { data: tracks = [], isLoading: tracksLoading, refetch: refetchTracks } = useQuery({
-    queryKey: ["tracks", user?.id],
+    queryKey: ["tracks", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("tracks")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   return (
@@ -66,7 +99,9 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         tracks, 
         isLoading: metricsLoading || tracksLoading,
         refetchMetrics,
-        refetchTracks
+        refetchTracks,
+        isReadOnly,
+        sharedUserId
       }}
     >
       {children}

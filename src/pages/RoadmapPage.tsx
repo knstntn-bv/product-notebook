@@ -27,8 +27,9 @@ interface Initiative {
 }
 
 const RoadmapPage = () => {
-  const { tracks, metrics } = useProduct();
+  const { tracks, metrics, isReadOnly, sharedUserId } = useProduct();
   const { user } = useAuth();
+  const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingInitiative, setEditingInitiative] = useState<Partial<Initiative> | null>(null);
@@ -42,18 +43,18 @@ const RoadmapPage = () => {
 
   // Fetch initiatives
   const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", user?.id],
+    queryKey: ["initiatives", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("initiatives")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Save initiative mutation
@@ -156,8 +157,10 @@ const RoadmapPage = () => {
                           key={initiative.id}
                           className="cursor-pointer hover:shadow-md transition-shadow"
                           onClick={() => {
-                            setEditingInitiative(initiative as Initiative);
-                            setIsDialogOpen(true);
+                            if (!isReadOnly) {
+                              setEditingInitiative(initiative as Initiative);
+                              setIsDialogOpen(true);
+                            }
                           }}
                         >
                           <CardContent className="p-3">
