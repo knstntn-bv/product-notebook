@@ -168,8 +168,12 @@ const RoadmapPage = () => {
                                   <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
                                 )}
                               </div>
-                              <div className="text-xs">{initiative.expected_result}</div>
-                              <div className="text-xs">{initiative.achieved_result}</div>
+                              {initiative.expected_result && (
+                                <div className="text-xs whitespace-pre-line">{initiative.expected_result}</div>
+                              )}
+                              {initiative.achieved_result && (
+                                <div className="text-xs whitespace-pre-line">{initiative.achieved_result}</div>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
