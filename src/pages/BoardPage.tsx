@@ -391,15 +391,7 @@ const BoardPage = () => {
                       />
                     ))}
                   </SortableContext>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => createFeature(column.id)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Feature
-                  </Button>
+                  
                 </DroppableColumn>
               );
             })}
@@ -601,6 +593,15 @@ const DroppableColumn = ({ column, children }: DroppableColumnProps) => {
     <div className="flex flex-col w-80 flex-shrink-0 h-[calc(90vh-10rem)] mb-6">
       <div className="bg-muted p-4 rounded-t-lg border border-border">
         <h3 className="font-semibold text-sm">{column.label}</h3>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => createFeature(column.id)}
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Add Feature
+      </Button>
       </div>
       <div
         ref={setNodeRef}
