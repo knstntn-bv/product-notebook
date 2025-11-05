@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Save } from "lucide-react";
+import { Trash2, Save, ArrowUp, ArrowDown } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
 import { AutoResizeTextarea } from "@/components/AutoResizeTextarea";
@@ -32,6 +32,7 @@ const HypothesesPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editedHypotheses, setEditedHypotheses] = useState<Record<string, Partial<Hypothesis>>>({});
+  const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null);
 
   const statuses: { value: Status; label: string }[] = [
     { value: "new", label: "New" },
@@ -136,6 +137,33 @@ const HypothesesPage = () => {
     return !!editedHypotheses[id];
   };
 
+  const handleStatusSort = () => {
+    if (statusSort === null) {
+      setStatusSort("asc");
+    } else if (statusSort === "asc") {
+      setStatusSort("desc");
+    } else {
+      setStatusSort(null);
+    }
+  };
+
+  const sortedHypotheses = [...hypotheses].sort((a, b) => {
+    if (statusSort === null) return 0;
+    
+    const statusOrder: Record<Status, number> = {
+      new: 1,
+      inProgress: 2,
+      accepted: 3,
+      rejected: 4,
+    };
+    
+    const aStatus = getHypothesisValue(a, "status") as Status || a.status;
+    const bStatus = getHypothesisValue(b, "status") as Status || b.status;
+    
+    const comparison = statusOrder[aStatus] - statusOrder[bStatus];
+    return statusSort === "asc" ? comparison : -comparison;
+  });
+
   return (
     <div className="space-y-6">
       <SectionHeader 
@@ -148,7 +176,17 @@ const HypothesesPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[120px]">Status</TableHead>
+              <TableHead className="min-w-[120px]">
+                <button
+                  onClick={handleStatusSort}
+                  className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                  type="button"
+                >
+                  Status
+                  {statusSort === "asc" && <ArrowUp className="h-4 w-4" />}
+                  {statusSort === "desc" && <ArrowDown className="h-4 w-4" />}
+                </button>
+              </TableHead>
               <TableHead className="min-w-[200px]">Insight</TableHead>
               <TableHead className="min-w-[200px]">Problem Hypothesis</TableHead>
               <TableHead className="min-w-[200px]">Problem Validation</TableHead>
@@ -159,7 +197,7 @@ const HypothesesPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {hypotheses.map((hypothesis) => (
+            {sortedHypotheses.map((hypothesis) => (
               <TableRow key={hypothesis.id}>
                 <TableCell>
                   <Select
