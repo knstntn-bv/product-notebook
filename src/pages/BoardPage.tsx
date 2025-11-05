@@ -197,6 +197,57 @@ const BoardPage = () => {
     },
   });
 
+  // Drag mutation with optimistic updates
+  const dragFeatureMutation = useMutation({
+    mutationFn: async ({ updates }: { updates: Array<{ id: string; position: number; board_column?: string }> }) => {
+      const promises = updates.map(update =>
+        supabase.from("features").update({ 
+          position: update.position,
+          ...(update.board_column && { board_column: update.board_column })
+        }).eq("id", update.id)
+      );
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) throw errors[0].error;
+    },
+    onMutate: async ({ updates }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["features", effectiveUserId] });
+      
+      // Snapshot the previous value
+      const previousFeatures = queryClient.getQueryData<Feature[]>(["features", effectiveUserId]);
+      
+      // Optimistically update to the new value
+      if (previousFeatures) {
+        const updatedFeatures = previousFeatures.map(feature => {
+          const update = updates.find(u => u.id === feature.id);
+          if (update) {
+            return {
+              ...feature,
+              position: update.position,
+              ...(update.board_column && { board_column: update.board_column as ColumnId })
+            };
+          }
+          return feature;
+        });
+        queryClient.setQueryData(["features", effectiveUserId], updatedFeatures);
+      }
+      
+      return { previousFeatures };
+    },
+    onError: (error: any, variables, context) => {
+      // Revert to previous state on error
+      if (context?.previousFeatures) {
+        queryClient.setQueryData(["features", effectiveUserId], context.previousFeatures);
+      }
+      toast({ title: "Error moving feature", description: error.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure sync
+      queryClient.invalidateQueries({ queryKey: ["features", effectiveUserId] });
+    },
+  });
+
   const createFeature = (columnId: ColumnId) => {
     setEditingFeature({
       title: "",
@@ -283,17 +334,13 @@ const BoardPage = () => {
         
         const reorderedFeatures = arrayMove(columnFeatures, oldIndex, newIndex);
         
-        // Batch update positions
-        Promise.all(
-          reorderedFeatures.map((feature, index) =>
-            supabase
-              .from("features")
-              .update({ position: index })
-              .eq("id", feature.id)
-          )
-        ).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["features"] });
-        });
+        // Prepare updates for mutation
+        const updates = reorderedFeatures.map((feature, index) => ({
+          id: feature.id,
+          position: index,
+        }));
+        
+        dragFeatureMutation.mutate({ updates });
       } else {
         // Move to different column at the position of overFeature
         const sourceColumnFeatures = getFeaturesForColumn(activeFeature.board_column).filter(f => f.id !== activeId);
@@ -321,20 +368,8 @@ const BoardPage = () => {
           board_column: overFeature.board_column,
         });
         
-        // Batch update all positions
-        Promise.all([
-          ...sourceUpdates.map(update =>
-            supabase.from("features").update({ position: update.position }).eq("id", update.id)
-          ),
-          ...targetUpdates.map(update =>
-            supabase.from("features").update({ 
-              position: update.position,
-              ...(update.board_column && { board_column: update.board_column })
-            }).eq("id", update.id)
-          ),
-        ]).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["features"] });
-        });
+        const updates = [...sourceUpdates, ...targetUpdates];
+        dragFeatureMutation.mutate({ updates });
       }
     } 
     // Case 2: Dropped on an empty column
@@ -348,18 +383,15 @@ const BoardPage = () => {
         position: index,
       }));
       
-      // Batch update
-      Promise.all([
-        ...sourceUpdates.map(update =>
-          supabase.from("features").update({ position: update.position }).eq("id", update.id)
-        ),
-        supabase.from("features").update({ 
-          board_column: overColumn.id,
-          position: targetColumnFeatures.length,
-        }).eq("id", activeId),
-      ]).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["features"] });
-      });
+      // Update the moved feature
+      const movedUpdate = {
+        id: activeId,
+        position: targetColumnFeatures.length,
+        board_column: overColumn.id,
+      };
+      
+      const updates = [...sourceUpdates, movedUpdate];
+      dragFeatureMutation.mutate({ updates });
     }
   };
 
