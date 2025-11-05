@@ -40,15 +40,13 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchSharedUser = async () => {
       if (shareToken && !user) {
-        const { data, error } = await supabase
-          .from("project_settings")
-          .select("user_id")
-          .eq("share_token", shareToken)
-          .eq("is_public", true)
-          .maybeSingle();
+        // Use the secure function to validate share token without exposing it
+        const { data, error } = await supabase.rpc('get_shared_user_id', {
+          token: shareToken
+        });
 
         if (data && !error) {
-          setSharedUserId(data.user_id);
+          setSharedUserId(data);
           setIsReadOnly(true);
         }
       } else if (user) {

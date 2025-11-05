@@ -308,7 +308,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_shared_user_id: { Args: { token: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
