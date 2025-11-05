@@ -323,18 +323,18 @@ const HypothesesPage = () => {
         addLabel="Add Hypothesis"
       />
 
-      <div className="overflow-x-auto">
-        <Table>
+      <div className="w-full overflow-x-auto">
+        <Table className="w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[120px]">Status</TableHead>
-              <TableHead className="min-w-[200px]">Insight</TableHead>
-              <TableHead className="min-w-[200px]">Problem Hypothesis</TableHead>
-              <TableHead className="min-w-[200px]">Problem Validation</TableHead>
-              <TableHead className="min-w-[200px]">Solution Hypothesis</TableHead>
-              <TableHead className="min-w-[200px]">Solution Validation</TableHead>
-              <TableHead className="min-w-[200px]">Impact Metrics</TableHead>
-              <TableHead className="w-[150px]">Actions</TableHead>
+              <TableHead className="w-[10%]">Status</TableHead>
+              <TableHead className="w-[13%]">Insight</TableHead>
+              <TableHead className="w-[13%]">Problem Hypothesis</TableHead>
+              <TableHead className="w-[13%]">Problem Validation</TableHead>
+              <TableHead className="w-[13%]">Solution Hypothesis</TableHead>
+              <TableHead className="w-[13%]">Solution Validation</TableHead>
+              <TableHead className="w-[13%]">Impact Metrics</TableHead>
+              <TableHead className="w-[12%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
