@@ -167,6 +167,7 @@ const HypothesesPage = () => {
                     onValueChange={(value: Status) =>
                       handleFieldChange(hypothesis.id, "status", value)
                     }
+                    disabled={isReadOnly}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -186,6 +187,7 @@ const HypothesesPage = () => {
                     onChange={(v) => handleFieldChange(hypothesis.id, "insight", v)}
                     placeholder="Enter insight..."
                     rows={2}
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
@@ -194,6 +196,7 @@ const HypothesesPage = () => {
                     onChange={(v) => handleFieldChange(hypothesis.id, "problem_hypothesis", v)}
                     placeholder="Enter problem hypothesis..."
                     rows={2}
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
@@ -202,6 +205,7 @@ const HypothesesPage = () => {
                     onChange={(v) => handleFieldChange(hypothesis.id, "problem_validation", v)}
                     placeholder="Enter validation (links supported)..."
                     rows={2}
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
@@ -210,6 +214,7 @@ const HypothesesPage = () => {
                     onChange={(v) => handleFieldChange(hypothesis.id, "solution_hypothesis", v)}
                     placeholder="Enter solution hypothesis..."
                     rows={2}
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
@@ -218,6 +223,7 @@ const HypothesesPage = () => {
                     onChange={(v) => handleFieldChange(hypothesis.id, "solution_validation", v)}
                     placeholder="Enter validation (links supported)..."
                     rows={2}
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
@@ -226,28 +232,31 @@ const HypothesesPage = () => {
                     onChange={(tags) => handleFieldChange(hypothesis.id, "impact_metrics", tags)}
                     suggestions={metrics.map(m => m.name).filter(Boolean)}
                     placeholder="Type to add metrics..."
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
-                    {hasUnsavedChanges(hypothesis.id) && (
+                  {!isReadOnly && (
+                    <div className="flex gap-2">
+                      {hasUnsavedChanges(hypothesis.id) && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSave(hypothesis.id)}
+                          disabled={updateHypothesisMutation.isPending}
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
-                        variant="default"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => handleSave(hypothesis.id)}
-                        disabled={updateHypothesisMutation.isPending}
+                        onClick={() => deleteHypothesisMutation.mutate(hypothesis.id)}
                       >
-                        <Save className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteHypothesisMutation.mutate(hypothesis.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

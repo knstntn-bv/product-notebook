@@ -61,7 +61,7 @@ const BoardPage = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: isReadOnly ? 999999 : 8, // Effectively disable drag in read-only mode
       },
     })
   );

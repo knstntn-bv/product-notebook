@@ -9,6 +9,7 @@ interface AutoResizeTextareaProps {
   className?: string;
   rows?: number;
   maxLength?: number;
+  disabled?: boolean;
 }
 
 export const AutoResizeTextarea = ({
@@ -18,6 +19,7 @@ export const AutoResizeTextarea = ({
   className,
   rows = 1,
   maxLength,
+  disabled = false,
 }: AutoResizeTextareaProps) => {
   const ref = useRef<HTMLTextAreaElement | null>(null);
 
@@ -40,6 +42,7 @@ export const AutoResizeTextarea = ({
       placeholder={placeholder}
       rows={rows}
       maxLength={maxLength}
+      disabled={disabled}
       className={cn(
         "w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none leading-5 min-h-0 whitespace-pre-wrap",
         className

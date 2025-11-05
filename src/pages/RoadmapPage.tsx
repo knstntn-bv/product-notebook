@@ -155,7 +155,7 @@ const RoadmapPage = () => {
                       {getInitiativesForCell(track.id, quarter.id as any).map(initiative => (
                         <Card
                           key={initiative.id}
-                          className="cursor-pointer hover:shadow-md transition-shadow"
+                          className={isReadOnly ? "" : "cursor-pointer hover:shadow-md transition-shadow"}
                           onClick={() => {
                             if (!isReadOnly) {
                               setEditingInitiative(initiative as Initiative);
@@ -181,15 +181,17 @@ const RoadmapPage = () => {
                           </CardContent>
                         </Card>
                       ))}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => createInitiative(track.id, quarter.id as any)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Initiative
-                      </Button>
+                      {!isReadOnly && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => createInitiative(track.id, quarter.id as any)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Initiative
+                        </Button>
+                      )}
                     </div>
                   </td>
                 ))}

@@ -8,9 +8,10 @@ interface MetricTagInputProps {
   onChange: (tags: string[]) => void;
   suggestions: string[];
   placeholder?: string;
+  disabled?: boolean;
 }
 
-export const MetricTagInput = ({ value, onChange, suggestions, placeholder }: MetricTagInputProps) => {
+export const MetricTagInput = ({ value, onChange, suggestions, placeholder, disabled = false }: MetricTagInputProps) => {
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
@@ -53,13 +54,15 @@ export const MetricTagInput = ({ value, onChange, suggestions, placeholder }: Me
         {value.map((tag) => (
           <Badge key={tag} variant="secondary" className="gap-1">
             {tag}
-            <button
-              type="button"
-              onClick={() => removeTag(tag)}
-              className="hover:bg-muted rounded-sm"
-            >
-              <X className="h-3 w-3" />
-            </button>
+            {!disabled && (
+              <button
+                type="button"
+                onClick={() => removeTag(tag)}
+                className="hover:bg-muted rounded-sm"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </Badge>
         ))}
         <Input
@@ -69,9 +72,10 @@ export const MetricTagInput = ({ value, onChange, suggestions, placeholder }: Me
           onKeyDown={handleKeyDown}
           placeholder={value.length === 0 ? placeholder : ""}
           className="flex-1 border-0 shadow-none focus-visible:ring-0 min-w-[120px] h-6 p-0"
+          disabled={disabled}
         />
       </div>
-      {showSuggestions && (
+      {showSuggestions && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[200px] overflow-auto">
           {filteredSuggestions.map((suggestion) => (
             <div
