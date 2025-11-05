@@ -309,6 +309,7 @@ export type Database = {
     }
     Functions: {
       get_shared_user_id: { Args: { token: string }; Returns: string }
+      is_project_public: { Args: { check_user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
