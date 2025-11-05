@@ -397,6 +397,14 @@ const BoardPage = () => {
 
   const activeFeature = activeId ? features.find(f => f.id === activeId) : null;
 
+  // Sort initiatives and tracks alphabetically for dropdowns
+  const sortedInitiatives = [...initiatives].sort((a, b) => 
+    (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" })
+  );
+  const sortedTracks = [...tracks].sort((a, b) => 
+    (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
+  );
+
   return (
     <DndContext 
       sensors={sensors}
@@ -507,7 +515,7 @@ const BoardPage = () => {
                     <CommandList>
                       <CommandEmpty>No initiative found.</CommandEmpty>
                       <CommandGroup>
-                        {initiatives.map((initiative) => (
+                        {sortedInitiatives.map((initiative) => (
                           <CommandItem
                             key={initiative.id}
                             value={initiative.goal}
@@ -550,7 +558,7 @@ const BoardPage = () => {
                     <CommandList>
                       <CommandEmpty>No track found.</CommandEmpty>
                       <CommandGroup>
-                        {tracks.map((track) => (
+                        {sortedTracks.map((track) => (
                           <CommandItem
                             key={track.id}
                             value={track.name}
