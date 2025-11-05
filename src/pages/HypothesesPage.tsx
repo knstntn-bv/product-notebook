@@ -324,17 +324,17 @@ const HypothesesPage = () => {
       />
 
       <div className="w-full overflow-x-auto">
-        <Table className="w-full">
+        <Table className="w-full table-auto">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[10%]">Status</TableHead>
-              <TableHead className="w-[13%]">Insight</TableHead>
-              <TableHead className="w-[13%]">Problem Hypothesis</TableHead>
-              <TableHead className="w-[13%]">Problem Validation</TableHead>
-              <TableHead className="w-[13%]">Solution Hypothesis</TableHead>
-              <TableHead className="w-[13%]">Solution Validation</TableHead>
-              <TableHead className="w-[13%]">Impact Metrics</TableHead>
-              <TableHead className="w-[12%]">Actions</TableHead>
+              <TableHead className="min-w-[120px]">Status</TableHead>
+              <TableHead className="min-w-[150px]">Insight</TableHead>
+              <TableHead className="min-w-[150px]">Problem Hypothesis</TableHead>
+              <TableHead className="min-w-[150px]">Problem Validation</TableHead>
+              <TableHead className="min-w-[150px]">Solution Hypothesis</TableHead>
+              <TableHead className="min-w-[150px]">Solution Validation</TableHead>
+              <TableHead className="min-w-[50px]">Impact Metrics</TableHead>
+              <TableHead className="min-w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -406,13 +406,15 @@ const HypothesesPage = () => {
                   />
                 </TableCell>
                 <TableCell>
-                  <MetricTagInput
-                    value={(getHypothesisValue(hypothesis, "impact_metrics") as string[]) || []}
-                    onChange={(tags) => handleFieldChange(hypothesis.id, "impact_metrics", tags)}
-                    suggestions={metrics.map(m => m.name).filter(Boolean)}
-                    placeholder="Type to add metrics..."
-                    disabled={isReadOnly}
-                  />
+                  <div className="max-w-[150px]">
+                    <MetricTagInput
+                      value={(getHypothesisValue(hypothesis, "impact_metrics") as string[]) || []}
+                      onChange={(tags) => handleFieldChange(hypothesis.id, "impact_metrics", tags)}
+                      suggestions={metrics.map(m => m.name).filter(Boolean)}
+                      placeholder="Type to add metrics..."
+                      disabled={isReadOnly}
+                    />
+                  </div>
                 </TableCell>
                 <TableCell>
                   {!isReadOnly && (
