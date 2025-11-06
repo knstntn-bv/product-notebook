@@ -24,7 +24,7 @@ const IndexContent = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
+      <header className="sticky top-0 z-50 border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Product Notebook</h1>
           <div className="flex gap-2">
@@ -66,24 +66,26 @@ const IndexContent = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger value="strategy" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Strategy
-            </TabsTrigger>
-            <TabsTrigger value="roadmap" className="flex items-center gap-2">
-              <Map className="h-4 w-4" />
-              Roadmap
-            </TabsTrigger>
-            <TabsTrigger value="board" className="flex items-center gap-2">
-              <Trello className="h-4 w-4" />
-              Board
-            </TabsTrigger>
-            <TabsTrigger value="hypotheses" className="flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
-              Hypotheses
-            </TabsTrigger>
-          </TabsList>
+          <div className="sticky top-[77px] z-40 bg-background pb-4 mb-8">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="strategy" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Strategy
+              </TabsTrigger>
+              <TabsTrigger value="roadmap" className="flex items-center gap-2">
+                <Map className="h-4 w-4" />
+                Roadmap
+              </TabsTrigger>
+              <TabsTrigger value="board" className="flex items-center gap-2">
+                <Trello className="h-4 w-4" />
+                Board
+              </TabsTrigger>
+              <TabsTrigger value="hypotheses" className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4" />
+                Hypotheses
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="strategy">
             <StrategyPage />
