@@ -1,7 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Save, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, Save, ArrowUp, ArrowDown, Plus, Check, ChevronsUpDown } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
 import { AutoResizeTextarea } from "@/components/AutoResizeTextarea";
@@ -57,6 +62,21 @@ const HypothesesPage = () => {
   const queryClient = useQueryClient();
   const [editedHypotheses, setEditedHypotheses] = useState<Record<string, Partial<Hypothesis>>>({});
   const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null);
+  const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
+  const [creatingFeature, setCreatingFeature] = useState<Feature | null>(null);
+  const [initiativeOpen, setInitiativeOpen] = useState(false);
+  const [trackOpen, setTrackOpen] = useState(false);
+
+  const columns: { id: ColumnId; label: string }[] = [
+    { id: "inbox", label: "Inbox" },
+    { id: "discovery", label: "Discovery" },
+    { id: "backlog", label: "Backlog" },
+    { id: "design", label: "Design" },
+    { id: "development", label: "Development" },
+    { id: "onHold", label: "On Hold" },
+    { id: "done", label: "Done" },
+    { id: "cancelled", label: "Cancelled" },
+  ];
 
   const statuses: { value: Status; label: string }[] = [
     { value: "new", label: "New" },
@@ -136,6 +156,86 @@ const HypothesesPage = () => {
     },
   });
 
+  // Fetch features to calculate position
+  const { data: features = [] } = useQuery({
+    queryKey: ["features", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return [];
+      const { data, error } = await supabase
+        .from("features")
+        .select("*")
+        .eq("user_id", effectiveUserId);
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; board_column: ColumnId; position: number }>;
+    },
+    enabled: !!effectiveUserId,
+  });
+
+  // Fetch initiatives
+  const { data: initiatives = [] } = useQuery({
+    queryKey: ["initiatives", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return [];
+      const { data, error } = await supabase
+        .from("initiatives")
+        .select("*")
+        .eq("user_id", effectiveUserId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!effectiveUserId,
+  });
+
+  // Fetch tracks
+  const { data: tracks = [] } = useQuery({
+    queryKey: ["tracks", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return [];
+      const { data, error } = await supabase
+        .from("tracks")
+        .select("*")
+        .eq("user_id", effectiveUserId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!effectiveUserId,
+  });
+
+  // Create feature mutation
+  const createFeatureMutation = useMutation({
+    mutationFn: async (feature: Feature) => {
+      if (!user) throw new Error("No user");
+      
+      const columnFeatures = features.filter(f => f.board_column === feature.board_column);
+      const maxPosition = columnFeatures.length > 0 
+        ? Math.max(...columnFeatures.map(f => f.position)) 
+        : -1;
+      
+      const { error } = await supabase
+        .from("features")
+        .insert({
+          user_id: user.id,
+          title: feature.title,
+          description: feature.description || "",
+          initiative_id: feature.initiative_id,
+          track_id: feature.track_id,
+          board_column: feature.board_column,
+          position: maxPosition + 1,
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["features"] });
+      setCreatingFeature(null);
+      setIsFeatureDialogOpen(false);
+      toast({ title: "Feature created successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const handleFieldChange = (id: string, field: keyof Hypothesis, value: any) => {
     setEditedHypotheses(prev => ({
@@ -189,6 +289,54 @@ const HypothesesPage = () => {
     return statusSort === "asc" ? comparison : -comparison;
   });
 
+  const handleCreateFeature = (hypothesis: Hypothesis) => {
+    const insight = getHypothesisValue(hypothesis, "insight") as string;
+    const solutionHypothesis = getHypothesisValue(hypothesis, "solution_hypothesis") as string;
+    
+    setCreatingFeature({
+      title: insight || "",
+      description: solutionHypothesis || "",
+      board_column: "backlog",
+    });
+    setIsFeatureDialogOpen(true);
+  };
+
+  const handleSaveFeature = () => {
+    if (creatingFeature && creatingFeature.title) {
+      createFeatureMutation.mutate(creatingFeature);
+    }
+  };
+
+  const handleInitiativeSelect = (initiativeId: string) => {
+    if (creatingFeature) {
+      setCreatingFeature({ ...creatingFeature, initiative_id: initiativeId });
+    }
+    setInitiativeOpen(false);
+  };
+
+  const handleTrackSelect = (trackId: string) => {
+    if (creatingFeature) {
+      setCreatingFeature({ ...creatingFeature, track_id: trackId });
+    }
+    setTrackOpen(false);
+  };
+
+  const getInitiativeName = (id: string) => {
+    return initiatives.find(i => i.id === id)?.goal || "";
+  };
+
+  const getTrackName = (id: string) => {
+    return tracks.find(t => t.id === id)?.name || "";
+  };
+
+  const sortedInitiatives = [...initiatives].sort((a, b) => 
+    a.goal.localeCompare(b.goal)
+  );
+
+  const sortedTracks = [...tracks].sort((a, b) => 
+    a.name.localeCompare(b.name)
+  );
+
   return (
     <div className="space-y-6">
       <SectionHeader 
@@ -201,14 +349,6 @@ const HypothesesPage = () => {
         <Table className="w-full table-auto">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[120px]">Status</TableHead>
-              <TableHead className="min-w-[150px]">Insight</TableHead>
-              <TableHead className="min-w-[150px]">Problem Hypothesis</TableHead>
-              <TableHead className="min-w-[150px]">Problem Validation</TableHead>
-              <TableHead className="min-w-[150px]">Solution Hypothesis</TableHead>
-              <TableHead className="min-w-[150px]">Solution Validation</TableHead>
-              <TableHead className="min-w-[50px]">Impact Metrics</TableHead>
-              <TableHead className="min-w-[100px]">Actions</TableHead>
               <TableHead className="min-w-[120px]">
                 <button
                   onClick={handleStatusSort}
@@ -322,6 +462,14 @@ const HypothesesPage = () => {
                         </Button>
                       )}
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCreateFeature(hypothesis)}
+                        title="Create feature from hypothesis"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => deleteHypothesisMutation.mutate(hypothesis.id)}
@@ -337,6 +485,141 @@ const HypothesesPage = () => {
         </Table>
       </div>
 
+      <EntityDialog
+        open={isFeatureDialogOpen}
+        onOpenChange={setIsFeatureDialogOpen}
+        title="Create Feature from Hypothesis"
+        onSave={handleSaveFeature}
+        saveLabel="Create Feature"
+      >
+        {creatingFeature && (
+          <>
+            <div>
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                value={creatingFeature.title || ""}
+                onChange={(e) => setCreatingFeature({ ...creatingFeature, title: e.target.value })}
+                placeholder="Enter feature title..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={creatingFeature.description || ""}
+                onChange={(e) => setCreatingFeature({ ...creatingFeature, description: e.target.value })}
+                placeholder="Enter feature description..."
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label>Linked Initiative</Label>
+              <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={initiativeOpen}
+                    className="w-full justify-between"
+                  >
+                    {creatingFeature.initiative_id
+                      ? getInitiativeName(creatingFeature.initiative_id)
+                      : "Select initiative..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search initiatives..." />
+                    <CommandList>
+                      <CommandEmpty>No initiative found.</CommandEmpty>
+                      <CommandGroup>
+                        {sortedInitiatives.map((initiative) => (
+                          <CommandItem
+                            key={initiative.id}
+                            value={initiative.goal}
+                            onSelect={() => handleInitiativeSelect(initiative.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                creatingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {initiative.goal}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>Linked Track</Label>
+              <Popover open={trackOpen} onOpenChange={setTrackOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={trackOpen}
+                    className="w-full justify-between"
+                  >
+                    {creatingFeature.track_id
+                      ? getTrackName(creatingFeature.track_id)
+                      : "Select track..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search tracks..." />
+                    <CommandList>
+                      <CommandEmpty>No track found.</CommandEmpty>
+                      <CommandGroup>
+                        {sortedTracks.map((track) => (
+                          <CommandItem
+                            key={track.id}
+                            value={track.name}
+                            onSelect={() => handleTrackSelect(track.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                creatingFeature.track_id === track.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {track.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label htmlFor="column">Column</Label>
+              <Select
+                value={creatingFeature.board_column}
+                onValueChange={(value: ColumnId) => setCreatingFeature({ ...creatingFeature, board_column: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {columns.map(col => (
+                    <SelectItem key={col.id} value={col.id}>
+                      {col.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+      </EntityDialog>
     </div>
   );
 };
