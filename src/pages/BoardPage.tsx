@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { EntityDialog } from "@/components/EntityDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -411,17 +410,28 @@ const BoardPage = () => {
     (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
   );
 
+  const autoScrollConfig = {
+    threshold: {
+      x: 0.2,
+      y: 0.2,
+    },
+    acceleration: 1,
+    interval: 20,
+    enabled: true,
+  };
+
   return (
     <DndContext 
       sensors={sensors}
       collisionDetection={closestCenter}
+      autoScroll={autoScrollConfig}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
-        <ScrollArea className="w-full whitespace-nowrap">
-          <div className="flex gap-4 pb-4">
+        <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default -mx-4 md:mx-0">
+          <div className="flex gap-4 pb-4 pl-[5vw] pr-[5vw] md:pl-4 md:pr-4">
             {columns.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
@@ -447,8 +457,7 @@ const BoardPage = () => {
               );
             })}
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       </div>
 
       <DragOverlay>
@@ -642,7 +651,7 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
   });
 
   return (
-    <div className="flex flex-col w-80 flex-shrink-0 h-[calc(90vh-10rem)] mb-6">
+    <div className="flex flex-col w-[90vw] md:w-80 flex-shrink-0 snap-center snap-always h-[calc(90vh-10rem)] mb-6">
       <div className="bg-muted p-4 rounded-t-lg border border-border">
         <div className="flex justify-between items-center">
           <h3 className="font-semibold text-sm">{column.label}</h3>
