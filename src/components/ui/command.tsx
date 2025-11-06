@@ -57,13 +57,56 @@ CommandInput.displayName = CommandPrimitive.Input.displayName;
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const combinedRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+      listRef.current = node;
+    },
+    [ref]
+  );
+
+  React.useEffect(() => {
+    const listElement = listRef.current;
+    if (!listElement) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      const { scrollTop, scrollHeight, clientHeight } = listElement;
+      const isAtTop = scrollTop <= 0;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+      const isScrollingUp = e.deltaY < 0;
+      const isScrollingDown = e.deltaY > 0;
+
+      // Only prevent propagation if we can actually scroll in that direction
+      if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
+        // At boundary, allow event to propagate
+        return;
+      }
+
+      // We can scroll, so prevent the event from bubbling to parent containers
+      // This ensures the popover/dialog doesn't interfere with scrolling
+      e.stopPropagation();
+    };
+
+    listElement.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      listElement.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
+  return (
+    <CommandPrimitive.List
+      ref={combinedRef}
+      className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+      {...props}
+    />
+  );
+});
 
 CommandList.displayName = CommandPrimitive.List.displayName;
 
