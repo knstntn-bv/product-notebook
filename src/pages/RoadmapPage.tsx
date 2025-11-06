@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
@@ -34,6 +35,7 @@ const RoadmapPage = () => {
   const queryClient = useQueryClient();
   const [editingInitiative, setEditingInitiative] = useState<Partial<Initiative> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
   const quarters = [
     { id: "current", label: "Current Quarter" },
@@ -96,6 +98,28 @@ const RoadmapPage = () => {
       setEditingInitiative(null);
       setIsDialogOpen(false);
       toast({ title: "Initiative saved successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete initiative mutation
+  const deleteInitiativeMutation = useMutation({
+    mutationFn: async (initiativeId: string) => {
+      if (!user) throw new Error("No user");
+      const { error } = await supabase
+        .from("initiatives")
+        .delete()
+        .eq("id", initiativeId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["initiatives"] });
+      setEditingInitiative(null);
+      setIsDialogOpen(false);
+      setDeleteAlertOpen(false);
+      toast({ title: "Initiative deleted successfully" });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -206,6 +230,8 @@ const RoadmapPage = () => {
         onOpenChange={setIsDialogOpen}
         title="Initiative Details"
         onSave={saveInitiative}
+        onDelete={editingInitiative?.id ? () => setDeleteAlertOpen(true) : undefined}
+        isEditing={!!editingInitiative?.id}
         saveLabel="Save Initiative"
       >
         {editingInitiative && (
@@ -275,6 +301,26 @@ const RoadmapPage = () => {
           </>
         )}
       </EntityDialog>
+
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Initiative</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this initiative? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => editingInitiative?.id && deleteInitiativeMutation.mutate(editingInitiative.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

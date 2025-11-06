@@ -71,7 +71,7 @@ export const MetricTagInput = ({ value, onChange, suggestions, placeholder, disa
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={value.length === 0 ? placeholder : ""}
-          className="flex-1 border-0 shadow-none focus-visible:ring-0 min-w-[120px] h-6 p-0"
+          className="flex-1 border-0 shadow-none focus-visible:ring-0 min-w-[60px] h-6 p-0"
           disabled={disabled}
         />
       </div>
