@@ -346,10 +346,10 @@ const HypothesesPage = () => {
       />
 
       <div className="w-full overflow-x-auto">
-        <Table className="w-full table-auto">
+        <Table className="w-full table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[120px]">
+              <TableHead className="w-[100px]">
                 <button
                   onClick={handleStatusSort}
                   className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -360,13 +360,13 @@ const HypothesesPage = () => {
                   {statusSort === "desc" && <ArrowDown className="h-4 w-4" />}
                 </button>
               </TableHead>
-              <TableHead className="min-w-[200px]">Insight</TableHead>
-              <TableHead className="min-w-[200px]">Problem Hypothesis</TableHead>
-              <TableHead className="min-w-[200px]">Problem Validation</TableHead>
-              <TableHead className="min-w-[200px]">Solution Hypothesis</TableHead>
-              <TableHead className="min-w-[200px]">Solution Validation</TableHead>
-              <TableHead className="min-w-[200px]">Impact Metrics</TableHead>
-              <TableHead className="w-[150px]">Actions</TableHead>
+              <TableHead className="w-[15%]">Insight</TableHead>
+              <TableHead className="w-[15%]">Problem Hypothesis</TableHead>
+              <TableHead className="w-[15%]">Problem Validation</TableHead>
+              <TableHead className="w-[15%]">Solution Hypothesis</TableHead>
+              <TableHead className="w-[15%]">Solution Validation</TableHead>
+              <TableHead className="w-[10%]">Impact Metrics</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -392,61 +392,64 @@ const HypothesesPage = () => {
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell>
+                <TableCell className="break-words">
                   <AutoResizeTextarea
                     value={(getHypothesisValue(hypothesis, "insight") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "insight", v)}
                     placeholder="Enter insight..."
                     rows={2}
                     disabled={isReadOnly}
+                    className="w-full"
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="break-words">
                   <AutoResizeTextarea
                     value={(getHypothesisValue(hypothesis, "problem_hypothesis") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "problem_hypothesis", v)}
                     placeholder="Enter problem hypothesis..."
                     rows={2}
                     disabled={isReadOnly}
+                    className="w-full"
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="break-words">
                   <AutoResizeTextarea
                     value={(getHypothesisValue(hypothesis, "problem_validation") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "problem_validation", v)}
                     placeholder="Enter validation (links supported)..."
                     rows={2}
                     disabled={isReadOnly}
+                    className="w-full"
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="break-words">
                   <AutoResizeTextarea
                     value={(getHypothesisValue(hypothesis, "solution_hypothesis") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "solution_hypothesis", v)}
                     placeholder="Enter solution hypothesis..."
                     rows={2}
                     disabled={isReadOnly}
+                    className="w-full"
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="break-words">
                   <AutoResizeTextarea
                     value={(getHypothesisValue(hypothesis, "solution_validation") as string) || ""}
                     onChange={(v) => handleFieldChange(hypothesis.id, "solution_validation", v)}
                     placeholder="Enter validation (links supported)..."
                     rows={2}
                     disabled={isReadOnly}
+                    className="w-full"
                   />
                 </TableCell>
-                <TableCell>
-                  <div className="max-w-[150px]">
-                    <MetricTagInput
-                      value={(getHypothesisValue(hypothesis, "impact_metrics") as string[]) || []}
-                      onChange={(tags) => handleFieldChange(hypothesis.id, "impact_metrics", tags)}
-                      suggestions={metrics.map(m => m.name).filter(Boolean)}
-                      placeholder="Type to add metrics..."
-                      disabled={isReadOnly}
-                    />
-                  </div>
+                <TableCell className="break-words">
+                  <MetricTagInput
+                    value={(getHypothesisValue(hypothesis, "impact_metrics") as string[]) || []}
+                    onChange={(tags) => handleFieldChange(hypothesis.id, "impact_metrics", tags)}
+                    suggestions={metrics.map(m => m.name).filter(Boolean)}
+                    placeholder="Type to add metrics..."
+                    disabled={isReadOnly}
+                  />
                 </TableCell>
                 <TableCell>
                   {!isReadOnly && (
