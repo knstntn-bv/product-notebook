@@ -95,34 +95,34 @@ const BoardPage = () => {
 
   // Fetch initiatives
   const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", user?.id],
+    queryKey: ["initiatives", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("initiatives")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Fetch tracks
   const { data: tracks = [] } = useQuery({
-    queryKey: ["tracks", user?.id],
+    queryKey: ["tracks", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("tracks")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Save feature mutation
