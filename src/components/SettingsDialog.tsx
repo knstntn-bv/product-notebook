@@ -119,7 +119,7 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
             <div className="space-y-0.5">
               <Label htmlFor="public-access">Open Project</Label>
               <p className="text-sm text-muted-foreground">
-                Allow read-only access via a shareable link
+                Allow registered users to view your project via a shareable link
               </p>
             </div>
             <Switch
@@ -152,7 +152,7 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Anyone with this link can view your project in read-only mode
+                Registered users with this link can view your project in read-only mode
               </p>
             </div>
           )}
