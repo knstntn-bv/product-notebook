@@ -24,66 +24,90 @@ const IndexContent = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Product Notebook</h1>
-          <div className="flex gap-2">
-            {!isReadOnly && (
-              <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
-                      Open Project
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={signOut}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <header className="sticky top-0 z-50 border-b border-border bg-card">
+          <div className="container mx-auto px-4 py-2 md:py-4 flex items-center justify-between">
+            <h1 className="text-lg md:text-2xl font-bold text-foreground">Product Notebook</h1>
+            <div className="flex gap-2">
+              {!isReadOnly && (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="md:h-10 md:w-auto md:px-4 md:py-2">
+                        <Settings className="h-4 w-4 md:mr-2" />
+                        <span className="hidden md:inline">Settings</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                        Open Project
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="md:h-10 md:w-auto md:px-4 md:py-2">
+                        <User className="h-4 w-4 md:mr-2" />
+                        <span className="hidden md:inline">Profile</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={signOut}>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+          {/* Mobile pages switcher - full width stripe attached to header */}
+          <div className="md:hidden border-t border-border">
+            <TabsList className="w-full h-auto rounded-none bg-muted p-0 grid grid-cols-4">
+              <TabsTrigger value="strategy" className="flex items-center justify-center gap-1.5 rounded-none py-3 text-xs">
+                <FileText className="h-3.5 w-3.5" />
+                <span>Strategy</span>
+              </TabsTrigger>
+              <TabsTrigger value="roadmap" className="flex items-center justify-center gap-1.5 rounded-none py-3 text-xs">
+                <Map className="h-3.5 w-3.5" />
+                <span>Roadmap</span>
+              </TabsTrigger>
+              <TabsTrigger value="board" className="flex items-center justify-center gap-1.5 rounded-none py-3 text-xs">
+                <Trello className="h-3.5 w-3.5" />
+                <span>Board</span>
+              </TabsTrigger>
+              <TabsTrigger value="hypotheses" className="flex items-center justify-center gap-1.5 rounded-none py-3 text-xs">
+                <Lightbulb className="h-3.5 w-3.5" />
+                <span>Hypotheses</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </header>
+        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
-      <main className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger value="strategy" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Strategy
-            </TabsTrigger>
-            <TabsTrigger value="roadmap" className="flex items-center gap-2">
-              <Map className="h-4 w-4" />
-              Roadmap
-            </TabsTrigger>
-            <TabsTrigger value="board" className="flex items-center gap-2">
-              <Trello className="h-4 w-4" />
-              Board
-            </TabsTrigger>
-            <TabsTrigger value="hypotheses" className="flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
-              Hypotheses
-            </TabsTrigger>
-          </TabsList>
+        <main className="container mx-auto px-4 py-8">
+          {/* Desktop pages switcher */}
+          <div className="hidden md:block sticky top-[77px] z-40 bg-background pb-4 mb-8">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="strategy" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Strategy
+              </TabsTrigger>
+              <TabsTrigger value="roadmap" className="flex items-center gap-2">
+                <Map className="h-4 w-4" />
+                Roadmap
+              </TabsTrigger>
+              <TabsTrigger value="board" className="flex items-center gap-2">
+                <Trello className="h-4 w-4" />
+                Board
+              </TabsTrigger>
+              <TabsTrigger value="hypotheses" className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4" />
+                Hypotheses
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="strategy">
             <StrategyPage />
@@ -100,8 +124,8 @@ const IndexContent = () => {
           <TabsContent value="hypotheses">
             <HypothesesPage />
           </TabsContent>
-        </Tabs>
-      </main>
+        </main>
+      </Tabs>
     </div>
   );
 };
