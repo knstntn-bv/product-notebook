@@ -1,12 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Trash2, Save, Plus, Check, ChevronsUpDown } from "lucide-react";
+import { Trash2, Save, ArrowUp, ArrowDown } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
 import { AutoResizeTextarea } from "@/components/AutoResizeTextarea";
@@ -61,10 +56,7 @@ const HypothesesPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editedHypotheses, setEditedHypotheses] = useState<Record<string, Partial<Hypothesis>>>({});
-  const [creatingFeature, setCreatingFeature] = useState<Partial<Feature> | null>(null);
-  const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
-  const [initiativeOpen, setInitiativeOpen] = useState(false);
-  const [trackOpen, setTrackOpen] = useState(false);
+  const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null);
 
   const statuses: { value: Status; label: string }[] = [
     { value: "new", label: "New" },
@@ -251,69 +243,32 @@ const HypothesesPage = () => {
     return !!editedHypotheses[id];
   };
 
-  const handleCreateFeature = (hypothesis: Hypothesis) => {
-    const insight = getHypothesisValue(hypothesis, "insight") as string || hypothesis.insight || "";
-    const solutionHypothesis = getHypothesisValue(hypothesis, "solution_hypothesis") as string || hypothesis.solution_hypothesis || "";
-    setCreatingFeature({
-      title: insight,
-      description: solutionHypothesis,
-      initiative_id: undefined,
-      track_id: undefined,
-      board_column: "inbox",
-    });
-    setIsFeatureDialogOpen(true);
-  };
-
-  const handleSaveFeature = () => {
-    if (creatingFeature?.title) {
-      createFeatureMutation.mutate(creatingFeature);
+  const handleStatusSort = () => {
+    if (statusSort === null) {
+      setStatusSort("asc");
+    } else if (statusSort === "asc") {
+      setStatusSort("desc");
+    } else {
+      setStatusSort(null);
     }
   };
 
-  const handleInitiativeSelect = (initiativeId: string) => {
-    const selectedInitiative = initiatives.find(i => i.id === initiativeId);
-    setCreatingFeature({
-      ...creatingFeature,
-      initiative_id: initiativeId,
-      track_id: selectedInitiative?.track_id,
-    });
-    setInitiativeOpen(false);
-  };
-
-  const handleTrackSelect = (trackId: string) => {
-    setCreatingFeature({
-      ...creatingFeature,
-      track_id: trackId,
-    });
-    setTrackOpen(false);
-  };
-
-  const getInitiativeName = (initiativeId?: string) => {
-    return initiatives.find(i => i.id === initiativeId)?.goal || "";
-  };
-
-  const getTrackName = (trackId?: string) => {
-    return tracks.find(t => t.id === trackId)?.name || "";
-  };
-
-  // Sort initiatives and tracks alphabetically for dropdowns
-  const sortedInitiatives = [...initiatives].sort((a, b) => 
-    (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" })
-  );
-  const sortedTracks = [...tracks].sort((a, b) => 
-    (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
-  );
-
-  const columns: { id: ColumnId; label: string }[] = [
-    { id: "inbox", label: "Inbox" },
-    { id: "discovery", label: "Discovery" },
-    { id: "backlog", label: "Backlog" },
-    { id: "design", label: "Design & Analysis" },
-    { id: "development", label: "Development & Testing" },
-    { id: "onHold", label: "On Hold / Blocked" },
-    { id: "done", label: "Done" },
-    { id: "cancelled", label: "Cancelled" },
-  ];
+  const sortedHypotheses = [...hypotheses].sort((a, b) => {
+    if (statusSort === null) return 0;
+    
+    const statusOrder: Record<Status, number> = {
+      new: 1,
+      inProgress: 2,
+      accepted: 3,
+      rejected: 4,
+    };
+    
+    const aStatus = getHypothesisValue(a, "status") as Status || a.status;
+    const bStatus = getHypothesisValue(b, "status") as Status || b.status;
+    
+    const comparison = statusOrder[aStatus] - statusOrder[bStatus];
+    return statusSort === "asc" ? comparison : -comparison;
+  });
 
   return (
     <div className="space-y-6">
@@ -335,10 +290,28 @@ const HypothesesPage = () => {
               <TableHead className="min-w-[150px]">Solution Validation</TableHead>
               <TableHead className="min-w-[50px]">Impact Metrics</TableHead>
               <TableHead className="min-w-[100px]">Actions</TableHead>
+              <TableHead className="min-w-[120px]">
+                <button
+                  onClick={handleStatusSort}
+                  className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                  type="button"
+                >
+                  Status
+                  {statusSort === "asc" && <ArrowUp className="h-4 w-4" />}
+                  {statusSort === "desc" && <ArrowDown className="h-4 w-4" />}
+                </button>
+              </TableHead>
+              <TableHead className="min-w-[200px]">Insight</TableHead>
+              <TableHead className="min-w-[200px]">Problem Hypothesis</TableHead>
+              <TableHead className="min-w-[200px]">Problem Validation</TableHead>
+              <TableHead className="min-w-[200px]">Solution Hypothesis</TableHead>
+              <TableHead className="min-w-[200px]">Solution Validation</TableHead>
+              <TableHead className="min-w-[200px]">Impact Metrics</TableHead>
+              <TableHead className="w-[150px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {hypotheses.map((hypothesis) => (
+            {sortedHypotheses.map((hypothesis) => (
               <TableRow key={hypothesis.id}>
                 <TableCell>
                   <Select
