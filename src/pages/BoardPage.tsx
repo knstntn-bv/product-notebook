@@ -17,7 +17,7 @@ import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, PointerSensor, closestCenter, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, PointerSensor, TouchSensor, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -62,6 +62,12 @@ const BoardPage = () => {
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: isReadOnly ? 999999 : 8, // Effectively disable drag in read-only mode
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: isReadOnly ? 999999 : 250, // 250ms delay for touch to distinguish from scroll
+        distance: 8, // Allow 8px movement before activation
       },
     })
   );
@@ -684,7 +690,7 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
   return (
     <Card
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, touchAction: 'none' }}
       {...attributes}
       {...listeners}
       className={cn(
