@@ -65,8 +65,8 @@ const BoardPage = () => {
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: isReadOnly ? 999999 : 250, // 250ms delay for touch to distinguish from scroll
-        distance: 8, // Allow 8px movement before activation
+        delay: isReadOnly ? 999999 : 500, // 500ms hold delay for touch to distinguish from scroll
+        tolerance: 5, // Allow 5px movement during hold
       },
     })
   );
@@ -651,8 +651,8 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
   });
 
   return (
-    <div className="flex flex-col w-[90vw] md:w-80 flex-shrink-0 snap-center snap-always h-[calc(90vh-10rem)] mb-6">
-      <div className="bg-muted p-4 rounded-t-lg border border-border">
+    <div className="flex flex-col w-[90vw] md:w-80 flex-shrink-0 snap-center snap-always h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] mb-6">
+      <div className="bg-muted p-4 rounded-t-lg border border-border flex-shrink-0">
         <div className="flex justify-between items-center">
           <h3 className="font-semibold text-sm">{column.label}</h3>
             <Button
@@ -668,9 +668,10 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
       <div
         ref={setNodeRef}
         className={cn(
-          "bg-card border-x border-b border-border rounded-b-lg p-4 flex-1 min-h-0 overflow-y-auto space-y-2 transition-colors",
+          "bg-card border-x border-b border-border rounded-b-lg p-4 flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 transition-colors",
           isOver && "bg-muted/50"
         )}
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {children}
       </div>
@@ -699,11 +700,11 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
   return (
     <Card
       ref={setNodeRef}
-      style={{ ...style, touchAction: 'none' }}
+      style={style}
       {...attributes}
       {...listeners}
       className={cn(
-        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden",
+        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none",
         isDragging && "opacity-50 z-50"
       )}
       onClick={onClick}
