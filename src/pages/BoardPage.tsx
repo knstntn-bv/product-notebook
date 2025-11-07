@@ -433,8 +433,8 @@ const BoardPage = () => {
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
-        <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default -mx-4 md:mx-0">
-          <div className="flex gap-4 pb-4 pl-[5vw] pr-[5vw] md:pl-4 md:pr-4">
+        <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default -mx-4 md:mx-0 scroll-smooth">
+          <div className="flex gap-4 pb-4 px-[7.5vw] md:pl-4 md:pr-4">
             {columns.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
@@ -654,7 +654,7 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
   });
 
   return (
-    <div className="flex flex-col w-[90vw] md:w-80 flex-shrink-0 snap-center snap-always h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] mb-6">
+    <div className="flex flex-col w-[85vw] md:w-80 flex-shrink-0 snap-center snap-always h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)] mb-6">
       <div className="bg-muted p-4 rounded-t-lg border border-border flex-shrink-0">
         <div className="flex justify-between items-center">
           <h3 className="font-semibold text-sm">{column.label}</h3>
