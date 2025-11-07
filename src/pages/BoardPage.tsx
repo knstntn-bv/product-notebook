@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, PointerSensor, TouchSensor, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
 
@@ -57,16 +58,18 @@ const BoardPage = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
+  const isMobile = useIsMobile();
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: isReadOnly ? 999999 : 8, // Effectively disable drag in read-only mode
+        distance: isReadOnly || isMobile ? 999999 : 8,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: isReadOnly ? 999999 : 500, // 500ms hold delay for touch to distinguish from scroll
-        tolerance: 5, // Allow 5px movement during hold
+        delay: isReadOnly ? 999999 : 500,
+        tolerance: 5,
       },
     })
   );
@@ -695,7 +698,7 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    touchAction: 'pan-y', // Allow vertical scrolling while enabling horizontal drag after hold
+    touchAction: 'auto',
   };
 
   return (
@@ -705,7 +708,7 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
       {...attributes}
       {...listeners}
       className={cn(
-        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none touch-pan-y",
+        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none",
         isDragging && "opacity-50 z-50"
       )}
       onClick={onClick}
