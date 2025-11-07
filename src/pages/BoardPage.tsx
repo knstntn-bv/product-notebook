@@ -695,6 +695,7 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    touchAction: 'pan-y', // Allow vertical scrolling while enabling horizontal drag after hold
   };
 
   return (
@@ -704,7 +705,7 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
       {...attributes}
       {...listeners}
       className={cn(
-        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none",
+        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none touch-pan-y",
         isDragging && "opacity-50 z-50"
       )}
       onClick={onClick}
