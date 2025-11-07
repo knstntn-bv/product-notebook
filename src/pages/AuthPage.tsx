@@ -11,7 +11,7 @@ import { z } from "zod";
 
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email must be less than 255 characters"),
-  password: z.string().min(10, "Password must be at least 10 characters").max(128, "Password must be less than 128 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be less than 128 characters"),
 });
 
 const AuthPage = () => {
@@ -161,15 +161,15 @@ const AuthPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password (min 10 characters)</Label>
+                  <Label htmlFor="signup-password">Password (min 8 characters)</Label>
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="••••••••••"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={10}
+                    minLength={8}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
