@@ -117,7 +117,7 @@ const IndexContent = () => {
             <RoadmapPage />
           </TabsContent>
 
-          <TabsContent value="board">
+          <TabsContent value="board" className="mt-0 -mx-4 -my-8 md:-my-8 h-[calc(100vh-9.5rem)] md:h-[calc(100vh-12.5rem)]">
             <BoardPage />
           </TabsContent>
 
