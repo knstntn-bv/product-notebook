@@ -5,9 +5,6 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Default to "/" for local development
-  // For GitHub Pages, use BASE_PATH=/product-notebook/ npm run build:gh-pages
-  base: process.env.BASE_PATH || "/",
   server: {
     host: "::",
     port: 8080,
