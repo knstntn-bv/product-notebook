@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const StrategyPage = () => {
-  const { metrics, tracks, refetchMetrics, refetchTracks, isReadOnly, sharedUserId } = useProduct();
+  const { metrics, initiatives, refetchMetrics, refetchInitiatives, isReadOnly, sharedUserId } = useProduct();
   const { user } = useAuth();
   const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
@@ -27,7 +27,7 @@ const StrategyPage = () => {
   const [editingValueIndex, setEditingValueIndex] = useState<number | null>(null);
   const [editingValueText, setEditingValueText] = useState("");
   const [editingMetrics, setEditingMetrics] = useState<Record<string, { name: string; parent_metric_id: string | null }>>({});
-  const [editingTracks, setEditingTracks] = useState<Record<string, { name: string; description: string; color: string }>>({});
+  const [editingInitiatives, setEditingInitiatives] = useState<Record<string, { name: string; description: string; color: string }>>({});
 
   // Fetch product formula
   const { data: formulaData } = useQuery({
@@ -159,19 +159,19 @@ const StrategyPage = () => {
     onSuccess: () => refetchMetrics(),
   });
 
-  // Track mutations
-  const addTrackMutation = useMutation({
+  // Initiative mutations
+  const addInitiativeMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("No user");
       const { error } = await supabase
-        .from("tracks")
+        .from("initiatives")
         .insert({ user_id: user.id, name: "", description: "" });
       if (error) throw error;
     },
-    onSuccess: () => refetchTracks(),
+    onSuccess: () => refetchInitiatives(),
   });
 
-  const updateTrackMutation = useMutation({
+  const updateInitiativeMutation = useMutation({
     mutationFn: async ({ id, name, description, color }: { id: string; name?: string; description?: string; color?: string }) => {
       const updates: any = {};
       if (name !== undefined) updates.name = name;
@@ -179,20 +179,20 @@ const StrategyPage = () => {
       if (color !== undefined) updates.color = color;
       
       const { error } = await supabase
-        .from("tracks")
+        .from("initiatives")
         .update(updates)
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => refetchTracks(),
+    onSuccess: () => refetchInitiatives(),
   });
 
-  const deleteTrackMutation = useMutation({
+  const deleteInitiativeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("tracks").delete().eq("id", id);
+      const { error } = await supabase.from("initiatives").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => refetchTracks(),
+    onSuccess: () => refetchInitiatives(),
   });
 
   return (
@@ -390,55 +390,55 @@ const StrategyPage = () => {
 
       <div className="border-b border-border" />
 
-      {/* Tracks Table */}
+      {/* Initiatives Table */}
       <div className="py-8">
         <SectionHeader 
-          title="Tracks" 
-          description="Define your product tracks"
-          onAdd={!isReadOnly ? () => addTrackMutation.mutate() : undefined}
-          addLabel="Add Track"
+          title="Initiatives" 
+          description="Define your product initiatives"
+          onAdd={!isReadOnly ? () => addInitiativeMutation.mutate() : undefined}
+          addLabel="Add Initiative"
         />
         <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Track</TableHead>
+                <TableHead>Initiative</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Color</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tracks.map((track) => {
-                const editing = editingTracks[track.id] || { name: track.name, description: track.description, color: track.color || "#8B5CF6" };
-                const hasChanges = editing.name !== track.name || editing.description !== track.description || editing.color !== (track.color || "#8B5CF6");
+              {initiatives.map((initiative) => {
+                const editing = editingInitiatives[initiative.id] || { name: initiative.name, description: initiative.description, color: initiative.color || "#8B5CF6" };
+                const hasChanges = editing.name !== initiative.name || editing.description !== initiative.description || editing.color !== (initiative.color || "#8B5CF6");
                 
                 return (
-                  <TableRow key={track.id}>
+                  <TableRow key={initiative.id}>
                     <TableCell>
                       {isReadOnly ? (
-                        <span className="text-foreground">{track.name || "Unnamed Track"}</span>
+                        <span className="text-foreground">{initiative.name || "Unnamed Initiative"}</span>
                       ) : (
                         <InlineEditInput
                           value={editing.name}
-                          onChange={(value) => setEditingTracks(prev => ({
+                          onChange={(value) => setEditingInitiatives(prev => ({
                             ...prev,
-                            [track.id]: { ...editing, name: value }
+                            [initiative.id]: { ...editing, name: value }
                           }))}
                           maxLength={100}
-                          placeholder="Enter track name..."
+                          placeholder="Enter initiative name..."
                         />
                       )}
                     </TableCell>
                     <TableCell>
                       {isReadOnly ? (
-                        <span className="text-foreground whitespace-pre-line">{track.description}</span>
+                        <span className="text-foreground whitespace-pre-line">{initiative.description}</span>
                       ) : (
                         <div className="flex items-center">
                           <AutoResizeTextarea
                             value={editing.description}
-                            onChange={(v) => setEditingTracks(prev => ({
+                            onChange={(v) => setEditingInitiatives(prev => ({
                               ...prev,
-                              [track.id]: { ...editing, description: v }
+                              [initiative.id]: { ...editing, description: v }
                             }))}
                             placeholder="Enter description..."
                           />
@@ -447,13 +447,13 @@ const StrategyPage = () => {
                     </TableCell>
                     <TableCell>
                       {isReadOnly ? (
-                        <div className="w-6 h-6 rounded border" style={{ backgroundColor: track.color || "#8B5CF6" }} />
+                        <div className="w-6 h-6 rounded border" style={{ backgroundColor: initiative.color || "#8B5CF6" }} />
                       ) : (
                         <ColorPicker
                           value={editing.color}
-                          onChange={(color) => setEditingTracks(prev => ({
+                          onChange={(color) => setEditingInitiatives(prev => ({
                             ...prev,
-                            [track.id]: { ...editing, color }
+                            [initiative.id]: { ...editing, color }
                           }))}
                         />
                       )}
@@ -465,15 +465,15 @@ const StrategyPage = () => {
                             <Button 
                               size="sm" 
                               onClick={() => {
-                                updateTrackMutation.mutate({ 
-                                  id: track.id, 
+                                updateInitiativeMutation.mutate({ 
+                                  id: initiative.id, 
                                   name: editing.name,
                                   description: editing.description,
                                   color: editing.color
                                 });
-                                setEditingTracks(prev => {
+                                setEditingInitiatives(prev => {
                                   const newState = { ...prev };
-                                  delete newState[track.id];
+                                  delete newState[initiative.id];
                                   return newState;
                                 });
                               }}
@@ -481,7 +481,7 @@ const StrategyPage = () => {
                               Save
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" onClick={() => deleteTrackMutation.mutate(track.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => deleteInitiativeMutation.mutate(initiative.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
