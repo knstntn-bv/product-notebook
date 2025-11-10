@@ -27,19 +27,19 @@ interface Feature {
   id: string;
   title: string;
   description: string;
+  goal_id?: string;
   initiative_id?: string;
-  track_id?: string;
   board_column: ColumnId;
   position: number;
 }
 
-interface Initiative {
+interface Goal {
   id: string;
   goal: string;
-  track_id: string;
+  initiative_id: string;
 }
 
-interface Track {
+interface Initiative {
   id: string;
   name: string;
   color?: string;
@@ -53,8 +53,8 @@ const BoardPage = () => {
   const queryClient = useQueryClient();
   const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
   const [initiativeOpen, setInitiativeOpen] = useState(false);
-  const [trackOpen, setTrackOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
@@ -101,13 +101,13 @@ const BoardPage = () => {
     enabled: !!effectiveUserId,
   });
 
-  // Fetch initiatives
-  const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", effectiveUserId],
+  // Fetch goals
+  const { data: goals = [] } = useQuery({
+    queryKey: ["goals", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
-        .from("initiatives")
+        .from("goals")
         .select("*")
         .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
@@ -117,13 +117,13 @@ const BoardPage = () => {
     enabled: !!effectiveUserId,
   });
 
-  // Fetch tracks
-  const { data: tracks = [] } = useQuery({
-    queryKey: ["tracks", effectiveUserId],
+  // Fetch initiatives
+  const { data: initiatives = [] } = useQuery({
+    queryKey: ["initiatives", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
-        .from("tracks")
+        .from("initiatives")
         .select("*")
         .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
@@ -144,8 +144,8 @@ const BoardPage = () => {
           .update({
             title: feature.title,
             description: feature.description,
+            goal_id: feature.goal_id,
             initiative_id: feature.initiative_id,
-            track_id: feature.track_id,
             board_column: feature.board_column,
             position: feature.position,
           })
@@ -164,8 +164,8 @@ const BoardPage = () => {
             user_id: user.id,
             title: feature.title!,
             description: feature.description || "",
+            goal_id: feature.goal_id,
             initiative_id: feature.initiative_id,
-            track_id: feature.track_id,
             board_column: feature.board_column!,
             position: maxPosition + 1,
           });
@@ -271,34 +271,34 @@ const BoardPage = () => {
     }
   };
 
+  const handleGoalSelect = (goalId: string) => {
+    const selectedGoal = goals.find(i => i.id === goalId);
+    setEditingFeature({
+      ...editingFeature,
+      goal_id: goalId,
+      initiative_id: selectedGoal?.initiative_id,
+    });
+    setGoalOpen(false);
+  };
+
   const handleInitiativeSelect = (initiativeId: string) => {
-    const selectedInitiative = initiatives.find(i => i.id === initiativeId);
     setEditingFeature({
       ...editingFeature,
       initiative_id: initiativeId,
-      track_id: selectedInitiative?.track_id,
     });
     setInitiativeOpen(false);
   };
 
-  const handleTrackSelect = (trackId: string) => {
-    setEditingFeature({
-      ...editingFeature,
-      track_id: trackId,
-    });
-    setTrackOpen(false);
+  const getGoalName = (goalId?: string) => {
+    return goals.find(i => i.id === goalId)?.goal || "";
   };
 
   const getInitiativeName = (initiativeId?: string) => {
-    return initiatives.find(i => i.id === initiativeId)?.goal || "";
+    return initiatives.find(i => i.id === initiativeId)?.name || "";
   };
 
-  const getTrackName = (trackId?: string) => {
-    return tracks.find(t => t.id === trackId)?.name || "";
-  };
-
-  const getTrackColor = (trackId?: string) => {
-    return tracks.find(t => t.id === trackId)?.color || "#8B5CF6";
+  const getInitiativeColor = (initiativeId?: string) => {
+    return initiatives.find(i => i.id === initiativeId)?.color || "#8B5CF6";
   };
 
   const getFeaturesForColumn = (columnId: ColumnId) => {
@@ -405,11 +405,11 @@ const BoardPage = () => {
 
   const activeFeature = activeId ? features.find(f => f.id === activeId) : null;
 
-  // Sort initiatives and tracks alphabetically for dropdowns
-  const sortedInitiatives = [...initiatives].sort((a, b) => 
+  // Sort goals and initiatives alphabetically for dropdowns
+  const sortedGoals = [...goals].sort((a, b) => 
     (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" })
   );
-  const sortedTracks = [...tracks].sort((a, b) => 
+  const sortedInitiatives = [...initiatives].sort((a, b) => 
     (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
   );
 
@@ -444,8 +444,8 @@ const BoardPage = () => {
                       <SortableFeature
                         key={feature.id}
                         feature={feature as Feature}
-                        initiativeName={getInitiativeName(feature.initiative_id)}
-                        trackColor={getTrackColor(feature.track_id)}
+                        goalName={getGoalName(feature.goal_id)}
+                        initiativeColor={getInitiativeColor(feature.initiative_id)}
                         onClick={() => {
                           if (!isReadOnly) {
                             setEditingFeature(feature as Feature);
@@ -466,16 +466,16 @@ const BoardPage = () => {
       <DragOverlay>
         {activeFeature ? (
           <Card className="w-80 opacity-90 shadow-lg rotate-3 relative overflow-hidden">
-            {activeFeature.track_id && (
+            {activeFeature.initiative_id && (
               <div 
                 className="absolute left-0 top-0 bottom-0 w-1" 
-                style={{ backgroundColor: getTrackColor(activeFeature.track_id) }}
+                style={{ backgroundColor: getInitiativeColor(activeFeature.initiative_id) }}
               />
             )}
             <CardContent className="p-3 pl-4">
               <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{activeFeature.title}</p>
-              {activeFeature.initiative_id && (
-                <p className="text-xs text-muted-foreground break-words whitespace-normal">{getInitiativeName(activeFeature.initiative_id)}</p>
+              {activeFeature.goal_id && (
+                <p className="text-xs text-muted-foreground break-words whitespace-normal">{getGoalName(activeFeature.goal_id)}</p>
               )}
             </CardContent>
           </Card>
@@ -512,6 +512,49 @@ const BoardPage = () => {
               />
             </div>
             <div>
+              <Label>Linked Goal</Label>
+              <Popover open={goalOpen} onOpenChange={setGoalOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={goalOpen}
+                    className="w-full justify-between"
+                  >
+                    {editingFeature.goal_id
+                      ? getGoalName(editingFeature.goal_id)
+                      : "Select goal..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search goals..." />
+                    <CommandList>
+                      <CommandEmpty>No goal found.</CommandEmpty>
+                      <CommandGroup>
+                        {sortedGoals.map((goal) => (
+                          <CommandItem
+                            key={goal.id}
+                            value={goal.goal}
+                            onSelect={() => handleGoalSelect(goal.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                editingFeature.goal_id === goal.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {goal.goal}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
               <Label>Linked Initiative</Label>
               <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
                 <PopoverTrigger asChild>
@@ -536,7 +579,7 @@ const BoardPage = () => {
                         {sortedInitiatives.map((initiative) => (
                           <CommandItem
                             key={initiative.id}
-                            value={initiative.goal}
+                            value={initiative.name}
                             onSelect={() => handleInitiativeSelect(initiative.id)}
                           >
                             <Check
@@ -545,50 +588,7 @@ const BoardPage = () => {
                                 editingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {initiative.goal}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div>
-              <Label>Linked Track</Label>
-              <Popover open={trackOpen} onOpenChange={setTrackOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={trackOpen}
-                    className="w-full justify-between"
-                  >
-                    {editingFeature.track_id
-                      ? getTrackName(editingFeature.track_id)
-                      : "Select track..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search tracks..." />
-                    <CommandList>
-                      <CommandEmpty>No track found.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedTracks.map((track) => (
-                          <CommandItem
-                            key={track.id}
-                            value={track.name}
-                            onSelect={() => handleTrackSelect(track.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                editingFeature.track_id === track.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {track.name}
+                            {initiative.name}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -684,12 +684,12 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
 
 interface SortableFeatureProps {
   feature: Feature;
-  initiativeName: string;
-  trackColor: string;
+  goalName: string;
+  initiativeColor: string;
   onClick: () => void;
 }
 
-const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: SortableFeatureProps) => {
+const SortableFeature = ({ feature, goalName, initiativeColor, onClick }: SortableFeatureProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: feature.id,
   });
@@ -713,16 +713,16 @@ const SortableFeature = ({ feature, initiativeName, trackColor, onClick }: Sorta
       )}
       onClick={onClick}
     >
-      {feature.track_id && (
+      {feature.initiative_id && (
         <div 
           className="absolute left-0 top-0 bottom-0 w-1" 
-          style={{ backgroundColor: trackColor }}
+          style={{ backgroundColor: initiativeColor }}
         />
       )}
       <CardContent className="p-3 pl-4">
         <p className="font-medium text-sm mb-1 break-words whitespace-normal hyphens-auto">{feature.title}</p>
-        {initiativeName && (
-          <p className="text-xs text-muted-foreground break-words whitespace-normal">{initiativeName}</p>
+        {goalName && (
+          <p className="text-xs text-muted-foreground break-words whitespace-normal">{goalName}</p>
         )}
       </CardContent>
     </Card>

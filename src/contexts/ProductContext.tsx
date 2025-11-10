@@ -10,7 +10,7 @@ interface Metric {
   parent_metric_id?: string;
 }
 
-interface Track {
+interface Initiative {
   id: string;
   name: string;
   description: string;
@@ -19,10 +19,10 @@ interface Track {
 
 interface ProductContextType {
   metrics: Metric[];
-  tracks: Track[];
+  initiatives: Initiative[];
   isLoading: boolean;
   refetchMetrics: () => void;
-  refetchTracks: () => void;
+  refetchInitiatives: () => void;
   isReadOnly: boolean;
   sharedUserId: string | null;
 }
@@ -76,12 +76,12 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     enabled: !!effectiveUserId,
   });
 
-  const { data: tracks = [], isLoading: tracksLoading, refetch: refetchTracks } = useQuery({
-    queryKey: ["tracks", effectiveUserId],
+  const { data: initiatives = [], isLoading: initiativesLoading, refetch: refetchInitiatives } = useQuery({
+    queryKey: ["initiatives", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
-        .from("tracks")
+        .from("initiatives")
         .select("*")
         .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
@@ -95,10 +95,10 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     <ProductContext.Provider 
       value={{ 
         metrics, 
-        tracks, 
-        isLoading: metricsLoading || tracksLoading,
+        initiatives, 
+        isLoading: metricsLoading || initiativesLoading,
         refetchMetrics,
-        refetchTracks,
+        refetchInitiatives,
         isReadOnly,
         sharedUserId
       }}

@@ -20,10 +20,10 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          goal_id: string | null
           initiative_id: string | null
           position: number
           title: string
-          track_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -32,10 +32,10 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          goal_id?: string | null
           initiative_id?: string | null
           position?: number
           title: string
-          track_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -44,26 +44,26 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          goal_id?: string | null
           initiative_id?: string | null
           position?: number
           title?: string
-          track_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "features_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "features_initiative_id_fkey"
             columns: ["initiative_id"]
             isOneToOne: false
             referencedRelation: "initiatives"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "features_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "tracks"
             referencedColumns: ["id"]
           },
         ]
@@ -110,7 +110,7 @@ export type Database = {
         }
         Relationships: []
       }
-      initiatives: {
+      goals: {
         Row: {
           achieved_result: string | null
           created_at: string | null
@@ -119,8 +119,8 @@ export type Database = {
           goal: string
           id: string
           quarter: string
+          initiative_id: string
           target_metrics: string[] | null
-          track_id: string
           updated_at: string | null
           user_id: string
         }
@@ -131,9 +131,9 @@ export type Database = {
           expected_result?: string | null
           goal: string
           id?: string
+          initiative_id: string
           quarter: string
           target_metrics?: string[] | null
-          track_id: string
           updated_at?: string | null
           user_id: string
         }
@@ -144,18 +144,18 @@ export type Database = {
           expected_result?: string | null
           goal?: string
           id?: string
+          initiative_id?: string
           quarter?: string
           target_metrics?: string[] | null
-          track_id?: string
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "epics_track_id_fkey"
-            columns: ["track_id"]
+            foreignKeyName: "goals_initiative_id_fkey"
+            columns: ["initiative_id"]
             isOneToOne: false
-            referencedRelation: "tracks"
+            referencedRelation: "initiatives"
             referencedColumns: ["id"]
           },
         ]
@@ -246,7 +246,7 @@ export type Database = {
         }
         Relationships: []
       }
-      tracks: {
+      initiatives: {
         Row: {
           color: string | null
           created_at: string | null

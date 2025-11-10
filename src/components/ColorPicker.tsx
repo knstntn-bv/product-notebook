@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const TRACK_COLORS: { value: string; label: string }[] = [
+const INITIATIVE_COLORS: { value: string; label: string }[] = [
   { value: "#EF4444", label: "Red" },
   { value: "#F97316", label: "Orange" },
   { value: "#F59E0B", label: "Amber" },
@@ -20,7 +20,7 @@ interface ColorPickerProps {
 }
 
 export const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
-  const current = TRACK_COLORS.find((c) => c.value === value) || TRACK_COLORS[0];
+  const current = INITIATIVE_COLORS.find((c) => c.value === value) || INITIATIVE_COLORS[0];
 
   return (
     <Select value={current.value} onValueChange={(val) => onChange(val)}>
@@ -28,7 +28,7 @@ export const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
         <SelectValue placeholder="Select color" />
       </SelectTrigger>
       <SelectContent>
-        {TRACK_COLORS.map((c) => (
+        {INITIATIVE_COLORS.map((c) => (
           <SelectItem key={c.value} value={c.value}>
             <div className="flex items-center gap-2">
               <span className="inline-block h-3.5 w-3.5 rounded" style={{ backgroundColor: c.value }} />

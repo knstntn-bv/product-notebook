@@ -21,24 +21,24 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 
-interface Initiative {
+interface Goal {
   id: string;
   goal: string;
   expected_result: string;
   achieved_result: string;
   done: boolean;
   target_metrics: string[];
-  track_id: string;
+  initiative_id: string;
   quarter: "current" | "next" | "halfYear";
 }
 
 const RoadmapPage = () => {
-  const { tracks, metrics, isReadOnly, sharedUserId } = useProduct();
+  const { initiatives, metrics, isReadOnly, sharedUserId } = useProduct();
   const { user } = useAuth();
   const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [editingInitiative, setEditingInitiative] = useState<Partial<Initiative> | null>(null);
+  const [editingGoal, setEditingGoal] = useState<Partial<Goal> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -57,13 +57,13 @@ const RoadmapPage = () => {
     { id: "halfYear", label: "Next Half-Year" },
   ];
 
-  // Fetch initiatives
-  const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", effectiveUserId],
+  // Fetch goals
+  const { data: goals = [] } = useQuery({
+    queryKey: ["goals", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
-        .from("initiatives")
+        .from("goals")
         .select("*")
         .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
@@ -73,136 +73,136 @@ const RoadmapPage = () => {
     enabled: !!effectiveUserId,
   });
 
-  // Save initiative mutation
-  const saveInitiativeMutation = useMutation({
-    mutationFn: async (initiative: Partial<Initiative>) => {
+  // Save goal mutation
+  const saveGoalMutation = useMutation({
+    mutationFn: async (goal: Partial<Goal>) => {
       if (!user) throw new Error("No user");
       
-      if (initiative.id) {
+      if (goal.id) {
         const { error } = await supabase
-          .from("initiatives")
+          .from("goals")
           .update({
-            goal: initiative.goal,
-            expected_result: initiative.expected_result,
-            achieved_result: initiative.achieved_result,
-            done: initiative.done,
-            target_metrics: initiative.target_metrics,
-            quarter: initiative.quarter,
+            goal: goal.goal,
+            expected_result: goal.expected_result,
+            achieved_result: goal.achieved_result,
+            done: goal.done,
+            target_metrics: goal.target_metrics,
+            quarter: goal.quarter,
           })
-          .eq("id", initiative.id);
+          .eq("id", goal.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("initiatives")
+          .from("goals")
           .insert({
             user_id: user.id,
-            track_id: initiative.track_id!,
-            goal: initiative.goal!,
-            expected_result: initiative.expected_result || "",
-            achieved_result: initiative.achieved_result || "",
-            done: initiative.done || false,
-            target_metrics: initiative.target_metrics || [],
-            quarter: initiative.quarter!,
+            initiative_id: goal.initiative_id!,
+            goal: goal.goal!,
+            expected_result: goal.expected_result || "",
+            achieved_result: goal.achieved_result || "",
+            done: goal.done || false,
+            target_metrics: goal.target_metrics || [],
+            quarter: goal.quarter!,
           });
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["initiatives"] });
-      setEditingInitiative(null);
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      setEditingGoal(null);
       setIsDialogOpen(false);
-      toast({ title: "Initiative saved successfully" });
+      toast({ title: "Goal saved successfully" });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  // Delete initiative mutation
-  const deleteInitiativeMutation = useMutation({
-    mutationFn: async (initiativeId: string) => {
+  // Delete goal mutation
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: string) => {
       if (!user) throw new Error("No user");
       const { error } = await supabase
-        .from("initiatives")
+        .from("goals")
         .delete()
-        .eq("id", initiativeId);
+        .eq("id", goalId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["initiatives"] });
-      setEditingInitiative(null);
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      setEditingGoal(null);
       setIsDialogOpen(false);
       setDeleteAlertOpen(false);
-      toast({ title: "Initiative deleted successfully" });
+      toast({ title: "Goal deleted successfully" });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  // Move initiative mutation (for drag and drop) with optimistic updates
-  const moveInitiativeMutation = useMutation({
-    mutationFn: async ({ id, track_id, quarter }: { id: string; track_id: string; quarter: "current" | "next" | "halfYear" }) => {
+  // Move goal mutation (for drag and drop) with optimistic updates
+  const moveGoalMutation = useMutation({
+    mutationFn: async ({ id, initiative_id, quarter }: { id: string; initiative_id: string; quarter: "current" | "next" | "halfYear" }) => {
       const { error } = await supabase
-        .from("initiatives")
-        .update({ track_id, quarter })
+        .from("goals")
+        .update({ initiative_id, quarter })
         .eq("id", id);
       if (error) throw error;
     },
-    onMutate: async ({ id, track_id, quarter }) => {
+    onMutate: async ({ id, initiative_id, quarter }) => {
       // Cancel any outgoing refetches to avoid overwriting optimistic update
-      await queryClient.cancelQueries({ queryKey: ["initiatives", effectiveUserId] });
+      await queryClient.cancelQueries({ queryKey: ["goals", effectiveUserId] });
 
       // Snapshot the previous value
-      const previousInitiatives = queryClient.getQueryData<Initiative[]>(["initiatives", effectiveUserId]);
+      const previousGoals = queryClient.getQueryData<Goal[]>(["goals", effectiveUserId]);
 
       // Optimistically update to the new value
-      if (previousInitiatives) {
-        const updatedInitiatives = previousInitiatives.map(initiative =>
-          initiative.id === id
-            ? { ...initiative, track_id, quarter }
-            : initiative
+      if (previousGoals) {
+        const updatedGoals = previousGoals.map(goal =>
+          goal.id === id
+            ? { ...goal, initiative_id, quarter }
+            : goal
         );
-        queryClient.setQueryData<Initiative[]>(["initiatives", effectiveUserId], updatedInitiatives);
+        queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], updatedGoals);
       }
 
       // Return context with the snapshotted value
-      return { previousInitiatives };
+      return { previousGoals };
     },
     onError: (error: any, variables, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousInitiatives) {
-        queryClient.setQueryData<Initiative[]>(["initiatives", effectiveUserId], context.previousInitiatives);
+      if (context?.previousGoals) {
+        queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], context.previousGoals);
       }
-      toast({ title: "Error moving initiative", description: error.message, variant: "destructive" });
+      toast({ title: "Error moving goal", description: error.message, variant: "destructive" });
     },
     onSettled: () => {
       // Always refetch after error or success to ensure we have the latest data from server
-      queryClient.invalidateQueries({ queryKey: ["initiatives", effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ["goals", effectiveUserId] });
     },
   });
 
-  const createInitiative = (trackId: string, quarter: "current" | "next" | "halfYear") => {
-    setEditingInitiative({
+  const createGoal = (initiativeId: string, quarter: "current" | "next" | "halfYear") => {
+    setEditingGoal({
       goal: "",
       expected_result: "",
       achieved_result: "",
       done: false,
       target_metrics: [],
-      track_id: trackId,
+      initiative_id: initiativeId,
       quarter,
     });
     setIsDialogOpen(true);
   };
 
-  const saveInitiative = () => {
-    if (editingInitiative?.goal) {
-      saveInitiativeMutation.mutate(editingInitiative);
+  const saveGoal = () => {
+    if (editingGoal?.goal) {
+      saveGoalMutation.mutate(editingGoal);
     }
   };
 
-  const getInitiativesForCell = (trackId: string, quarter: "current" | "next" | "halfYear") => {
-    return initiatives.filter(i => i.track_id === trackId && i.quarter === quarter);
+  const getGoalsForCell = (initiativeId: string, quarter: "current" | "next" | "halfYear") => {
+    return goals.filter(i => i.initiative_id === initiativeId && i.quarter === quarter);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -218,42 +218,42 @@ const RoadmapPage = () => {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    let targetTrackId: string | null = null;
+    let targetInitiativeId: string | null = null;
     let targetQuarter: "current" | "next" | "halfYear" | null = null;
 
     // Case 1: Dropped directly on a cell
     if (overId.startsWith("cell-")) {
       const parts = overId.substring(5).split("-"); // Remove "cell-" prefix
       targetQuarter = parts[parts.length - 1] as "current" | "next" | "halfYear";
-      targetTrackId = parts.slice(0, -1).join("-"); // Everything except the last part
+      targetInitiativeId = parts.slice(0, -1).join("-"); // Everything except the last part
     }
     // Case 2: Dropped on another card - find which cell that card belongs to
     else {
-      const targetInitiative = initiatives.find(i => i.id === overId);
-      if (targetInitiative) {
-        targetTrackId = targetInitiative.track_id;
-        targetQuarter = targetInitiative.quarter as "current" | "next" | "halfYear";
+      const targetGoal = goals.find(i => i.id === overId);
+      if (targetGoal) {
+        targetInitiativeId = targetGoal.initiative_id;
+        targetQuarter = targetGoal.quarter as "current" | "next" | "halfYear";
       }
     }
 
-    // If we found a valid target cell, move the initiative
-    if (targetTrackId && targetQuarter) {
-      const activeInitiative = initiatives.find(i => i.id === activeId);
+    // If we found a valid target cell, move the goal
+    if (targetInitiativeId && targetQuarter) {
+      const activeGoal = goals.find(i => i.id === activeId);
       
-      if (activeInitiative && (activeInitiative.track_id !== targetTrackId || activeInitiative.quarter !== targetQuarter)) {
-        moveInitiativeMutation.mutate({
+      if (activeGoal && (activeGoal.initiative_id !== targetInitiativeId || activeGoal.quarter !== targetQuarter)) {
+        moveGoalMutation.mutate({
           id: activeId,
-          track_id: targetTrackId,
+          initiative_id: targetInitiativeId,
           quarter: targetQuarter,
         });
       }
     }
   };
 
-  const activeInitiative = activeId ? initiatives.find(i => i.id === activeId) : null;
+  const activeGoal = activeId ? goals.find(i => i.id === activeId) : null;
 
-  // Draggable Initiative Card Component
-  const DraggableInitiativeCard = ({ initiative }: { initiative: Initiative }) => {
+  // Draggable Goal Card Component
+  const DraggableGoalCard = ({ goal }: { goal: Goal }) => {
     const {
       attributes,
       listeners,
@@ -261,7 +261,7 @@ const RoadmapPage = () => {
       transform,
       transition,
       isDragging,
-    } = useSortable({ id: initiative.id, disabled: isReadOnly });
+    } = useSortable({ id: goal.id, disabled: isReadOnly });
 
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -279,7 +279,7 @@ const RoadmapPage = () => {
           onClick={(e) => {
             if (!isReadOnly && !isDragging) {
               e.stopPropagation();
-              setEditingInitiative(initiative);
+              setEditingGoal(goal);
               setIsDialogOpen(true);
             }
           }}
@@ -287,16 +287,16 @@ const RoadmapPage = () => {
           <CardContent className="p-3">
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-bold">{initiative.goal || "Untitled Initiative"}</p>
-                {initiative.done && (
+                <p className="text-sm font-bold">{goal.goal || "Untitled Goal"}</p>
+                {goal.done && (
                   <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
                 )}
               </div>
-              {initiative.expected_result && (
-                <div className="text-xs whitespace-pre-line">{initiative.expected_result}</div>
+              {goal.expected_result && (
+                <div className="text-xs whitespace-pre-line">{goal.expected_result}</div>
               )}
-              {initiative.achieved_result && (
-                <div className="text-xs whitespace-pre-line">{initiative.achieved_result}</div>
+              {goal.achieved_result && (
+                <div className="text-xs whitespace-pre-line">{goal.achieved_result}</div>
               )}
             </div>
           </CardContent>
@@ -307,16 +307,16 @@ const RoadmapPage = () => {
 
   // Droppable Cell Component
   const DroppableCell = ({ 
-    trackId, 
+    initiativeId, 
     quarter, 
     children 
   }: { 
-    trackId: string; 
+    initiativeId: string; 
     quarter: "current" | "next" | "halfYear";
     children: ReactNode;
   }) => {
     const { setNodeRef, isOver } = useDroppable({
-      id: `cell-${trackId}-${quarter}`,
+      id: `cell-${initiativeId}-${quarter}`,
       disabled: isReadOnly,
     });
 
@@ -344,7 +344,7 @@ const RoadmapPage = () => {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="border border-border bg-muted p-4 text-left font-semibold">Track</th>
+                <th className="border border-border bg-muted p-4 text-left font-semibold">Initiative</th>
                 {quarters.map(quarter => (
                   <th key={quarter.id} className="border border-border bg-muted p-4 text-left font-semibold">
                     {quarter.label}
@@ -353,26 +353,26 @@ const RoadmapPage = () => {
               </tr>
             </thead>
             <tbody>
-              {tracks.map(track => (
-                <tr key={track.id}>
+              {initiatives.map(initiative => (
+                <tr key={initiative.id}>
                   <td className="border border-border bg-card p-4 font-medium relative pl-4">
                     <div
                       className="absolute left-0 top-0 bottom-0 w-1"
-                      style={{ backgroundColor: track.color || "#8B5CF6" }}
+                      style={{ backgroundColor: initiative.color || "#8B5CF6" }}
                     />
-                    {track.name}
+                    {initiative.name}
                   </td>
                   {quarters.map(quarter => {
-                    const cellInitiatives = getInitiativesForCell(track.id, quarter.id as any);
+                    const cellGoals = getGoalsForCell(initiative.id, quarter.id as any);
                     return (
-                      <DroppableCell key={quarter.id} trackId={track.id} quarter={quarter.id as any}>
+                      <DroppableCell key={quarter.id} initiativeId={initiative.id} quarter={quarter.id as any}>
                         <div className="space-y-2 min-h-[200px]">
                           <SortableContext
-                            items={cellInitiatives.map(i => i.id)}
+                            items={cellGoals.map(i => i.id)}
                             strategy={verticalListSortingStrategy}
                           >
-                            {cellInitiatives.map(initiative => (
-                              <DraggableInitiativeCard key={initiative.id} initiative={initiative as Initiative} />
+                            {cellGoals.map(goal => (
+                              <DraggableGoalCard key={goal.id} goal={goal as Goal} />
                             ))}
                           </SortableContext>
                           {!isReadOnly && (
@@ -380,10 +380,10 @@ const RoadmapPage = () => {
                               variant="outline"
                               size="sm"
                               className="w-full"
-                              onClick={() => createInitiative(track.id, quarter.id as any)}
+                              onClick={() => createGoal(initiative.id, quarter.id as any)}
                             >
                               <Plus className="h-4 w-4 mr-2" />
-                              Add Initiative
+                              Add Goal
                             </Button>
                           )}
                         </div>
@@ -399,28 +399,28 @@ const RoadmapPage = () => {
         <EntityDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        title="Initiative Details"
-        onSave={saveInitiative}
-        onDelete={editingInitiative?.id ? () => setDeleteAlertOpen(true) : undefined}
-        isEditing={!!editingInitiative?.id}
-        saveLabel="Save Initiative"
+        title="Goal Details"
+        onSave={saveGoal}
+        onDelete={editingGoal?.id ? () => setDeleteAlertOpen(true) : undefined}
+        isEditing={!!editingGoal?.id}
+        saveLabel="Save Goal"
       >
-        {editingInitiative && (
+        {editingGoal && (
           <>
             <div>
               <Label htmlFor="goal">Goal *</Label>
               <Input
                 id="goal"
-                value={editingInitiative.goal}
-                onChange={(e) => setEditingInitiative({ ...editingInitiative, goal: e.target.value })}
-                placeholder="Enter initiative goal..."
+                value={editingGoal.goal}
+                onChange={(e) => setEditingGoal({ ...editingGoal, goal: e.target.value })}
+                placeholder="Enter goal..."
               />
             </div>
             <div>
               <Label htmlFor="quarter">Quarter *</Label>
               <Select
-                value={editingInitiative.quarter}
-                onValueChange={(value) => setEditingInitiative({ ...editingInitiative, quarter: value as any })}
+                value={editingGoal.quarter}
+                onValueChange={(value) => setEditingGoal({ ...editingGoal, quarter: value as any })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select quarter" />
@@ -438,8 +438,8 @@ const RoadmapPage = () => {
               <Label htmlFor="expectedResult">Expected Result</Label>
               <Textarea
                 id="expectedResult"
-                value={editingInitiative.expected_result}
-                onChange={(e) => setEditingInitiative({ ...editingInitiative, expected_result: e.target.value })}
+                value={editingGoal.expected_result}
+                onChange={(e) => setEditingGoal({ ...editingGoal, expected_result: e.target.value })}
                 placeholder="Enter expected result..."
               />
             </div>
@@ -447,16 +447,16 @@ const RoadmapPage = () => {
               <Label htmlFor="achievedResult">Achieved Result</Label>
               <Textarea
                 id="achievedResult"
-                value={editingInitiative.achieved_result}
-                onChange={(e) => setEditingInitiative({ ...editingInitiative, achieved_result: e.target.value })}
+                value={editingGoal.achieved_result}
+                onChange={(e) => setEditingGoal({ ...editingGoal, achieved_result: e.target.value })}
                 placeholder="Enter achieved result..."
               />
             </div>
             <div>
               <Label htmlFor="targetMetrics">Target Metrics</Label>
               <MetricTagInput
-                value={editingInitiative.target_metrics || []}
-                onChange={(tags) => setEditingInitiative({ ...editingInitiative, target_metrics: tags })}
+                value={editingGoal.target_metrics || []}
+                onChange={(tags) => setEditingGoal({ ...editingGoal, target_metrics: tags })}
                 suggestions={metrics.map(m => m.name).filter(Boolean)}
                 placeholder="Type to add metrics..."
               />
@@ -464,8 +464,8 @@ const RoadmapPage = () => {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="done"
-                checked={editingInitiative.done}
-                onCheckedChange={(checked) => setEditingInitiative({ ...editingInitiative, done: checked as boolean })}
+                checked={editingGoal.done}
+                onCheckedChange={(checked) => setEditingGoal({ ...editingGoal, done: checked as boolean })}
               />
               <Label htmlFor="done">Done</Label>
             </div>
@@ -476,15 +476,15 @@ const RoadmapPage = () => {
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Initiative</AlertDialogTitle>
+            <AlertDialogTitle>Delete Goal</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this initiative? This action cannot be undone.
+              Are you sure you want to delete this goal? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => editingInitiative?.id && deleteInitiativeMutation.mutate(editingInitiative.id)}
+              onClick={() => editingGoal?.id && deleteGoalMutation.mutate(editingGoal.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -495,21 +495,21 @@ const RoadmapPage = () => {
       </div>
 
       <DragOverlay>
-        {activeInitiative ? (
+        {activeGoal ? (
           <Card className="w-64 opacity-90">
             <CardContent className="p-3">
               <div className="flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-bold">{activeInitiative.goal || "Untitled Initiative"}</p>
-                  {activeInitiative.done && (
+                  <p className="text-sm font-bold">{activeGoal.goal || "Untitled Goal"}</p>
+                  {activeGoal.done && (
                     <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
                   )}
                 </div>
-                {activeInitiative.expected_result && (
-                  <div className="text-xs whitespace-pre-line">{activeInitiative.expected_result}</div>
+                {activeGoal.expected_result && (
+                  <div className="text-xs whitespace-pre-line">{activeGoal.expected_result}</div>
                 )}
-                {activeInitiative.achieved_result && (
-                  <div className="text-xs whitespace-pre-line">{activeInitiative.achieved_result}</div>
+                {activeGoal.achieved_result && (
+                  <div className="text-xs whitespace-pre-line">{activeGoal.achieved_result}</div>
                 )}
               </div>
             </CardContent>

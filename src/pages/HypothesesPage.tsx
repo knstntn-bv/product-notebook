@@ -37,18 +37,18 @@ interface Feature {
   id?: string;
   title: string;
   description: string;
+  goal_id?: string;
   initiative_id?: string;
-  track_id?: string;
   board_column: ColumnId;
 }
 
-interface Initiative {
+interface Goal {
   id: string;
   goal: string;
-  track_id: string;
+  initiative_id: string;
 }
 
-interface Track {
+interface Initiative {
   id: string;
   name: string;
   color?: string;
@@ -64,8 +64,8 @@ const HypothesesPage = () => {
   const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null);
   const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
   const [creatingFeature, setCreatingFeature] = useState<Feature | null>(null);
+  const [goalOpen, setGoalOpen] = useState(false);
   const [initiativeOpen, setInitiativeOpen] = useState(false);
-  const [trackOpen, setTrackOpen] = useState(false);
 
   const columns: { id: ColumnId; label: string }[] = [
     { id: "inbox", label: "Inbox" },
@@ -171,13 +171,13 @@ const HypothesesPage = () => {
     enabled: !!effectiveUserId,
   });
 
-  // Fetch initiatives
-  const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", effectiveUserId],
+  // Fetch goals
+  const { data: goals = [] } = useQuery({
+    queryKey: ["goals", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
-        .from("initiatives")
+        .from("goals")
         .select("*")
         .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
@@ -187,13 +187,13 @@ const HypothesesPage = () => {
     enabled: !!effectiveUserId,
   });
 
-  // Fetch tracks
-  const { data: tracks = [] } = useQuery({
-    queryKey: ["tracks", effectiveUserId],
+  // Fetch initiatives
+  const { data: initiatives = [] } = useQuery({
+    queryKey: ["initiatives", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
-        .from("tracks")
+        .from("initiatives")
         .select("*")
         .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: true });
@@ -219,8 +219,8 @@ const HypothesesPage = () => {
           user_id: user.id,
           title: feature.title,
           description: feature.description || "",
+          goal_id: feature.goal_id,
           initiative_id: feature.initiative_id,
-          track_id: feature.track_id,
           board_column: feature.board_column,
           position: maxPosition + 1,
         });
@@ -307,6 +307,13 @@ const HypothesesPage = () => {
     }
   };
 
+  const handleGoalSelect = (goalId: string) => {
+    if (creatingFeature) {
+      setCreatingFeature({ ...creatingFeature, goal_id: goalId });
+    }
+    setGoalOpen(false);
+  };
+
   const handleInitiativeSelect = (initiativeId: string) => {
     if (creatingFeature) {
       setCreatingFeature({ ...creatingFeature, initiative_id: initiativeId });
@@ -314,26 +321,19 @@ const HypothesesPage = () => {
     setInitiativeOpen(false);
   };
 
-  const handleTrackSelect = (trackId: string) => {
-    if (creatingFeature) {
-      setCreatingFeature({ ...creatingFeature, track_id: trackId });
-    }
-    setTrackOpen(false);
+  const getGoalName = (id: string) => {
+    return goals.find(i => i.id === id)?.goal || "";
   };
 
   const getInitiativeName = (id: string) => {
-    return initiatives.find(i => i.id === id)?.goal || "";
+    return initiatives.find(i => i.id === id)?.name || "";
   };
 
-  const getTrackName = (id: string) => {
-    return tracks.find(t => t.id === id)?.name || "";
-  };
-
-  const sortedInitiatives = [...initiatives].sort((a, b) => 
+  const sortedGoals = [...goals].sort((a, b) => 
     a.goal.localeCompare(b.goal)
   );
 
-  const sortedTracks = [...tracks].sort((a, b) => 
+  const sortedInitiatives = [...initiatives].sort((a, b) => 
     a.name.localeCompare(b.name)
   );
 
@@ -517,6 +517,49 @@ const HypothesesPage = () => {
               />
             </div>
             <div>
+              <Label>Linked Goal</Label>
+              <Popover open={goalOpen} onOpenChange={setGoalOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={goalOpen}
+                    className="w-full justify-between"
+                  >
+                    {creatingFeature.goal_id
+                      ? getGoalName(creatingFeature.goal_id)
+                      : "Select goal..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search goals..." />
+                    <CommandList>
+                      <CommandEmpty>No goal found.</CommandEmpty>
+                      <CommandGroup>
+                        {sortedGoals.map((goal) => (
+                          <CommandItem
+                            key={goal.id}
+                            value={goal.goal}
+                            onSelect={() => handleGoalSelect(goal.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                creatingFeature.goal_id === goal.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {goal.goal}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
               <Label>Linked Initiative</Label>
               <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
                 <PopoverTrigger asChild>
@@ -541,7 +584,7 @@ const HypothesesPage = () => {
                         {sortedInitiatives.map((initiative) => (
                           <CommandItem
                             key={initiative.id}
-                            value={initiative.goal}
+                            value={initiative.name}
                             onSelect={() => handleInitiativeSelect(initiative.id)}
                           >
                             <Check
@@ -550,50 +593,7 @@ const HypothesesPage = () => {
                                 creatingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {initiative.goal}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div>
-              <Label>Linked Track</Label>
-              <Popover open={trackOpen} onOpenChange={setTrackOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={trackOpen}
-                    className="w-full justify-between"
-                  >
-                    {creatingFeature.track_id
-                      ? getTrackName(creatingFeature.track_id)
-                      : "Select track..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search tracks..." />
-                    <CommandList>
-                      <CommandEmpty>No track found.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedTracks.map((track) => (
-                          <CommandItem
-                            key={track.id}
-                            value={track.name}
-                            onSelect={() => handleTrackSelect(track.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                creatingFeature.track_id === track.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {track.name}
+                            {initiative.name}
                           </CommandItem>
                         ))}
                       </CommandGroup>
