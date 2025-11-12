@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -423,6 +423,54 @@ const BoardPage = () => {
     enabled: true,
   };
 
+  // Minimal touch handling: only prevent vertical scroll in columns when horizontal gesture detected
+  const touchStartRef = useRef<{ x: number; y: number; column: HTMLElement | null } | null>(null);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      const column = target.closest('[data-column-content]') as HTMLElement;
+      if (column) {
+        const touch = e.touches[0];
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY, column };
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current) return;
+      
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+
+      // If clearly horizontal, temporarily prevent vertical scroll
+      if (deltaX > 8 && deltaX > deltaY * 1.5 && touchStartRef.current.column) {
+        touchStartRef.current.column.style.overflowY = 'hidden';
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (touchStartRef.current?.column) {
+        touchStartRef.current.column.style.overflowY = '';
+      }
+      touchStartRef.current = null;
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [isMobile]);
+
   return (
     <DndContext 
       sensors={sensors}
@@ -670,11 +718,12 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
       </div>
       <div
         ref={setNodeRef}
+        data-column-content
         className={cn(
           "bg-card border-x border-b border-border rounded-b-lg p-4 flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 transition-colors",
           isOver && "bg-muted/50"
         )}
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
       >
         {children}
       </div>
