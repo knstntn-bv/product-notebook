@@ -73,13 +73,13 @@ const IndexContent = () => {
                 <Map className="h-3.5 w-3.5" />
                 <span>Roadmap</span>
               </TabsTrigger>
-              <TabsTrigger value="board" className="flex items-center justify-center gap-1.5 rounded-none py-3 text-xs">
-                <Trello className="h-3.5 w-3.5" />
-                <span>Board</span>
-              </TabsTrigger>
               <TabsTrigger value="hypotheses" className="flex items-center justify-center gap-1.5 rounded-none py-3 text-xs">
                 <Lightbulb className="h-3.5 w-3.5" />
                 <span>Hypotheses</span>
+              </TabsTrigger>
+              <TabsTrigger value="board" className="flex items-center justify-center gap-1.5 rounded-none py-3 text-xs">
+                <Trello className="h-3.5 w-3.5" />
+                <span>Board</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -98,13 +98,13 @@ const IndexContent = () => {
                 <Map className="h-4 w-4" />
                 Roadmap
               </TabsTrigger>
-              <TabsTrigger value="board" className="flex items-center gap-2">
-                <Trello className="h-4 w-4" />
-                Board
-              </TabsTrigger>
               <TabsTrigger value="hypotheses" className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
                 Hypotheses
+              </TabsTrigger>
+              <TabsTrigger value="board" className="flex items-center gap-2">
+                <Trello className="h-4 w-4" />
+                Board
               </TabsTrigger>
             </TabsList>
           </div>

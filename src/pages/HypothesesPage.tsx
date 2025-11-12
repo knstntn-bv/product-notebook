@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Status = "new" | "inProgress" | "accepted" | "rejected";
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
@@ -60,6 +61,7 @@ const HypothesesPage = () => {
   const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [editedHypotheses, setEditedHypotheses] = useState<Record<string, Partial<Hypothesis>>>({});
   const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null);
   const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
@@ -346,10 +348,17 @@ const HypothesesPage = () => {
       />
 
       <div className="w-full overflow-x-auto">
-        <Table className="w-full table-fixed">
+        <Table className={cn(
+          "w-full",
+          !isMobile && "table-fixed",
+          isMobile && "min-w-[1200px]"
+        )}>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">
+              <TableHead className={cn(
+                !isMobile && "w-[100px]",
+                isMobile && "min-w-[100px] w-[100px]"
+              )}>
                 <button
                   onClick={handleStatusSort}
                   className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -360,13 +369,34 @@ const HypothesesPage = () => {
                   {statusSort === "desc" && <ArrowDown className="h-4 w-4" />}
                 </button>
               </TableHead>
-              <TableHead className="w-[15%]">Insight</TableHead>
-              <TableHead className="w-[15%]">Problem Hypothesis</TableHead>
-              <TableHead className="w-[15%]">Problem Validation</TableHead>
-              <TableHead className="w-[15%]">Solution Hypothesis</TableHead>
-              <TableHead className="w-[15%]">Solution Validation</TableHead>
-              <TableHead className="w-[10%]">Impact Metrics</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className={cn(
+                !isMobile && "w-[15%]",
+                isMobile && "min-w-[180px]"
+              )}>Insight</TableHead>
+              <TableHead className={cn(
+                !isMobile && "w-[15%]",
+                isMobile && "min-w-[180px]"
+              )}>Problem Hypothesis</TableHead>
+              <TableHead className={cn(
+                !isMobile && "w-[15%]",
+                isMobile && "min-w-[180px]"
+              )}>Problem Validation</TableHead>
+              <TableHead className={cn(
+                !isMobile && "w-[15%]",
+                isMobile && "min-w-[180px]"
+              )}>Solution Hypothesis</TableHead>
+              <TableHead className={cn(
+                !isMobile && "w-[15%]",
+                isMobile && "min-w-[180px]"
+              )}>Solution Validation</TableHead>
+              <TableHead className={cn(
+                !isMobile && "w-[10%]",
+                isMobile && "min-w-[150px]"
+              )}>Impact Metrics</TableHead>
+              <TableHead className={cn(
+                !isMobile && "w-[100px]",
+                isMobile && "min-w-[100px] w-[100px]"
+              )}>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
