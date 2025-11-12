@@ -57,6 +57,8 @@ const BoardPage = () => {
   const [initiativeOpen, setInitiativeOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const originalFeaturesRef = useRef<Feature[] | null>(null);
 
   const isMobile = useIsMobile();
 
@@ -199,7 +201,7 @@ const BoardPage = () => {
     },
   });
 
-  // Drag mutation with optimistic updates
+  // Drag mutation - optimistic update is handled in handleDragEnd
   const dragFeatureMutation = useMutation({
     mutationFn: async ({ updates }: { updates: Array<{ id: string; position: number; board_column?: string }> }) => {
       const promises = updates.map(update =>
@@ -212,36 +214,7 @@ const BoardPage = () => {
       const errors = results.filter(r => r.error);
       if (errors.length > 0) throw errors[0].error;
     },
-    onMutate: async ({ updates }) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["features", effectiveUserId] });
-      
-      // Snapshot the previous value
-      const previousFeatures = queryClient.getQueryData<Feature[]>(["features", effectiveUserId]);
-      
-      // Optimistically update to the new value
-      if (previousFeatures) {
-        const updatedFeatures = previousFeatures.map(feature => {
-          const update = updates.find(u => u.id === feature.id);
-          if (update) {
-            return {
-              ...feature,
-              position: update.position,
-              ...(update.board_column && { board_column: update.board_column as ColumnId })
-            };
-          }
-          return feature;
-        });
-        queryClient.setQueryData(["features", effectiveUserId], updatedFeatures);
-      }
-      
-      return { previousFeatures };
-    },
-    onError: (error: any, variables, context) => {
-      // Revert to previous state on error
-      if (context?.previousFeatures) {
-        queryClient.setQueryData(["features", effectiveUserId], context.previousFeatures);
-      }
+    onError: (error: any) => {
       toast({ title: "Error moving feature", description: error.message, variant: "destructive" });
     },
     onSettled: () => {
@@ -296,33 +269,173 @@ const BoardPage = () => {
   };
 
   const getFeaturesForColumn = (columnId: ColumnId) => {
-    return features.filter(f => f.board_column === columnId);
+    return features
+      .filter(f => f.board_column === columnId)
+      .sort((a, b) => {
+        // Sort by position first, then by id for stability
+        // This ensures consistent order even with duplicate positions
+        if (a.position !== b.position) {
+          return a.position - b.position;
+        }
+        return a.id.localeCompare(b.id);
+      });
   };
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+    // Store original state for preview
+    originalFeaturesRef.current = queryClient.getQueryData<Feature[]>(["features", effectiveUserId]) || null;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    // We'll handle everything in handleDragEnd
+    const { active, over } = event;
+    
+    if (!over || !originalFeaturesRef.current) return;
+    
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    
+    if (activeId === overId) {
+      // Same position, revert to original
+      queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      setDragOverId(null);
+      return;
+    }
+    
+    // Use original features to determine current state
+    const activeFeature = originalFeaturesRef.current.find(f => f.id === activeId);
+    const overFeature = originalFeaturesRef.current.find(f => f.id === overId);
+    const overColumn = columns.find(col => col.id === overId);
+    
+    if (!activeFeature) return;
+    
+    // Only update preview if we're moving to a different position
+    const currentDragOver = `${overId}-${activeId}`;
+    if (dragOverId === currentDragOver) return; // Already showing this preview
+    setDragOverId(currentDragOver);
+    
+    let updatedFeatures: Feature[] = [];
+    
+    // Case 1: Dragging over a feature (same or different column)
+    if (overFeature) {
+      const isSameColumn = activeFeature.board_column === overFeature.board_column;
+      
+      if (isSameColumn) {
+        // Reorder within the same column - dnd-kit's SortableContext handles visual preview automatically
+        // Don't update query data here to avoid interfering with dnd-kit's internal tracking
+        // The preview will be applied in handleDragEnd
+        return;
+      } else {
+        // Move to different column at the position of overFeature
+        const sourceColumnFeatures = originalFeaturesRef.current
+          .filter(f => f.board_column === activeFeature.board_column)
+          .sort((a, b) => a.position - b.position);
+        const targetColumnFeatures = originalFeaturesRef.current
+          .filter(f => f.board_column === overFeature.board_column)
+          .sort((a, b) => a.position - b.position);
+        const insertIndex = targetColumnFeatures.findIndex(f => f.id === overId);
+        
+        // Create updated features array showing preview
+        updatedFeatures = originalFeaturesRef.current.map(feature => {
+          // Move active feature to target column
+          if (feature.id === activeId) {
+            return {
+              ...feature,
+              board_column: overFeature.board_column,
+              position: insertIndex,
+            };
+          }
+          // Update source column positions (shift down after removing active)
+          if (feature.board_column === activeFeature.board_column && feature.position > activeFeature.position) {
+            return { ...feature, position: feature.position - 1 };
+          }
+          // Update target column positions (shift up to make room)
+          if (feature.board_column === overFeature.board_column && feature.position >= insertIndex) {
+            return { ...feature, position: feature.position + 1 };
+          }
+          return feature;
+        });
+      }
+    } 
+    // Case 2: Dragging over an empty column
+    else if (overColumn && activeFeature.board_column !== overColumn.id) {
+      const targetColumnFeatures = originalFeaturesRef.current
+        .filter(f => f.board_column === overColumn.id)
+        .sort((a, b) => a.position - b.position);
+      const newPosition = targetColumnFeatures.length;
+      
+      // Create updated features array showing preview
+      updatedFeatures = originalFeaturesRef.current.map(feature => {
+        // Move to target column at the end
+        if (feature.id === activeId) {
+          return {
+            ...feature,
+            board_column: overColumn.id,
+            position: newPosition,
+          };
+        }
+        // Update source column positions (shift down after removing active)
+        if (feature.board_column === activeFeature.board_column && feature.position > activeFeature.position) {
+          return { ...feature, position: feature.position - 1 };
+        }
+        return feature;
+      });
+    } else {
+      // No valid drop target, revert to original
+      queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      setDragOverId(null);
+      return;
+    }
+    
+    // Apply preview update to show where item will land
+    if (updatedFeatures.length > 0) {
+      queryClient.setQueryData(["features", effectiveUserId], updatedFeatures);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
+    setDragOverId(null);
 
-    if (!over) return;
+    if (!over) {
+      // Drag cancelled, revert to original state
+      if (originalFeaturesRef.current) {
+        queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      }
+      originalFeaturesRef.current = null;
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    if (activeId === overId) return;
+    if (activeId === overId) {
+      // Same position, revert to original if we had a preview
+      if (originalFeaturesRef.current) {
+        queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      }
+      originalFeaturesRef.current = null;
+      return;
+    }
 
-    const activeFeature = features.find(f => f.id === activeId);
-    const overFeature = features.find(f => f.id === overId);
+    // Cancel any outgoing refetches
+    queryClient.cancelQueries({ queryKey: ["features", effectiveUserId] });
+    
+    // Get original state for rollback and feature lookup
+    const originalFeatures = originalFeaturesRef.current || queryClient.getQueryData<Feature[]>(["features", effectiveUserId]) || [];
+    const activeFeature = originalFeatures.find(f => f.id === activeId);
+    const overFeature = originalFeatures.find(f => f.id === overId);
     const overColumn = columns.find(col => col.id === overId);
+    
+    // Store original features for error rollback before clearing ref
+    const previousFeaturesForRollback = originalFeaturesRef.current;
+    originalFeaturesRef.current = null;
 
     if (!activeFeature) return;
+    
+    let updatedFeatures: Feature[] = [];
+    let updates: Array<{ id: string; position: number; board_column?: string }> = [];
 
     // Case 1: Dropped on a feature (same or different column)
     if (overFeature) {
@@ -330,23 +443,61 @@ const BoardPage = () => {
       
       if (isSameColumn) {
         // Reorder within the same column
-        const columnFeatures = getFeaturesForColumn(activeFeature.board_column);
+        // Get column features sorted by position (matching render order)
+        const columnFeatures = originalFeatures
+          .filter(f => f.board_column === activeFeature.board_column)
+          .sort((a, b) => {
+            // Sort by position first, then by id for stability
+            if (a.position !== b.position) {
+              return a.position - b.position;
+            }
+            return a.id.localeCompare(b.id);
+          });
+        
         const oldIndex = columnFeatures.findIndex(f => f.id === activeId);
         const newIndex = columnFeatures.findIndex(f => f.id === overId);
         
+        // Validate indices
+        if (oldIndex === -1 || newIndex === -1) {
+          console.warn('Invalid indices for drag operation', { activeId, overId, oldIndex, newIndex });
+          return;
+        }
+        
+        if (oldIndex === newIndex) {
+          // No change needed
+          return;
+        }
+        
+        // Use arrayMove to get the correct reordered array
+        // This matches what dnd-kit's SortableContext shows visually
         const reorderedFeatures = arrayMove(columnFeatures, oldIndex, newIndex);
         
-        // Prepare updates for mutation
-        const updates = reorderedFeatures.map((feature, index) => ({
+        // Prepare updates for mutation - assign new positions based on array order
+        // This ensures positions are sequential (0, 1, 2, ...) without gaps
+        updates = reorderedFeatures.map((feature, index) => ({
           id: feature.id,
           position: index,
         }));
         
-        dragFeatureMutation.mutate({ updates });
+        // Optimistically update all features in the column with new positions
+        updatedFeatures = originalFeatures.map(feature => {
+          // Update all features in this column
+          if (feature.board_column === activeFeature.board_column) {
+            const update = updates.find(u => u.id === feature.id);
+            if (update) {
+              return { ...feature, position: update.position };
+            }
+          }
+          return feature;
+        });
       } else {
         // Move to different column at the position of overFeature
-        const sourceColumnFeatures = getFeaturesForColumn(activeFeature.board_column).filter(f => f.id !== activeId);
-        const targetColumnFeatures = getFeaturesForColumn(overFeature.board_column);
+        const sourceColumnFeatures = originalFeatures
+          .filter(f => f.board_column === activeFeature.board_column && f.id !== activeId)
+          .sort((a, b) => a.position - b.position);
+        const targetColumnFeatures = originalFeatures
+          .filter(f => f.board_column === overFeature.board_column)
+          .sort((a, b) => a.position - b.position);
         const insertIndex = targetColumnFeatures.findIndex(f => f.id === overId);
         
         // Update source column positions
@@ -370,14 +521,30 @@ const BoardPage = () => {
           board_column: overFeature.board_column,
         });
         
-        const updates = [...sourceUpdates, ...targetUpdates];
-        dragFeatureMutation.mutate({ updates });
+        updates = [...sourceUpdates, ...targetUpdates];
+        
+        // Optimistically update all features
+        updatedFeatures = originalFeatures.map(feature => {
+          const update = updates.find(u => u.id === feature.id);
+          if (update) {
+            return {
+              ...feature,
+              position: update.position,
+              ...(update.board_column && { board_column: update.board_column as ColumnId })
+            };
+          }
+          return feature;
+        });
       }
     } 
     // Case 2: Dropped on an empty column
     else if (overColumn && activeFeature.board_column !== overColumn.id) {
-      const sourceColumnFeatures = getFeaturesForColumn(activeFeature.board_column).filter(f => f.id !== activeId);
-      const targetColumnFeatures = getFeaturesForColumn(overColumn.id);
+      const sourceColumnFeatures = originalFeatures
+        .filter(f => f.board_column === activeFeature.board_column && f.id !== activeId)
+        .sort((a, b) => a.position - b.position);
+      const targetColumnFeatures = originalFeatures
+        .filter(f => f.board_column === overColumn.id)
+        .sort((a, b) => a.position - b.position);
       
       // Update source column positions
       const sourceUpdates = sourceColumnFeatures.map((feature, index) => ({
@@ -392,9 +559,43 @@ const BoardPage = () => {
         board_column: overColumn.id,
       };
       
-      const updates = [...sourceUpdates, movedUpdate];
-      dragFeatureMutation.mutate({ updates });
+      updates = [...sourceUpdates, movedUpdate];
+      
+      // Optimistically update all features
+      updatedFeatures = originalFeatures.map(feature => {
+        const update = updates.find(u => u.id === feature.id);
+        if (update) {
+          return {
+            ...feature,
+            position: update.position,
+            ...(update.board_column && { board_column: update.board_column as ColumnId })
+          };
+        }
+        return feature;
+      });
+    } else {
+      // No valid drop, restore original state (should not happen, but safety check)
+      queryClient.setQueryData(["features", effectiveUserId], originalFeatures);
+      return;
     }
+
+    // Apply optimistic update immediately
+    if (updatedFeatures.length > 0) {
+      queryClient.setQueryData(["features", effectiveUserId], updatedFeatures);
+    }
+
+    // Then perform the mutation (will rollback on error)
+    dragFeatureMutation.mutate(
+      { updates },
+      {
+        onError: (error: any) => {
+          // Rollback on error - use previousFeaturesForRollback that we stored
+          if (previousFeaturesForRollback) {
+            queryClient.setQueryData(["features", effectiveUserId], previousFeaturesForRollback);
+          }
+        },
+      }
+    );
   };
 
   const activeFeature = activeId ? features.find(f => f.id === activeId) : null;
@@ -465,6 +666,16 @@ const BoardPage = () => {
     };
   }, [isMobile]);
 
+  const handleDragCancel = () => {
+    // Revert to original state if drag is cancelled
+    if (originalFeaturesRef.current) {
+      queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      originalFeaturesRef.current = null;
+    }
+    setActiveId(null);
+    setDragOverId(null);
+  };
+
   return (
     <DndContext 
       sensors={sensors}
@@ -473,6 +684,7 @@ const BoardPage = () => {
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="flex flex-col h-full overflow-hidden">
         <div className="w-full flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth min-h-0">
@@ -733,13 +945,73 @@ interface SortableFeatureProps {
 }
 
 const SortableFeature = ({ feature, goalName, initiativeColor, onClick }: SortableFeatureProps) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: feature.id,
   });
 
-  const style = {
+  const [isLongTouched, setIsLongTouched] = useState(false);
+  const longPressTimerRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const LONG_PRESS_DURATION = 500; // milliseconds
+  const MOVEMENT_THRESHOLD = 10; // pixels
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    setIsLongTouched(false);
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      setIsLongTouched(true);
+      longPressTimerRef.current = null;
+    }, LONG_PRESS_DURATION);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // If moved beyond threshold, cancel long press
+    if (distance > MOVEMENT_THRESHOLD) {
+      clearLongPressTimer();
+      setIsLongTouched(false);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    clearLongPressTimer();
+    touchStartRef.current = null;
+    // Reset long touch indication after a short delay
+    window.setTimeout(() => setIsLongTouched(false), 200);
+  };
+
+  const handleTouchCancel = () => {
+    clearLongPressTimer();
+    touchStartRef.current = null;
+    setIsLongTouched(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+    };
+  }, []);
+
+  // Disable transition completely to prevent return animation
+  // Optimistic update happens immediately, so no animation needed
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: 'none', // Explicitly disable transitions
     opacity: isDragging ? 0.5 : 1,
     touchAction: 'auto',
   };
@@ -752,9 +1024,14 @@ const SortableFeature = ({ feature, goalName, initiativeColor, onClick }: Sortab
       {...listeners}
       className={cn(
         "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none",
-        isDragging && "opacity-50 z-50"
+        isDragging && "opacity-50 z-50",
+        isLongTouched && "ring-2 ring-primary ring-offset-2 scale-[1.02]"
       )}
       onClick={onClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
     >
       {feature.initiative_id && (
         <div 
