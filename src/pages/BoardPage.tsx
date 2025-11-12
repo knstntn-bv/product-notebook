@@ -432,9 +432,9 @@ const BoardPage = () => {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full overflow-hidden">
         <div className="w-full flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth min-h-0">
-          <div className="flex gap-4 h-full px-[7.5vw] md:pl-4 md:pr-4 pb-4 items-stretch">
+          <div className="flex gap-4 h-full px-[7.5vw] md:pl-4 md:pr-4 pb-4 pt-4 md:pt-0 items-stretch">
             {columns.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
