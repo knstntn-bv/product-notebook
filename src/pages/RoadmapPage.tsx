@@ -140,7 +140,7 @@ const RoadmapPage = () => {
     },
   });
 
-  // Move goal mutation (for drag and drop) with optimistic updates
+  // Move goal mutation - optimistic update is handled in handleDragEnd
   const moveGoalMutation = useMutation({
     mutationFn: async ({ id, initiative_id, quarter }: { id: string; initiative_id: string; quarter: "current" | "next" | "halfYear" }) => {
       const { error } = await supabase
@@ -149,31 +149,7 @@ const RoadmapPage = () => {
         .eq("id", id);
       if (error) throw error;
     },
-    onMutate: async ({ id, initiative_id, quarter }) => {
-      // Cancel any outgoing refetches to avoid overwriting optimistic update
-      await queryClient.cancelQueries({ queryKey: ["goals", effectiveUserId] });
-
-      // Snapshot the previous value
-      const previousGoals = queryClient.getQueryData<Goal[]>(["goals", effectiveUserId]);
-
-      // Optimistically update to the new value
-      if (previousGoals) {
-        const updatedGoals = previousGoals.map(goal =>
-          goal.id === id
-            ? { ...goal, initiative_id, quarter }
-            : goal
-        );
-        queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], updatedGoals);
-      }
-
-      // Return context with the snapshotted value
-      return { previousGoals };
-    },
-    onError: (error: any, variables, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousGoals) {
-        queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], context.previousGoals);
-      }
+    onError: (error: any) => {
       toast({ title: "Error moving goal", description: error.message, variant: "destructive" });
     },
     onSettled: () => {
@@ -241,11 +217,38 @@ const RoadmapPage = () => {
       const activeGoal = goals.find(i => i.id === activeId);
       
       if (activeGoal && (activeGoal.initiative_id !== targetInitiativeId || activeGoal.quarter !== targetQuarter)) {
-        moveGoalMutation.mutate({
-          id: activeId,
-          initiative_id: targetInitiativeId,
-          quarter: targetQuarter,
-        });
+        // Cancel any outgoing refetches
+        queryClient.cancelQueries({ queryKey: ["goals", effectiveUserId] });
+
+        // Snapshot the previous value for rollback
+        const previousGoals = queryClient.getQueryData<Goal[]>(["goals", effectiveUserId]);
+
+        // Optimistically update immediately
+        if (previousGoals) {
+          const updatedGoals = previousGoals.map(goal =>
+            goal.id === activeId
+              ? { ...goal, initiative_id: targetInitiativeId, quarter: targetQuarter }
+              : goal
+          );
+          queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], updatedGoals);
+        }
+
+        // Then perform the mutation (will rollback on error)
+        moveGoalMutation.mutate(
+          {
+            id: activeId,
+            initiative_id: targetInitiativeId,
+            quarter: targetQuarter,
+          },
+          {
+            onError: (error: any) => {
+              // Rollback on error
+              if (previousGoals) {
+                queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], previousGoals);
+              }
+            },
+          }
+        );
       }
     }
   };
@@ -259,13 +262,14 @@ const RoadmapPage = () => {
       listeners,
       setNodeRef,
       transform,
-      transition,
       isDragging,
     } = useSortable({ id: goal.id, disabled: isReadOnly });
 
-    const style = {
+    // Disable transition completely to prevent return animation
+    // Optimistic update happens immediately, so no animation needed
+    const style: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
-      transition,
+      transition: 'none', // Explicitly disable transitions
       opacity: isDragging ? 0.5 : 1,
     };
 
