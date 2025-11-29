@@ -1,0 +1,227 @@
+# Board Page
+
+## Overview
+
+The Board Page provides a Kanban-style board for managing features throughout their lifecycle. Features can be organized into columns representing different stages of development and moved between columns via drag and drop.
+
+## Location
+
+- **Component**: `src/pages/BoardPage.tsx`
+- **Access**: Via "Board" tab in the main application
+
+## Board Structure
+
+### Columns
+
+The board consists of 8 columns representing different stages:
+
+1. **Inbox**: New features that haven't been categorized yet
+2. **Discovery**: Features being researched and explored
+3. **Backlog**: Features planned but not yet started
+4. **Design & Analysis**: Features in design and analysis phase
+5. **Development & Testing**: Features being built and tested
+6. **On Hold / Blocked**: Features that are temporarily paused
+7. **Done**: Completed features
+8. **Cancelled**: Features that were cancelled
+
+### Column Layout
+
+**Desktop:**
+- Columns are displayed horizontally
+- Each column has a fixed width (320px)
+- Horizontal scrolling available if needed
+- Columns are scrollable vertically for long lists
+
+**Mobile:**
+- Columns use snap scrolling (snap-x)
+- Each column takes 85% of viewport width
+- Smooth horizontal scrolling between columns
+- Touch-optimized interactions
+
+## Feature Cards
+
+### Display
+
+Each feature card shows:
+- **Title**: The feature name (bold, primary text)
+- **Goal Name**: If linked to a goal, shows the goal text (smaller, muted text)
+- **Color Indicator**: Left edge colored bar matching the linked initiative's color (if linked)
+
+### Visual States
+
+- **Normal**: Standard card appearance
+- **Dragging**: Card becomes semi-transparent (50% opacity)
+- **Long Press** (mobile): Card shows ring border and slight scale
+- **Hover**: Shadow effect on desktop
+
+## Behavior
+
+### Creating Features
+
+1. Click the "Add" button at the top of any column
+2. A dialog opens with feature editing form
+3. Fill in the required fields:
+   - **Title**: Feature name (required)
+   - **Description**: Detailed description (optional)
+   - **Linked Goal**: Select a goal from the roadmap (optional)
+   - **Linked Initiative**: Select an initiative (optional)
+   - **Column**: Select which column the feature starts in (required)
+4. Click "Save Feature" to create
+
+**Note**: When a goal is selected, the linked initiative is automatically set to match the goal's initiative.
+
+### Editing Features
+
+1. Click on any feature card
+2. The same dialog opens with pre-filled values
+3. Modify any fields
+4. Click "Save Feature" to update
+
+### Deleting Features
+
+1. Open the feature editing dialog
+2. Click the "Delete" button
+3. Confirm deletion in the alert dialog
+4. Feature is permanently removed
+
+### Drag and Drop
+
+**Moving Features:**
+- Features can be dragged between columns
+- Features can be reordered within the same column
+- Visual feedback shows where the feature will be dropped
+
+**Drag Behavior:**
+- **Desktop**: Click and drag with mouse (8px activation distance)
+- **Mobile**: Long press (500ms) then drag
+- Drag overlay shows a preview of the card being dragged
+- Optimistic updates provide immediate visual feedback
+
+**Drop Targets:**
+- Can drop on another feature card (inserts at that position)
+- Can drop on an empty column (adds to the end)
+- Can drop within the same column (reorders)
+
+**Position Management:**
+- Each feature has a position number within its column
+- Positions are automatically recalculated when features are moved
+- Positions ensure consistent ordering
+
+### Feature Details
+
+**Feature Fields:**
+- **Title**: Feature name (required, text input)
+- **Description**: Detailed description (optional, textarea)
+- **Linked Goal**: Goal from roadmap (optional, searchable dropdown)
+  - Selecting a goal automatically sets the linked initiative
+  - Goals are sorted alphabetically
+- **Linked Initiative**: Strategic initiative (optional, searchable dropdown)
+  - Initiatives are sorted alphabetically
+  - Color is used for visual identification
+- **Column**: Current board column (required, dropdown)
+
+### Goal and Initiative Linking
+
+**Goal Selection:**
+- Searchable dropdown with all goals
+- Shows goal text for each option
+- Selecting a goal automatically links the feature to that goal's initiative
+- Provides context about why the feature exists
+
+**Initiative Selection:**
+- Searchable dropdown with all initiatives
+- Shows initiative name for each option
+- Visual color indicator matches the initiative color
+- Helps organize features by strategic theme
+
+## Data Management
+
+### Feature Organization
+
+- Features are organized by:
+  - **Column**: Current stage in the workflow
+  - **Position**: Order within the column
+- Features can be linked to:
+  - **Goal**: From the roadmap
+  - **Initiative**: From the strategy page
+
+### Relationships
+
+- Features can reference goals (optional)
+- Features can reference initiatives (optional)
+- When a goal is selected, the initiative is automatically set
+- Initiative colors provide visual grouping
+
+### State Management
+
+- Uses React Query for data fetching
+- Optimistic updates for drag and drop operations
+- Automatic position recalculation
+- Error handling with rollback on failure
+- Refetching after mutations to ensure consistency
+
+## User Experience
+
+### Responsive Design
+
+**Desktop:**
+- Horizontal scrolling for many columns
+- Fixed column widths for consistency
+- Mouse-based drag and drop
+- Hover effects for interactivity
+
+**Mobile:**
+- Snap scrolling between columns
+- Touch-optimized drag and drop
+- Long press to initiate drag
+- Prevents accidental scrolling during drag
+- Full-width columns for better visibility
+
+### Visual Feedback
+
+- Drag overlay shows card preview
+- Drop targets highlight on hover
+- Loading states during operations
+- Toast notifications for success/error
+- Smooth animations for drag operations
+
+### Touch Interactions
+
+- Long press (500ms) to start dragging
+- Movement threshold prevents accidental drags
+- Visual feedback during long press
+- Prevents vertical scrolling during horizontal drag gestures
+
+### Read-Only Mode
+
+- In read-only mode:
+  - "Add" buttons are hidden
+  - Feature cards are not clickable
+  - Drag and drop is disabled
+  - All content is view-only
+
+## Use Cases
+
+1. **Feature Tracking**: Track features through development lifecycle
+2. **Workflow Management**: Organize work by development stage
+3. **Strategic Alignment**: Link features to goals and initiatives
+4. **Team Coordination**: Visual board for team collaboration
+5. **Progress Monitoring**: See what's in progress, done, or blocked
+
+## Technical Details
+
+### Drag and Drop Implementation
+
+- Uses `@dnd-kit` library for drag and drop
+- Supports both mouse and touch interactions
+- Optimistic updates for immediate feedback
+- Position recalculation on drop
+- Handles edge cases (same position, empty columns, etc.)
+
+### Performance
+
+- Virtual scrolling not implemented (suitable for typical feature counts)
+- Efficient position updates
+- Query invalidation for data consistency
+- Optimistic updates reduce perceived latency
+
