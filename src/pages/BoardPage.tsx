@@ -261,6 +261,47 @@ const BoardPage = () => {
     }
   };
 
+  const exportFeatureToMarkdown = () => {
+    if (!editingFeature) return;
+
+    // Get human readable ID or use placeholder
+    const humanReadableId = editingFeature.human_readable_id || "NEW";
+    
+    // Get title or use placeholder
+    const title = editingFeature.title || "Untitled Feature";
+    
+    // Get description
+    const description = editingFeature.description || "";
+
+    // Create filename: human_readable_id + title (sanitized for filesystem)
+    const sanitizeFilename = (str: string) => {
+      return str
+        .replace(/[<>:"/\\|?*]/g, "") // Remove invalid filename characters
+        .replace(/\s+/g, " ") // Normalize whitespace
+        .trim()
+        .substring(0, 100); // Limit length
+    };
+
+    const filename = `${humanReadableId} ${sanitizeFilename(title)}.md`;
+
+    // Create blob with description content
+    const blob = new Blob([description], { type: "text/markdown;charset=utf-8" });
+    
+    // Create download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleGoalSelect = (goalId: string) => {
     const selectedGoal = goals.find(i => i.id === goalId);
     setEditingFeature({
@@ -765,6 +806,8 @@ const BoardPage = () => {
         title="Feature Details"
         onSave={saveFeature}
         onDelete={editingFeature?.id ? () => setDeleteAlertOpen(true) : undefined}
+        onExport={exportFeatureToMarkdown}
+        exportLabel="Export to .md"
         isEditing={!!editingFeature?.id}
         saveLabel="Save Feature"
       >

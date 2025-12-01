@@ -148,5 +148,9 @@ Possible directions for development:
 
 - Display identifier on feature cards on the board
 - Search features by identifier
-- Export/import with identifier preservation
+- Import with identifier preservation
 - User-configurable identifier format
+
+## Export Feature
+
+Features can be exported to Markdown files using the human readable ID in the filename. See [Board Page documentation](./board-page.md#exporting-features) for details.

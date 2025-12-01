@@ -86,6 +86,30 @@ Each feature card shows:
 3. Confirm deletion in the alert dialog
 4. Feature is permanently removed
 
+### Exporting Features
+
+Features can be exported to Markdown (.md) files for documentation, sharing, or backup purposes.
+
+**Export Process:**
+1. Open the feature editing dialog
+2. Click the "Export to .md" button in the dialog footer
+3. A Markdown file is automatically generated and downloaded
+
+**Export Details:**
+- **File Name**: Composed of two parts:
+  - Human readable ID (e.g., `PRO-1`) or `NEW` for unsaved features
+  - Feature title (sanitized for filesystem compatibility)
+  - Example: `PRO-1 User Authentication.md`
+- **File Content**: Contains the complete description text from the feature's Description field
+- **File Format**: Standard Markdown (.md) file
+- **Download**: File is automatically offered for download by the browser
+
+**Use Cases:**
+- Creating documentation for features
+- Sharing feature specifications with team members
+- Backing up feature descriptions
+- Integrating feature data into external documentation systems
+
 ### Feature Dialog
 
 The feature editing dialog provides a user-friendly interface for creating and editing features.
@@ -102,7 +126,11 @@ The feature editing dialog provides a user-friendly interface for creating and e
 **Dialog Structure:**
 - **Header**: Fixed at the top, contains the dialog title
 - **Content Area**: Scrollable middle section containing all form fields
-- **Footer**: Fixed at the bottom, contains Cancel and Save buttons (and Delete button when editing)
+- **Footer**: Fixed at the bottom, contains action buttons:
+  - **Delete** button (when editing existing features)
+  - **Export to .md** button (available for all features)
+  - **Cancel** button
+  - **Save Feature** button
 
 **User Experience:**
 - All fields remain accessible through scrolling when needed
