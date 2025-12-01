@@ -116,6 +116,8 @@ export type Database = {
       goals: {
         Row: {
           achieved_result: string | null
+          archived: boolean
+          archived_at: string | null
           created_at: string | null
           done: boolean | null
           expected_result: string | null
@@ -129,6 +131,8 @@ export type Database = {
         }
         Insert: {
           achieved_result?: string | null
+          archived?: boolean
+          archived_at?: string | null
           created_at?: string | null
           done?: boolean | null
           expected_result?: string | null
@@ -142,6 +146,8 @@ export type Database = {
         }
         Update: {
           achieved_result?: string | null
+          archived?: boolean
+          archived_at?: string | null
           created_at?: string | null
           done?: boolean | null
           expected_result?: string | null
