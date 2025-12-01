@@ -41,6 +41,7 @@ interface Feature {
   goal_id?: string;
   initiative_id?: string;
   board_column: ColumnId;
+  human_readable_id?: string;
 }
 
 interface Goal {
@@ -215,6 +216,27 @@ const HypothesesPage = () => {
         ? Math.max(...columnFeatures.map(f => f.position)) 
         : -1;
       
+      // Generate human_readable_id
+      let prefix = "NNN";
+      if (feature.initiative_id) {
+        const initiative = initiatives.find(i => i.id === feature.initiative_id);
+        if (initiative?.name) {
+          // Take first 3 characters, uppercase
+          prefix = initiative.name
+            .substring(0, 3)
+            .toUpperCase();
+        }
+      }
+      
+      // Get total count of features for this user (sequential numbering)
+      const { count } = await supabase
+        .from("features")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      
+      const featureNumber = (count || 0) + 1;
+      const human_readable_id = `${prefix}-${featureNumber}`;
+      
       const { error } = await supabase
         .from("features")
         .insert({
@@ -225,6 +247,7 @@ const HypothesesPage = () => {
           initiative_id: feature.initiative_id,
           board_column: feature.board_column,
           position: maxPosition + 1,
+          human_readable_id: human_readable_id,
         });
       if (error) throw error;
     },

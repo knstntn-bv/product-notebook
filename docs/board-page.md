@@ -68,7 +68,9 @@ Each feature card shows:
    - **Column**: Select which column the feature starts in (required)
 4. Click "Save Feature" to create
 
-**Note**: When a goal is selected, the linked initiative is automatically set to match the goal's initiative.
+**Note**: 
+- When a goal is selected, the linked initiative is automatically set to match the goal's initiative.
+- A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number.
 
 ### Editing Features
 
@@ -134,6 +136,13 @@ The feature editing dialog provides a user-friendly interface for creating and e
 ### Feature Details
 
 **Feature Fields:**
+- **Human Readable ID**: Unique identifier for the feature (read-only, displayed as text)
+  - Format: `XXX-N` where:
+    - `XXX` is the first 3 characters of the linked initiative name (uppercase), or "NNN" if no initiative is linked
+    - `N` is a sequential number across all features for the user
+  - Automatically generated when a feature is created
+  - Displayed at the top of the feature editing dialog (for existing features only)
+  - Cannot be edited or changed
 - **Title**: Feature name (required, text input)
 - **Description**: Detailed description (optional, textarea)
 - **Linked Goal**: Goal from roadmap (optional, searchable dropdown)
@@ -142,6 +151,7 @@ The feature editing dialog provides a user-friendly interface for creating and e
 - **Linked Initiative**: Strategic initiative (optional, searchable dropdown)
   - Initiatives are sorted alphabetically
   - Color is used for visual identification
+  - Used to generate the human readable ID prefix
 - **Column**: Current board column (required, dropdown)
 
 ### Goal and Initiative Linking
@@ -168,6 +178,11 @@ The feature editing dialog provides a user-friendly interface for creating and e
 - Features can be linked to:
   - **Goal**: From the roadmap
   - **Initiative**: From the strategy page
+- Each feature has a unique **Human Readable ID**:
+  - Automatically generated on creation
+  - Format: `XXX-N` (prefix from initiative + sequential number)
+  - Used for easy reference and identification
+  - Immutable (cannot be changed after creation)
 
 ### Relationships
 

@@ -165,6 +165,8 @@ The hypotheses table contains the following columns:
 3. Modify any fields as needed
 4. Click "Create Feature" to add the feature to the Board
 
+**Note**: A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Human Readable ID documentation](./features-human-readable-id.md) for more details.
+
 **Use Case**: This allows users to quickly turn validated hypotheses into actionable features without manual data entry.
 
 ### Status Sorting

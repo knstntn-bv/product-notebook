@@ -19,6 +19,7 @@ export type Database = {
           board_column: string
           created_at: string | null
           description: string | null
+          human_readable_id: string | null
           id: string
           goal_id: string | null
           initiative_id: string | null
@@ -31,6 +32,7 @@ export type Database = {
           board_column: string
           created_at?: string | null
           description?: string | null
+          human_readable_id?: string | null
           id?: string
           goal_id?: string | null
           initiative_id?: string | null
@@ -43,6 +45,7 @@ export type Database = {
           board_column?: string
           created_at?: string | null
           description?: string | null
+          human_readable_id?: string | null
           id?: string
           goal_id?: string | null
           initiative_id?: string | null
