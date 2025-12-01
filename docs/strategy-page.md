@@ -96,7 +96,17 @@ The Strategy Page is where users define the foundational elements of their produ
   - Color is used throughout the app to visually identify initiative-related items
 - Changes are tracked locally until "Save" is clicked
 - "Save" button only appears when there are unsaved changes
+- Initiatives can be archived using the archive icon (next to delete button)
 - Initiatives can be deleted using the trash icon
+
+**Archiving Initiatives:**
+- Click the archive icon to archive an initiative
+- Archived initiatives are displayed with muted colors (reduced opacity)
+- Archived initiatives are automatically moved to the end of the list
+- The archive date is saved when an initiative is archived
+- Click the restore icon (ArchiveRestore) to unarchive an initiative
+- Archived initiatives are hidden from the Roadmap page
+- Archiving preserves the initiative data while removing it from active views
 
 **Color Usage:**
 - Initiative colors appear as visual indicators on:
@@ -107,7 +117,8 @@ The Strategy Page is where users define the foundational elements of their produ
 **Read-Only Mode:**
 - In read-only mode, initiatives are displayed as plain text
 - Color is shown as a small colored square
-- No edit or delete functionality is available
+- No edit, archive, or delete functionality is available
+- Archived initiatives are still visible but displayed with muted colors
 
 ## Data Management
 

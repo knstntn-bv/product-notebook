@@ -15,6 +15,8 @@ interface Initiative {
   name: string;
   description: string;
   color?: string;
+  archived?: boolean;
+  archived_at?: string | null;
 }
 
 interface ProductContextType {

@@ -357,7 +357,9 @@ const RoadmapPage = () => {
               </tr>
             </thead>
             <tbody>
-              {initiatives.map(initiative => (
+              {initiatives
+                .filter(initiative => !initiative.archived)
+                .map(initiative => (
                 <tr key={initiative.id}>
                   <td className="border border-border bg-card p-4 font-medium relative pl-4">
                     <div
