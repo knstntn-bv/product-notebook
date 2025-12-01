@@ -77,6 +77,30 @@ Each goal is displayed as a card within its cell showing:
 3. Confirm deletion in the alert dialog
 4. Goal is permanently removed
 
+### Goal Dialog
+
+The goal editing dialog provides a user-friendly interface for creating and editing goals.
+
+**Dialog Layout:**
+- **Width**: Maximum width of 768px (3xl) to accommodate focus rings and prevent clipping
+- **Height**: 
+  - Minimum height of 660px to fit all goal fields without scrolling
+  - Maximum height of 90% of viewport height
+  - Automatically adjusts to content size
+- **Scrolling**: When content exceeds the dialog height, only the form fields area scrolls while the header and action buttons remain fixed
+- **Focus Rings**: Dialog width ensures that field focus highlights are fully visible without being cut off
+
+**Dialog Structure:**
+- **Header**: Fixed at the top, contains the dialog title
+- **Content Area**: Scrollable middle section containing all form fields
+- **Footer**: Fixed at the bottom, contains Cancel and Save buttons (and Delete button when editing)
+
+**User Experience:**
+- All goal fields (Goal, Quarter, Expected Result, Achieved Result, Target Metrics, Done) fit comfortably without scrolling in most cases
+- Focus rings on active fields are never clipped
+- Scrollbar appears only when content exceeds available space
+- Content is properly padded to prevent overlap with the scrollbar
+
 ### Drag and Drop
 
 **Moving Goals Between Cells:**
