@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus } from "lucide-react";
+import { Plus, Archive, ArchiveRestore } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
 import { EntityDialog } from "@/components/EntityDialog";
@@ -30,6 +30,8 @@ interface Goal {
   target_metrics: string[];
   initiative_id: string;
   quarter: "current" | "next" | "halfYear";
+  archived?: boolean;
+  archived_at?: string | null;
 }
 
 const RoadmapPage = () => {
@@ -42,6 +44,7 @@ const RoadmapPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false); // По умолчанию скрываем архивные
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -88,6 +91,8 @@ const RoadmapPage = () => {
             done: goal.done,
             target_metrics: goal.target_metrics,
             quarter: goal.quarter,
+            archived: goal.archived,
+            archived_at: goal.archived_at,
           })
           .eq("id", goal.id);
         if (error) throw error;
@@ -103,6 +108,7 @@ const RoadmapPage = () => {
             done: goal.done || false,
             target_metrics: goal.target_metrics || [],
             quarter: goal.quarter!,
+            archived: false,
           });
         if (error) throw error;
       }
@@ -134,6 +140,40 @@ const RoadmapPage = () => {
       setIsDialogOpen(false);
       setDeleteAlertOpen(false);
       toast({ title: "Goal deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Archive goal mutation
+  const archiveGoalMutation = useMutation({
+    mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      const updates: any = { archived };
+      if (archived) {
+        updates.archived_at = new Date().toISOString();
+      } else {
+        updates.archived_at = null;
+      }
+      const { error } = await supabase
+        .from("goals")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      // Обновляем editingGoal для отображения изменений в диалоге
+      if (editingGoal?.id === variables.id) {
+        setEditingGoal({
+          ...editingGoal,
+          archived: variables.archived,
+          archived_at: variables.archived ? new Date().toISOString() : null,
+        });
+      }
+      toast({ 
+        title: variables.archived ? "Goal archived successfully" : "Goal unarchived successfully" 
+      });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -178,7 +218,17 @@ const RoadmapPage = () => {
   };
 
   const getGoalsForCell = (initiativeId: string, quarter: "current" | "next" | "halfYear") => {
-    return goals.filter(i => i.initiative_id === initiativeId && i.quarter === quarter);
+    let filteredGoals = goals.filter(i => i.initiative_id === initiativeId && i.quarter === quarter);
+    // Фильтруем архивные цели, если фильтр включен (по умолчанию включен - скрываем архивные)
+    if (!showArchived) {
+      filteredGoals = filteredGoals.filter(goal => !goal.archived);
+    }
+    // Сортируем: неархивные сначала, затем архивные
+    return filteredGoals.sort((a, b) => {
+      if (a.archived && !b.archived) return 1;
+      if (!a.archived && b.archived) return -1;
+      return 0;
+    });
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -257,20 +307,23 @@ const RoadmapPage = () => {
 
   // Draggable Goal Card Component
   const DraggableGoalCard = ({ goal }: { goal: Goal }) => {
+    const isArchived = goal.archived || false;
     const {
       attributes,
       listeners,
       setNodeRef,
       transform,
       isDragging,
-    } = useSortable({ id: goal.id, disabled: isReadOnly });
+    } = useSortable({ id: goal.id, disabled: isReadOnly || isArchived });
 
+    const isArchived = goal.archived || false;
+    
     // Disable transition completely to prevent return animation
     // Optimistic update happens immediately, so no animation needed
     const style: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
       transition: 'none', // Explicitly disable transitions
-      opacity: isDragging ? 0.5 : 1,
+      opacity: isDragging ? 0.5 : (isArchived ? 0.5 : 1),
     };
 
     return (
@@ -278,7 +331,8 @@ const RoadmapPage = () => {
         <Card
           className={cn(
             isReadOnly ? "" : "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
-            isDragging && "ring-2 ring-primary"
+            isDragging && "ring-2 ring-primary",
+            isArchived && "opacity-50"
           )}
           onClick={(e) => {
             if (!isReadOnly && !isDragging) {
@@ -291,16 +345,27 @@ const RoadmapPage = () => {
           <CardContent className="p-3">
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-bold">{goal.goal || "Untitled Goal"}</p>
-                {goal.done && (
-                  <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
-                )}
+                <p className={cn("text-sm font-bold", isArchived && "text-muted-foreground")}>
+                  {goal.goal || "Untitled Goal"}
+                </p>
+                <div className="flex gap-1">
+                  {isArchived && (
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">Archived</span>
+                  )}
+                  {goal.done && (
+                    <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
+                  )}
+                </div>
               </div>
               {goal.expected_result && (
-                <div className="text-xs whitespace-pre-line">{goal.expected_result}</div>
+                <div className={cn("text-xs whitespace-pre-line", isArchived && "text-muted-foreground")}>
+                  {goal.expected_result}
+                </div>
               )}
               {goal.achieved_result && (
-                <div className="text-xs whitespace-pre-line">{goal.achieved_result}</div>
+                <div className={cn("text-xs whitespace-pre-line", isArchived && "text-muted-foreground")}>
+                  {goal.achieved_result}
+                </div>
               )}
             </div>
           </CardContent>
@@ -344,6 +409,18 @@ const RoadmapPage = () => {
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="showArchived"
+              checked={showArchived}
+              onCheckedChange={(checked) => setShowArchived(checked as boolean)}
+            />
+            <Label htmlFor="showArchived" className="cursor-pointer">
+              Show archived goals
+            </Label>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -408,8 +485,13 @@ const RoadmapPage = () => {
         title="Goal Details"
         onSave={saveGoal}
         onDelete={editingGoal?.id ? () => setDeleteAlertOpen(true) : undefined}
+        onArchive={editingGoal?.id ? () => {
+          const isArchived = editingGoal.archived || false;
+          archiveGoalMutation.mutate({ id: editingGoal.id!, archived: !isArchived });
+        } : undefined}
         isEditing={!!editingGoal?.id}
         saveLabel="Save Goal"
+        isArchived={editingGoal?.archived || false}
       >
         {editingGoal && (
           <>
@@ -506,16 +588,27 @@ const RoadmapPage = () => {
             <CardContent className="p-3">
               <div className="flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-bold">{activeGoal.goal || "Untitled Goal"}</p>
-                  {activeGoal.done && (
-                    <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
-                  )}
+                  <p className={cn("text-sm font-bold", activeGoal.archived && "text-muted-foreground")}>
+                    {activeGoal.goal || "Untitled Goal"}
+                  </p>
+                  <div className="flex gap-1">
+                    {activeGoal.archived && (
+                      <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">Archived</span>
+                    )}
+                    {activeGoal.done && (
+                      <span className="text-xs bg-success text-success-foreground px-2 py-1 rounded">Done</span>
+                    )}
+                  </div>
                 </div>
                 {activeGoal.expected_result && (
-                  <div className="text-xs whitespace-pre-line">{activeGoal.expected_result}</div>
+                  <div className={cn("text-xs whitespace-pre-line", activeGoal.archived && "text-muted-foreground")}>
+                    {activeGoal.expected_result}
+                  </div>
                 )}
                 {activeGoal.achieved_result && (
-                  <div className="text-xs whitespace-pre-line">{activeGoal.achieved_result}</div>
+                  <div className={cn("text-xs whitespace-pre-line", activeGoal.archived && "text-muted-foreground")}>
+                    {activeGoal.achieved_result}
+                  </div>
                 )}
               </div>
             </CardContent>

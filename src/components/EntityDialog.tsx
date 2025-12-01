@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Archive, ArchiveRestore } from "lucide-react";
 
 interface EntityDialogProps {
   open: boolean;
@@ -10,10 +11,12 @@ interface EntityDialogProps {
   onSave: () => void;
   onDelete?: () => void;
   onExport?: () => void;
+  onArchive?: () => void;
   saveLabel?: string;
   deleteLabel?: string;
   exportLabel?: string;
   isEditing?: boolean;
+  isArchived?: boolean;
 }
 
 export const EntityDialog = ({
@@ -24,10 +27,12 @@ export const EntityDialog = ({
   onSave,
   onDelete,
   onExport,
+  onArchive,
   saveLabel = "Save",
   deleteLabel = "Delete",
   exportLabel = "Export",
   isEditing = false,
+  isArchived = false,
 }: EntityDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,6 +47,25 @@ export const EntityDialog = ({
         </div>
         <div className="flex justify-between gap-2 flex-shrink-0 pt-4 border-t">
           <div className="flex gap-2">
+            {isEditing && onArchive && (
+              <Button
+                variant="outline"
+                onClick={onArchive}
+                title={isArchived ? "Unarchive" : "Archive"}
+              >
+                {isArchived ? (
+                  <>
+                    <ArchiveRestore className="h-4 w-4 mr-2" />
+                    Unarchive
+                  </>
+                ) : (
+                  <>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archive
+                  </>
+                )}
+              </Button>
+            )}
             {isEditing && onDelete && (
               <Button variant="destructive" onClick={onDelete}>
                 {deleteLabel}
