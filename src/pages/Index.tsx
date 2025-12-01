@@ -48,7 +48,7 @@ const IndexContent = () => {
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="icon" className="md:h-10 md:w-auto md:px-4 md:py-2">
                         <User className="h-4 w-4 md:mr-2" />
-                        <span className="hidden md:inline">Profile</span>
+                        <span className="hidden md:inline">{user?.email || "Profile"}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
