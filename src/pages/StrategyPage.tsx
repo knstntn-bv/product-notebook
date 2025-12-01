@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Archive, ArchiveRestore } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { ColorPicker } from "@/components/ColorPicker";
 import { AutoResizeTextarea } from "@/components/AutoResizeTextarea";
@@ -190,6 +190,24 @@ const StrategyPage = () => {
   const deleteInitiativeMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("initiatives").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => refetchInitiatives(),
+  });
+
+  const archiveInitiativeMutation = useMutation({
+    mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      const updates: any = { archived };
+      if (archived) {
+        updates.archived_at = new Date().toISOString();
+      } else {
+        updates.archived_at = null;
+      }
+      
+      const { error } = await supabase
+        .from("initiatives")
+        .update(updates)
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => refetchInitiatives(),
@@ -408,15 +426,23 @@ const StrategyPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initiatives.map((initiative) => {
+              {[...initiatives]
+                .sort((a, b) => {
+                  // Sort: non-archived first, then archived
+                  if (a.archived && !b.archived) return 1;
+                  if (!a.archived && b.archived) return -1;
+                  return 0;
+                })
+                .map((initiative) => {
                 const editing = editingInitiatives[initiative.id] || { name: initiative.name, description: initiative.description, color: initiative.color || "#8B5CF6" };
                 const hasChanges = editing.name !== initiative.name || editing.description !== initiative.description || editing.color !== (initiative.color || "#8B5CF6");
+                const isArchived = initiative.archived || false;
                 
                 return (
-                  <TableRow key={initiative.id}>
+                  <TableRow key={initiative.id} className={isArchived ? "opacity-50" : ""}>
                     <TableCell>
                       {isReadOnly ? (
-                        <span className="text-foreground">{initiative.name || "Unnamed Initiative"}</span>
+                        <span className={isArchived ? "text-muted-foreground" : "text-foreground"}>{initiative.name || "Unnamed Initiative"}</span>
                       ) : (
                         <InlineEditInput
                           value={editing.name}
@@ -426,12 +452,13 @@ const StrategyPage = () => {
                           }))}
                           maxLength={100}
                           placeholder="Enter initiative name..."
+                          className={isArchived ? "text-muted-foreground" : ""}
                         />
                       )}
                     </TableCell>
                     <TableCell>
                       {isReadOnly ? (
-                        <span className="text-foreground whitespace-pre-line">{initiative.description}</span>
+                        <span className={isArchived ? "text-muted-foreground whitespace-pre-line" : "text-foreground whitespace-pre-line"}>{initiative.description}</span>
                       ) : (
                         <div className="flex items-center">
                           <AutoResizeTextarea
@@ -441,13 +468,14 @@ const StrategyPage = () => {
                               [initiative.id]: { ...editing, description: v }
                             }))}
                             placeholder="Enter description..."
+                            className={isArchived ? "text-muted-foreground" : ""}
                           />
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
                       {isReadOnly ? (
-                        <div className="w-6 h-6 rounded border" style={{ backgroundColor: initiative.color || "#8B5CF6" }} />
+                        <div className={`w-6 h-6 rounded border ${isArchived ? "opacity-50" : ""}`} style={{ backgroundColor: initiative.color || "#8B5CF6" }} />
                       ) : (
                         <ColorPicker
                           value={editing.color}
@@ -481,6 +509,18 @@ const StrategyPage = () => {
                               Save
                             </Button>
                           )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => archiveInitiativeMutation.mutate({ id: initiative.id, archived: !isArchived })}
+                            title={isArchived ? "Unarchive" : "Archive"}
+                          >
+                            {isArchived ? (
+                              <ArchiveRestore className="h-4 w-4" />
+                            ) : (
+                              <Archive className="h-4 w-4" />
+                            )}
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => deleteInitiativeMutation.mutate(initiative.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>

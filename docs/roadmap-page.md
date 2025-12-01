@@ -14,10 +14,11 @@ The Roadmap Page provides a matrix view for organizing goals by strategic initia
 ### Table Structure
 
 The roadmap is displayed as a table with:
-- **Rows**: One row per initiative
+- **Rows**: One row per non-archived initiative
 - **Columns**: 
   - First column: Initiative name (with color indicator)
   - Subsequent columns: Time periods (Current Quarter, Next Quarter, Next Half-Year)
+- **Note**: Archived initiatives are automatically filtered out and do not appear in the roadmap table
 
 ### Initiative Column
 
@@ -157,6 +158,8 @@ The goal editing dialog provides a user-friendly interface for creating and edit
 - Goals are linked to initiatives (required)
 - Goals can reference metrics (via target_metrics array)
 - Goals can be linked to features in the Board page
+- Only non-archived initiatives are displayed in the roadmap
+- Goals linked to archived initiatives remain in the database but their initiative row is hidden
 
 ### State Management
 
