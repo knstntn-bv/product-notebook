@@ -315,8 +315,6 @@ const RoadmapPage = () => {
       transform,
       isDragging,
     } = useSortable({ id: goal.id, disabled: isReadOnly || isArchived });
-
-    const isArchived = goal.archived || false;
     
     // Disable transition completely to prevent return animation
     // Optimistic update happens immediately, so no animation needed
