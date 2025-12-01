@@ -9,8 +9,10 @@ interface EntityDialogProps {
   children: ReactNode;
   onSave: () => void;
   onDelete?: () => void;
+  onExport?: () => void;
   saveLabel?: string;
   deleteLabel?: string;
+  exportLabel?: string;
   isEditing?: boolean;
 }
 
@@ -21,8 +23,10 @@ export const EntityDialog = ({
   children,
   onSave,
   onDelete,
+  onExport,
   saveLabel = "Save",
   deleteLabel = "Delete",
+  exportLabel = "Export",
   isEditing = false,
 }: EntityDialogProps) => {
   return (
@@ -37,11 +41,18 @@ export const EntityDialog = ({
           </div>
         </div>
         <div className="flex justify-between gap-2 flex-shrink-0 pt-4 border-t">
-          {isEditing && onDelete && (
-            <Button variant="destructive" onClick={onDelete}>
-              {deleteLabel}
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {isEditing && onDelete && (
+              <Button variant="destructive" onClick={onDelete}>
+                {deleteLabel}
+              </Button>
+            )}
+            {onExport && (
+              <Button variant="outline" onClick={onExport}>
+                {exportLabel}
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2 ml-auto">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
