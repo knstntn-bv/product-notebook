@@ -2,7 +2,47 @@
 
 ## Overview
 
-The Hypotheses Page provides a comprehensive table for tracking and managing product hypotheses. It allows users to document insights, problem and solution hypotheses, validation results, and impact metrics in a structured format.
+The Hypotheses Page provides a comprehensive table for tracking and managing product hypotheses. It allows users to document insights, problem and solution hypotheses, validation results, and impact metrics in a structured format. The page uses a dialog-based editing approach for better user experience and data safety.
+
+## Recent Changes (2025-01-15)
+
+### Major UI/UX Improvements
+
+1. **Dialog-Based Editing**
+   - Replaced inline editing with dialog-based editing (consistent with Goals and Features)
+   - All fields are now edited in a dedicated dialog opened by clicking on a table row
+   - Eliminates risk of losing unsaved changes
+   - Better focus on editing task
+
+2. **Table Layout Reorganization**
+   - Combined related fields in single columns:
+     - Problem Hypothesis and Problem Validation are now in one column
+     - Solution Hypothesis and Solution Validation are now in one column
+   - Validation fields are displayed below their corresponding hypotheses with visual separators
+   - Improved space utilization and readability
+
+3. **Status Display**
+   - Status is now displayed as read-only text in the table
+   - Status can only be edited in the hypothesis editing dialog
+   - Column width automatically adjusts to content
+   - Removed inline status selector to simplify the table
+
+4. **Automatic Column Width Distribution**
+   - Table uses `table-auto` layout for automatic column width distribution
+   - Status and Actions columns automatically adjust to content width
+   - Other columns use percentage-based widths
+   - Better space utilization across different screen sizes
+
+5. **Improved Delete Flow**
+   - Delete action moved to the editing dialog
+   - Added confirmation dialog before deletion
+   - Prevents accidental deletions
+
+6. **Table Content**
+   - All table content is now read-only
+   - Table rows are clickable to open editing dialog
+   - Visual hover effects indicate interactive rows
+   - Better separation between viewing and editing modes
 
 ## Location
 
@@ -15,19 +55,25 @@ The Hypotheses Page provides a comprehensive table for tracking and managing pro
 
 The hypotheses table contains the following columns:
 
-1. **Status**: Current status of the hypothesis (sortable)
-2. **Insight**: The initial insight or observation
-3. **Problem Hypothesis**: The hypothesis about the problem
-4. **Problem Validation**: Evidence validating the problem hypothesis
-5. **Solution Hypothesis**: The hypothesis about the solution
-6. **Solution Validation**: Evidence validating the solution hypothesis
-7. **Impact Metrics**: Metrics that would be impacted by this hypothesis
-8. **Actions**: Buttons for saving, creating features, and deleting
+1. **Status**: Current status of the hypothesis displayed as text (sortable)
+2. **Insight**: The initial insight or observation (read-only in table)
+3. **Problem Hypothesis**: Combined column showing:
+   - Problem hypothesis (main text)
+   - Problem validation (displayed below with separator)
+4. **Solution Hypothesis**: Combined column showing:
+   - Solution hypothesis (main text)
+   - Solution validation (displayed below with separator)
+5. **Impact Metrics**: Metrics that would be impacted by this hypothesis (displayed as tags)
+6. **Actions**: Button for creating features from hypothesis
+
+**Note**: All content in the table is read-only. To edit a hypothesis, click on the table row to open the editing dialog.
 
 ### Responsive Design
 
 **Desktop:**
-- Fixed table layout with percentage-based column widths
+- Auto table layout with automatic column width distribution
+- Status and Actions columns automatically adjust to content width
+- Other columns use percentage-based widths
 - All columns visible simultaneously
 
 **Mobile:**
@@ -46,109 +92,119 @@ The hypotheses table contains the following columns:
 - **Rejected**: Hypothesis has been invalidated or rejected
 
 **Behavior:**
-- Dropdown selector for each hypothesis
-- Changes are tracked locally until saved
+- Displayed as text in the table (read-only)
+- Can be edited in the hypothesis editing dialog
 - Sortable column (click header to sort)
 - Sorting cycles: None → Ascending → Descending → None
+- Column width automatically adjusts to content
 
 ### Insight
 
 **Purpose**: The initial observation or insight that led to the hypothesis.
 
 **Behavior:**
-- Auto-resizing textarea (starts at 2 rows)
-- Grows with content
-- Placeholder: "Enter insight..."
-- Changes tracked locally
+- Displayed as read-only text in the table
+- Editable in the hypothesis editing dialog
 - Supports multi-line text
+- Placeholder in dialog: "Enter insight..."
 
-### Problem Hypothesis
+### Problem Hypothesis & Validation
 
-**Purpose**: The hypothesis about what problem exists.
+**Purpose**: The hypothesis about what problem exists and evidence validating it.
 
-**Behavior:**
-- Auto-resizing textarea (starts at 2 rows)
-- Grows with content
-- Placeholder: "Enter problem hypothesis..."
-- Changes tracked locally
-- Supports multi-line text
+**Table Display:**
+- Combined in a single column
+- Problem hypothesis shown as main text
+- Problem validation displayed below with a visual separator (border)
+- Validation text uses smaller font size and muted color
+- Both fields are read-only in the table
 
-### Problem Validation
+**Dialog Editing:**
+- Separate fields in the editing dialog
+- Problem hypothesis: Textarea with placeholder "Enter problem hypothesis..."
+- Problem validation: Textarea with placeholder "Enter validation (links supported)..."
+- Supports multi-line text and links
 
-**Purpose**: Evidence or links validating the problem hypothesis.
+### Solution Hypothesis & Validation
 
-**Behavior:**
-- Auto-resizing textarea (starts at 2 rows)
-- Grows with content
-- Placeholder: "Enter validation (links supported)..."
-- Changes tracked locally
-- Supports links and multi-line text
+**Purpose**: The hypothesis about what solution would address the problem and evidence validating it.
 
-### Solution Hypothesis
+**Table Display:**
+- Combined in a single column
+- Solution hypothesis shown as main text
+- Solution validation displayed below with a visual separator (border)
+- Validation text uses smaller font size and muted color
+- Both fields are read-only in the table
 
-**Purpose**: The hypothesis about what solution would address the problem.
-
-**Behavior:**
-- Auto-resizing textarea (starts at 2 rows)
-- Grows with content
-- Placeholder: "Enter solution hypothesis..."
-- Changes tracked locally
-- Supports multi-line text
-
-### Solution Validation
-
-**Purpose**: Evidence or links validating the solution hypothesis.
-
-**Behavior:**
-- Auto-resizing textarea (starts at 2 rows)
-- Grows with content
-- Placeholder: "Enter validation (links supported)..."
-- Changes tracked locally
-- Supports links and multi-line text
+**Dialog Editing:**
+- Separate fields in the editing dialog
+- Solution hypothesis: Textarea with placeholder "Enter solution hypothesis..."
+- Solution validation: Textarea with placeholder "Enter validation (links supported)..."
+- Supports multi-line text and links
 
 ### Impact Metrics
 
 **Purpose**: Metrics that would be impacted if this hypothesis is validated.
 
-**Behavior:**
+**Table Display:**
+- Displayed as read-only tags (badges)
+- Shows all metrics associated with the hypothesis
+- If no metrics, displays "No metrics" in italic muted text
+
+**Dialog Editing:**
 - Tag input component (`MetricTagInput`)
 - Type to add metrics
 - Autocomplete suggestions from metrics defined in Strategy page
 - Multiple metrics can be added
 - Placeholder: "Type to add metrics..."
-- Changes tracked locally
 
 ## Behavior
 
 ### Creating Hypotheses
 
 1. Click the "Add Hypothesis" button at the top
-2. A new row is added to the table with default values:
-   - Status: "New"
+2. A dialog opens with empty fields:
+   - Status: "New" (default)
    - All other fields: Empty
-3. Start editing fields inline
-4. Click "Save" button to persist changes
+3. Fill in the fields in the dialog
+4. Click "Save Hypothesis" to create the hypothesis
+5. Dialog closes and the new hypothesis appears in the table
 
 ### Editing Hypotheses
 
-**Inline Editing:**
-- All fields (except Status and Impact Metrics) use auto-resizing textareas
-- Click in any field to start editing
-- Changes are tracked locally in component state
-- No auto-save - must click "Save" button to persist
+**Dialog-Based Editing:**
+- Click on any row in the table to open the editing dialog
+- All fields are editable in the dialog:
+  - Status (Select dropdown)
+  - Insight (Textarea)
+  - Problem Hypothesis (Textarea)
+  - Problem Validation (Textarea)
+  - Solution Hypothesis (Textarea)
+  - Solution Validation (Textarea)
+  - Impact Metrics (Tag input)
+- Changes are made in the dialog, not in the table
+- No risk of losing changes - dialog must be explicitly closed
 
 **Saving Changes:**
-- "Save" button appears in Actions column when there are unsaved changes
-- Click "Save" to persist all changes for that hypothesis
+- Click "Save Hypothesis" button in the dialog
+- All changes are saved at once
 - Success toast notification on save
-- Changes are cleared from local state after save
+- Dialog closes and table updates
+- If dialog is closed without saving, changes are discarded
+
+**Table Display:**
+- All content in the table is read-only
+- Table rows are clickable (cursor changes to pointer on hover)
+- Hover effect indicates rows are interactive
 
 ### Deleting Hypotheses
 
-1. Click the trash icon in the Actions column
-2. Hypothesis is immediately deleted (no confirmation dialog)
-3. Success toast notification
-4. Row is removed from the table
+1. Click on a hypothesis row to open the editing dialog
+2. Click the "Delete" button in the dialog
+3. A confirmation dialog appears asking to confirm deletion
+4. Click "Delete" in the confirmation dialog to proceed
+5. Hypothesis is deleted and removed from the table
+6. Success toast notification
 
 ### Creating Features from Hypotheses
 
@@ -169,6 +225,8 @@ The hypotheses table contains the following columns:
 
 **Use Case**: This allows users to quickly turn validated hypotheses into actionable features without manual data entry.
 
+**Note**: The button click is isolated from row click - clicking the button does not open the hypothesis editing dialog.
+
 ### Status Sorting
 
 **Behavior:**
@@ -184,16 +242,17 @@ The hypotheses table contains the following columns:
 
 ### State Management
 
-**Local State:**
-- Each hypothesis row tracks its own editing state
-- Changes are stored in `editedHypotheses` object
-- Only changed fields are included in the update mutation
-- Local state is cleared after successful save
+**Dialog State:**
+- Single editing state for the currently open hypothesis
+- Changes are stored in `editingHypothesis` state
+- All fields are included in the save mutation
+- State is cleared when dialog closes
 
 **Data Fetching:**
 - Uses React Query for data fetching
 - Automatically refetches after mutations
 - Sorted locally based on status sort preference
+- Data is normalized on fetch to handle null values properly
 
 ### Validation
 
@@ -210,19 +269,21 @@ The hypotheses table contains the following columns:
 
 ## User Experience
 
-### Inline Editing
+### Dialog-Based Editing
 
-- All fields are editable directly in the table
-- Auto-resizing textareas prevent layout shifts
-- Changes are clearly indicated by the "Save" button
-- No need to open separate dialogs for editing
+- All fields are edited in a dedicated dialog
+- Prevents accidental data loss (changes are only saved when explicitly saved)
+- Better focus on editing task
+- Consistent with Goals and Features editing patterns
+- Dialog can be closed with Cancel button or by clicking outside
 
 ### Visual Feedback
 
-- "Save" button only appears when there are unsaved changes
 - Toast notifications for save and delete operations
 - Loading states during mutations
-- Status dropdown provides clear visual states
+- Status displayed as text with clear labels
+- Table rows show hover effect indicating they're clickable
+- Confirmation dialog for destructive actions (delete)
 
 ### Workflow Support
 
@@ -241,10 +302,10 @@ The hypotheses table contains the following columns:
 
 - In read-only mode:
   - "Add Hypothesis" button is hidden
-  - All fields are disabled (display-only)
-  - Action buttons (Save, Create Feature, Delete) are hidden
-  - Status dropdown is disabled
+  - Table rows are not clickable (no hover effect)
+  - Action buttons (Create Feature) are hidden
   - Content is view-only
+  - Editing dialog cannot be opened
 
 ## Use Cases
 
@@ -258,16 +319,30 @@ The hypotheses table contains the following columns:
 
 ## Technical Details
 
-### Auto-Resizing Textareas
+### Dialog Component
 
-- Uses `AutoResizeTextarea` component
-- Automatically adjusts height based on content
-- Minimum 2 rows, grows as needed
-- Prevents layout shifts during editing
+- Uses `EntityDialog` component (shared with Goals and Features)
+- Consistent UI/UX across the application
+- Supports save, delete, and cancel actions
+- Responsive design for all screen sizes
+
+### Table Layout
+
+- Uses `table-auto` layout for automatic column width distribution
+- Status and Actions columns use `w-auto` to fit content
+- Other columns use percentage-based widths
+- Combined columns (Problem/Solution Hypothesis with Validation) use visual separators
+
+### Data Normalization
+
+- Data from database is normalized on fetch
+- Handles null values for all text fields (converts to empty strings)
+- Handles null values for impact_metrics (converts to empty arrays)
+- Ensures consistent data types throughout the component
 
 ### Metric Tag Input
 
-- Uses `MetricTagInput` component
+- Uses `MetricTagInput` component in the editing dialog
 - Provides autocomplete from existing metrics
 - Supports multiple tags
 - Stores as array of metric name strings
@@ -278,4 +353,11 @@ The hypotheses table contains the following columns:
 - Maintains original order when sort is cleared
 - Status order is predefined (New < In Progress < Accepted < Rejected)
 - Visual indicators show sort direction
+
+### Mutation Handling
+
+- Separate mutations for create/update and delete
+- Optimistic updates with error rollback
+- Query invalidation after successful mutations
+- Error handling with toast notifications
 
