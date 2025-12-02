@@ -1,7 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Archive, ArchiveRestore } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface EntityDialogProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface EntityDialogProps {
   exportLabel?: string;
   isEditing?: boolean;
   isArchived?: boolean;
+  contentClassName?: string;
 }
 
 export const EntityDialog = ({
@@ -33,52 +35,66 @@ export const EntityDialog = ({
   exportLabel = "Export",
   isEditing = false,
   isArchived = false,
+  contentClassName,
 }: EntityDialogProps) => {
+  const showArchiveButton = isEditing && onArchive;
+  const showDeleteButton = isEditing && onDelete;
+  const showExportButton = !!onExport;
+
+  const archiveButtonLabel = useMemo(() => {
+    return isArchived ? "Unarchive" : "Archive";
+  }, [isArchived]);
+
+  const ArchiveIcon = isArchived ? ArchiveRestore : Archive;
+
+  const handleCancel = () => {
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] min-h-[660px] !grid grid-rows-[auto_1fr_auto]">
+      <DialogContent
+        className={cn(
+          "max-w-3xl max-h-[90vh] min-h-[660px] !grid grid-rows-[auto_1fr_auto]",
+          contentClassName
+        )}
+      >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
+
         <div className="overflow-y-auto min-h-0 pr-4 pl-1">
-          <div className="space-y-4">
-            {children}
-          </div>
+          <div className="space-y-4">{children}</div>
         </div>
+
         <div className="flex justify-between gap-2 flex-shrink-0 pt-4 border-t">
           <div className="flex gap-2">
-            {isEditing && onArchive && (
+            {showArchiveButton && (
               <Button
                 variant="outline"
                 onClick={onArchive}
-                title={isArchived ? "Unarchive" : "Archive"}
+                title={archiveButtonLabel}
               >
-                {isArchived ? (
-                  <>
-                    <ArchiveRestore className="h-4 w-4 mr-2" />
-                    Unarchive
-                  </>
-                ) : (
-                  <>
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archive
-                  </>
-                )}
+                <ArchiveIcon className="h-4 w-4 mr-2" />
+                {archiveButtonLabel}
               </Button>
             )}
-            {isEditing && onDelete && (
+
+            {showDeleteButton && (
               <Button variant="destructive" onClick={onDelete}>
                 {deleteLabel}
               </Button>
             )}
-            {onExport && (
+
+            {showExportButton && (
               <Button variant="outline" onClick={onExport}>
                 {exportLabel}
               </Button>
             )}
           </div>
+
           <div className="flex gap-2 ml-auto">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
             <Button onClick={onSave}>{saveLabel}</Button>
