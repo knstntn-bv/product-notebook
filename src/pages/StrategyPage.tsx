@@ -16,9 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const StrategyPage = () => {
-  const { metrics, initiatives, refetchMetrics, refetchInitiatives, isReadOnly, sharedUserId, showArchived } = useProduct();
+  const { metrics, initiatives, refetchMetrics, refetchInitiatives, showArchived } = useProduct();
   const { user } = useAuth();
-  const effectiveUserId = sharedUserId || user?.id;
+  const effectiveUserId = user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -236,11 +236,9 @@ const StrategyPage = () => {
         ) : (
           <div className="flex items-center justify-between">
             <p className="text-foreground">{productFormula || "No product formula"}</p>
-            {!isReadOnly && (
-              <Button variant="ghost" size="sm" onClick={() => setIsEditingFormula(true)}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
+            <Button variant="ghost" size="sm" onClick={() => setIsEditingFormula(true)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
           </div>
         )}
       </div>
@@ -252,7 +250,7 @@ const StrategyPage = () => {
         <SectionHeader 
           title="Values" 
           description="Define your product values"
-          onAdd={!isReadOnly ? () => addValueMutation.mutate() : undefined}
+          onAdd={() => addValueMutation.mutate()}
           addLabel="Add Value"
         />
         <div className="space-y-4">
@@ -280,23 +278,19 @@ const StrategyPage = () => {
               ) : (
                 <>
                   <p className="flex-1 text-foreground">{value.value_text || "No value"}</p>
-                  {!isReadOnly && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingValueIndex(index);
-                          setEditingValueText(value.value_text);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => deleteValueMutation.mutate(value.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingValueIndex(index);
+                      setEditingValueText(value.value_text);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => deleteValueMutation.mutate(value.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </>
               )}
             </div>
@@ -311,7 +305,7 @@ const StrategyPage = () => {
         <SectionHeader 
           title="Metrics" 
           description="Define your product metrics hierarchy"
-          onAdd={!isReadOnly ? () => addMetricMutation.mutate() : undefined}
+          onAdd={() => addMetricMutation.mutate()}
           addLabel="Add Metric"
         />
         <Table>
@@ -330,74 +324,62 @@ const StrategyPage = () => {
                 return (
                   <TableRow key={metric.id}>
                     <TableCell>
-                      {isReadOnly ? (
-                        <span className="text-foreground">{metric.name || "Unnamed Metric"}</span>
-                      ) : (
-                        <InlineEditInput
-                          value={editing.name}
-                          onChange={(value) => setEditingMetrics(prev => ({
-                            ...prev,
-                            [metric.id]: { ...editing, name: value }
-                          }))}
-                          maxLength={100}
-                          placeholder="Enter metric name..."
-                        />
-                      )}
+                      <InlineEditInput
+                        value={editing.name}
+                        onChange={(value) => setEditingMetrics(prev => ({
+                          ...prev,
+                          [metric.id]: { ...editing, name: value }
+                        }))}
+                        maxLength={100}
+                        placeholder="Enter metric name..."
+                      />
                     </TableCell>
                     <TableCell>
-                      {isReadOnly ? (
-                        <span className="text-foreground">
-                          {metrics.find(m => m.id === metric.parent_metric_id)?.name || "None"}
-                        </span>
-                      ) : (
-                        <Select
-                          value={editing.parent_metric_id || "none"}
-                          onValueChange={(value) => setEditingMetrics(prev => ({
-                            ...prev,
-                            [metric.id]: { ...editing, parent_metric_id: value === "none" ? null : value }
-                          }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select parent metric" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {metrics.filter(m => m.id !== metric.id).map((m) => (
-                              <SelectItem key={m.id} value={m.id}>
-                                {m.name || "Unnamed Metric"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                      <Select
+                        value={editing.parent_metric_id || "none"}
+                        onValueChange={(value) => setEditingMetrics(prev => ({
+                          ...prev,
+                          [metric.id]: { ...editing, parent_metric_id: value === "none" ? null : value }
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select parent metric" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {metrics.filter(m => m.id !== metric.id).map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name || "Unnamed Metric"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
-                      {!isReadOnly && (
-                        <div className="flex gap-2">
-                          {hasChanges && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                updateMetricMutation.mutate({ 
-                                  id: metric.id, 
-                                  name: editing.name,
-                                  parent_metric_id: editing.parent_metric_id
-                                });
-                                setEditingMetrics(prev => {
-                                  const newState = { ...prev };
-                                  delete newState[metric.id];
-                                  return newState;
-                                });
-                              }}
-                            >
-                              Save
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => deleteMetricMutation.mutate(metric.id)}>
-                            <Trash2 className="h-4 w-4" />
+                      <div className="flex gap-2">
+                        {hasChanges && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              updateMetricMutation.mutate({ 
+                                id: metric.id, 
+                                name: editing.name,
+                                parent_metric_id: editing.parent_metric_id
+                              });
+                              setEditingMetrics(prev => {
+                                const newState = { ...prev };
+                                delete newState[metric.id];
+                                return newState;
+                              });
+                            }}
+                          >
+                            Save
                           </Button>
-                        </div>
-                      )}
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => deleteMetricMutation.mutate(metric.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -413,7 +395,7 @@ const StrategyPage = () => {
         <SectionHeader 
           title="Initiatives" 
           description="Define your product initiatives"
-          onAdd={!isReadOnly ? () => addInitiativeMutation.mutate() : undefined}
+          onAdd={() => addInitiativeMutation.mutate()}
           addLabel="Add Initiative"
         />
         <Table>
@@ -442,91 +424,77 @@ const StrategyPage = () => {
                 return (
                   <TableRow key={initiative.id} className={isArchived ? "opacity-50" : ""}>
                     <TableCell>
-                      {isReadOnly ? (
-                        <span className={isArchived ? "text-muted-foreground" : "text-foreground"}>{initiative.name || "Unnamed Initiative"}</span>
-                      ) : (
-                        <InlineEditInput
-                          value={editing.name}
-                          onChange={(value) => setEditingInitiatives(prev => ({
+                      <InlineEditInput
+                        value={editing.name}
+                        onChange={(value) => setEditingInitiatives(prev => ({
+                          ...prev,
+                          [initiative.id]: { ...editing, name: value }
+                        }))}
+                        maxLength={100}
+                        placeholder="Enter initiative name..."
+                        className={isArchived ? "text-muted-foreground" : ""}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <AutoResizeTextarea
+                          value={editing.description}
+                          onChange={(v) => setEditingInitiatives(prev => ({
                             ...prev,
-                            [initiative.id]: { ...editing, name: value }
+                            [initiative.id]: { ...editing, description: v }
                           }))}
-                          maxLength={100}
-                          placeholder="Enter initiative name..."
+                          placeholder="Enter description..."
                           className={isArchived ? "text-muted-foreground" : ""}
                         />
-                      )}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {isReadOnly ? (
-                        <span className={isArchived ? "text-muted-foreground whitespace-pre-line" : "text-foreground whitespace-pre-line"}>{initiative.description}</span>
-                      ) : (
-                        <div className="flex items-center">
-                          <AutoResizeTextarea
-                            value={editing.description}
-                            onChange={(v) => setEditingInitiatives(prev => ({
-                              ...prev,
-                              [initiative.id]: { ...editing, description: v }
-                            }))}
-                            placeholder="Enter description..."
-                            className={isArchived ? "text-muted-foreground" : ""}
-                          />
-                        </div>
-                      )}
+                      <ColorPicker
+                        value={editing.color}
+                        onChange={(color) => setEditingInitiatives(prev => ({
+                          ...prev,
+                          [initiative.id]: { ...editing, color }
+                        }))}
+                      />
                     </TableCell>
                     <TableCell>
-                      {isReadOnly ? (
-                        <div className={`w-6 h-6 rounded border ${isArchived ? "opacity-50" : ""}`} style={{ backgroundColor: initiative.color || "#8B5CF6" }} />
-                      ) : (
-                        <ColorPicker
-                          value={editing.color}
-                          onChange={(color) => setEditingInitiatives(prev => ({
-                            ...prev,
-                            [initiative.id]: { ...editing, color }
-                          }))}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {!isReadOnly && (
-                        <div className="flex gap-2">
-                          {hasChanges && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                updateInitiativeMutation.mutate({ 
-                                  id: initiative.id, 
-                                  name: editing.name,
-                                  description: editing.description,
-                                  color: editing.color
-                                });
-                                setEditingInitiatives(prev => {
-                                  const newState = { ...prev };
-                                  delete newState[initiative.id];
-                                  return newState;
-                                });
-                              }}
-                            >
-                              Save
-                            </Button>
-                          )}
+                      <div className="flex gap-2">
+                        {hasChanges && (
                           <Button 
-                            variant="ghost" 
                             size="sm" 
-                            onClick={() => archiveInitiativeMutation.mutate({ id: initiative.id, archived: !isArchived })}
-                            title={isArchived ? "Unarchive" : "Archive"}
+                            onClick={() => {
+                              updateInitiativeMutation.mutate({ 
+                                id: initiative.id, 
+                                name: editing.name,
+                                description: editing.description,
+                                color: editing.color
+                              });
+                              setEditingInitiatives(prev => {
+                                const newState = { ...prev };
+                                delete newState[initiative.id];
+                                return newState;
+                              });
+                            }}
                           >
-                            {isArchived ? (
-                              <ArchiveRestore className="h-4 w-4" />
-                            ) : (
-                              <Archive className="h-4 w-4" />
-                            )}
+                            Save
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => deleteInitiativeMutation.mutate(initiative.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => archiveInitiativeMutation.mutate({ id: initiative.id, archived: !isArchived })}
+                          title={isArchived ? "Unarchive" : "Archive"}
+                        >
+                          {isArchived ? (
+                            <ArchiveRestore className="h-4 w-4" />
+                          ) : (
+                            <Archive className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteInitiativeMutation.mutate(initiative.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

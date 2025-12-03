@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { FileText, Map, Trello, Lightbulb, LogOut, User, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ProductProvider, useProduct } from "@/contexts/ProductContext";
@@ -13,7 +14,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
@@ -22,7 +22,7 @@ const IndexContent = () => {
   const [activeTab, setActiveTab] = useState("strategy");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { signOut, user } = useAuth();
-  const { isReadOnly, showArchived, setShowArchived } = useProduct();
+  const { showArchived, setShowArchived } = useProduct();
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,44 +31,40 @@ const IndexContent = () => {
           <div className="container mx-auto px-4 py-2 md:py-4 flex items-center justify-between">
             <h1 className="text-lg md:text-2xl font-bold text-foreground">Product Notebook</h1>
             <div className="flex gap-2">
-              {!isReadOnly && (
-                <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="md:h-10 md:w-auto md:px-4 md:py-2">
-                        <Settings className="h-4 w-4 md:mr-2" />
-                        <span className="hidden md:inline">Settings</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuCheckboxItem
-                        checked={showArchived}
-                        onCheckedChange={(checked) => setShowArchived(checked)}
-                      >
-                        Show Archived Items
-                      </DropdownMenuCheckboxItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
-                        Open Project
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="md:h-10 md:w-auto md:px-4 md:py-2">
-                        <User className="h-4 w-4 md:mr-2" />
-                        <span className="hidden md:inline">{user?.email || "Profile"}</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={signOut}>
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Sign Out
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="md:h-10 md:w-auto md:px-4 md:py-2">
+                    <Settings className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Settings</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="flex items-center justify-between gap-4"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <span>Show Archived Items</span>
+                    <Switch
+                      checked={showArchived}
+                      onCheckedChange={(checked) => setShowArchived(checked)}
+                    />
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="md:h-10 md:w-auto md:px-4 md:py-2">
+                    <User className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">{user?.email || "Profile"}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           {/* Mobile pages switcher - full width stripe attached to header */}

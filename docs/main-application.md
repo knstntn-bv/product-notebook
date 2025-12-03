@@ -16,7 +16,7 @@ The Main Application is the central hub of the Product Notebook. It provides a t
 
 The header contains:
 - **Title**: "Product Notebook" (left side)
-- **Action Buttons** (right side, only visible when not in read-only mode):
+- **Action Buttons** (right side):
   - **Settings Button**: Opens project settings dialog
   - **Profile Button**: Dropdown menu with "Sign Out" option
 
@@ -55,21 +55,10 @@ The application uses a tabbed interface to switch between different views:
   - Hypotheses → `HypothesesPage`
   - Board → `BoardPage`
 
-### Read-Only Mode
-
-- When viewing a shared project (via share link), the application enters read-only mode
-- In read-only mode:
-  - Settings and profile buttons are hidden
-  - Edit functionality is disabled across all pages
-  - Users can view but not modify content
-
 ### Settings Dialog
 
 - Accessible via the Settings button in the header
-- Allows users to:
-  - Toggle project sharing (make project publicly accessible)
-  - Generate and copy share links
-  - View current sharing status
+- Currently reserved for future settings
 
 ### User Profile
 
@@ -81,8 +70,6 @@ The application uses a tabbed interface to switch between different views:
 
 The main application wraps all pages in a `ProductProvider` context that:
 - Manages metrics and initiatives data
-- Handles shared project viewing via URL parameters
-- Provides read-only mode detection
 - Supplies data to all child components
 
 ### State Management

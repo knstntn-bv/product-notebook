@@ -47,9 +47,8 @@ interface Initiative {
 }
 
 const BoardPage = () => {
-  const { isReadOnly, sharedUserId } = useProduct();
   const { user } = useAuth();
-  const effectiveUserId = sharedUserId || user?.id;
+  const effectiveUserId = user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
@@ -66,7 +65,7 @@ const BoardPage = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: isReadOnly || isMobile ? 999999 : 8,
+        distance: isMobile ? 999999 : 8,
       },
     })
   );
@@ -756,7 +755,7 @@ const BoardPage = () => {
             {columns.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
-                <DroppableColumn key={column.id} column={column} onAddFeature={!isReadOnly ? createFeature : undefined}>
+                <DroppableColumn key={column.id} column={column} onAddFeature={createFeature}>
                   <SortableContext items={columnFeatures.map(f => f.id)} strategy={verticalListSortingStrategy}>
                     {columnFeatures.map(feature => (
                       <SortableFeature
@@ -765,10 +764,8 @@ const BoardPage = () => {
                         goalName={getGoalName(feature.goal_id)}
                         initiativeColor={getInitiativeColor(feature.initiative_id)}
                         onClick={() => {
-                          if (!isReadOnly) {
-                            setEditingFeature(feature as Feature);
-                            setIsDialogOpen(true);
-                          }
+                          setEditingFeature(feature as Feature);
+                          setIsDialogOpen(true);
                         }}
                       />
                     ))}

@@ -35,9 +35,9 @@ interface Goal {
 }
 
 const RoadmapPage = () => {
-  const { initiatives, metrics, isReadOnly, sharedUserId, showArchived } = useProduct();
+  const { initiatives, metrics, showArchived } = useProduct();
   const { user } = useAuth();
-  const effectiveUserId = sharedUserId || user?.id;
+  const effectiveUserId = user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingGoal, setEditingGoal] = useState<Partial<Goal> | null>(null);
@@ -48,7 +48,7 @@ const RoadmapPage = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: isReadOnly ? 999999 : 8, // Effectively disable drag in read-only mode
+        distance: 8,
       },
     })
   );
@@ -238,7 +238,7 @@ const RoadmapPage = () => {
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over || isReadOnly) return;
+    if (!over) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
@@ -313,7 +313,7 @@ const RoadmapPage = () => {
       setNodeRef,
       transform,
       isDragging,
-    } = useSortable({ id: goal.id, disabled: isReadOnly || isArchived });
+    } = useSortable({ id: goal.id, disabled: isArchived });
     
     // Disable transition completely to prevent return animation
     // Optimistic update happens immediately, so no animation needed
@@ -327,12 +327,12 @@ const RoadmapPage = () => {
       <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
         <Card
           className={cn(
-            isReadOnly ? "" : "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
+            "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
             isDragging && "ring-2 ring-primary",
             isArchived && "opacity-50"
           )}
           onClick={(e) => {
-            if (!isReadOnly && !isDragging) {
+            if (!isDragging) {
               e.stopPropagation();
               setEditingGoal(goal);
               setIsDialogOpen(true);
@@ -383,7 +383,6 @@ const RoadmapPage = () => {
   }) => {
     const { setNodeRef, isOver } = useDroppable({
       id: `cell-${initiativeId}-${quarter}`,
-      disabled: isReadOnly,
     });
 
     return (
@@ -391,7 +390,7 @@ const RoadmapPage = () => {
         ref={setNodeRef}
         className={cn(
           "border border-border bg-card p-4 align-top",
-          isOver && !isReadOnly && "bg-muted/50"
+          isOver && "bg-muted/50"
         )}
       >
         {children}
@@ -449,9 +448,8 @@ const RoadmapPage = () => {
                               <DraggableGoalCard key={goal.id} goal={goal as Goal} />
                             ))}
                           </SortableContext>
-                          {!isReadOnly && (
-                            <Button
-                              variant="outline"
+                          <Button
+                            variant="outline"
                               size="sm"
                               className="w-full"
                               onClick={() => createGoal(initiative.id, quarter.id as any)}
@@ -459,7 +457,6 @@ const RoadmapPage = () => {
                               <Plus className="h-4 w-4 mr-2" />
                               Add Goal
                             </Button>
-                          )}
                         </div>
                       </DroppableCell>
                     );
