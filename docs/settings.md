@@ -49,9 +49,10 @@ The Settings system allows users to control the visibility of archived items. Se
 
 **State Management:**
 - Setting is stored in `project_settings.show_archived` field in the database
-- Setting is persisted per user and synced across all pages
+- Setting is persisted per product and synced across all pages
 - Changes take effect immediately without page refresh
-- Setting is loaded from database on application start
+- Setting is loaded from database on application start based on the current product
+- Each product maintains its own archive visibility preference
 
 **User Experience:**
 - Quick access from Settings menu without opening dialog
@@ -71,15 +72,22 @@ When the dialog opens:
 ### Project Settings Table
 
 **Fields:**
-- `user_id`: Foreign key to the user who owns the project
+- `product_id`: Foreign key to the product this setting belongs to (NOT NULL)
 - `show_archived`: Boolean indicating if archived items should be displayed (default: `false`)
 
 **Constraints:**
-- One settings record per user
-- Settings are user-specific (not project-specific in multi-project scenarios)
+- One settings record per product
+- Settings are product-specific (each product has its own archive visibility setting)
+- `product_id` is required and references the `products` table
+
+**Data Model:**
+- Settings are now scoped to products, not users
+- Each product can have its own archive visibility preference
+- When a user switches between products, each product maintains its own settings
 
 **Migrations:**
 - `20251203192902_add_show_archived_to_project_settings.sql`: Adds `show_archived` column (boolean, default: `false`)
+- `20251204000414_remove_user_id_from_data_tables.sql`: Removes `user_id` column, settings now use `product_id` only
 
 ## Security
 

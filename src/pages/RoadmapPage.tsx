@@ -35,9 +35,8 @@ interface Goal {
 }
 
 const RoadmapPage = () => {
-  const { initiatives, metrics, showArchived } = useProduct();
+  const { initiatives, metrics, showArchived, currentProductId } = useProduct();
   const { user } = useAuth();
-  const effectiveUserId = user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingGoal, setEditingGoal] = useState<Partial<Goal> | null>(null);
@@ -61,18 +60,18 @@ const RoadmapPage = () => {
 
   // Fetch goals
   const { data: goals = [] } = useQuery({
-    queryKey: ["goals", effectiveUserId],
+    queryKey: ["goals", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("goals")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Save goal mutation
@@ -96,10 +95,11 @@ const RoadmapPage = () => {
           .eq("id", goal.id);
         if (error) throw error;
       } else {
+        if (!currentProductId) throw new Error("No product selected");
         const { error } = await supabase
           .from("goals")
           .insert({
-            user_id: user.id,
+            product_id: currentProductId,
             initiative_id: goal.initiative_id!,
             goal: goal.goal!,
             expected_result: goal.expected_result || "",
@@ -193,7 +193,7 @@ const RoadmapPage = () => {
     },
     onSettled: () => {
       // Always refetch after error or success to ensure we have the latest data from server
-      queryClient.invalidateQueries({ queryKey: ["goals", effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ["goals", currentProductId] });
     },
   });
 
@@ -267,10 +267,10 @@ const RoadmapPage = () => {
       
       if (activeGoal && (activeGoal.initiative_id !== targetInitiativeId || activeGoal.quarter !== targetQuarter)) {
         // Cancel any outgoing refetches
-        queryClient.cancelQueries({ queryKey: ["goals", effectiveUserId] });
+        queryClient.cancelQueries({ queryKey: ["goals", currentProductId] });
 
         // Snapshot the previous value for rollback
-        const previousGoals = queryClient.getQueryData<Goal[]>(["goals", effectiveUserId]);
+        const previousGoals = queryClient.getQueryData<Goal[]>(["goals", currentProductId]);
 
         // Optimistically update immediately
         if (previousGoals) {
@@ -279,7 +279,7 @@ const RoadmapPage = () => {
               ? { ...goal, initiative_id: targetInitiativeId, quarter: targetQuarter }
               : goal
           );
-          queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], updatedGoals);
+          queryClient.setQueryData<Goal[]>(["goals", currentProductId], updatedGoals);
         }
 
         // Then perform the mutation (will rollback on error)
@@ -293,7 +293,7 @@ const RoadmapPage = () => {
             onError: (error: any) => {
               // Rollback on error
               if (previousGoals) {
-                queryClient.setQueryData<Goal[]>(["goals", effectiveUserId], previousGoals);
+                queryClient.setQueryData<Goal[]>(["goals", currentProductId], previousGoals);
               }
             },
           }

@@ -240,9 +240,11 @@ The hypotheses table contains the following columns:
 
 ### Relationships
 
-- Impact metrics reference metrics from the Strategy page
-- Features created from hypotheses can be linked to goals and initiatives
+- All hypotheses belong to a specific product (`product_id`)
+- Impact metrics reference metrics from the Strategy page (same product)
+- Features created from hypotheses can be linked to goals and initiatives (same product)
 - No direct database relationships (metrics stored as names, not IDs)
+- All data is scoped to the current product
 
 ## User Experience
 

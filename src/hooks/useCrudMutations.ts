@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface CrudMutationsOptions {
@@ -16,16 +16,16 @@ export const useCrudMutations = ({
   entityName = "Item",
   onSuccessCallback,
 }: CrudMutationsOptions) => {
-  const { user } = useAuth();
+  const { currentProductId } = useProduct();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const addMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
-      if (!user) throw new Error("No user");
-      const { error } = await (supabase as any)
+      if (!currentProductId) throw new Error("No product selected");
+      const { error } = await supabase
         .from(tableName)
-        .insert({ ...data, user_id: user.id });
+        .insert({ ...data, product_id: currentProductId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -40,7 +40,7 @@ export const useCrudMutations = ({
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...updates }: Record<string, any>) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from(tableName)
         .update(updates)
         .eq("id", id);
@@ -58,7 +58,7 @@ export const useCrudMutations = ({
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from(tableName).delete().eq("id", id);
+      const { error } = await supabase.from(tableName).delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

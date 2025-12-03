@@ -57,9 +57,8 @@ interface Initiative {
 }
 
 const HypothesesPage = () => {
-  const { metrics } = useProduct();
+  const { metrics, currentProductId } = useProduct();
   const { user } = useAuth();
-  const effectiveUserId = user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -92,13 +91,13 @@ const HypothesesPage = () => {
 
   // Fetch hypotheses
   const { data: hypotheses = [] } = useQuery({
-    queryKey: ["hypotheses", effectiveUserId],
+    queryKey: ["hypotheses", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("hypotheses")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       // Ensure all fields are properly typed and handle null values
@@ -113,7 +112,7 @@ const HypothesesPage = () => {
         impact_metrics: Array.isArray(h.impact_metrics) ? h.impact_metrics : [],
       })) as Hypothesis[];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Add hypothesis mutation - теперь открывает диалог
@@ -152,10 +151,11 @@ const HypothesesPage = () => {
         if (error) throw error;
       } else {
         // Create new
+        if (!currentProductId) throw new Error("No product selected");
         const { error } = await supabase
           .from("hypotheses")
           .insert({
-            user_id: user.id,
+            product_id: currentProductId,
             status: hypothesis.status || "new",
             insight: hypothesis.insight || "",
             problem_hypothesis: hypothesis.problem_hypothesis || "",
@@ -199,49 +199,49 @@ const HypothesesPage = () => {
 
   // Fetch features to calculate position
   const { data: features = [] } = useQuery({
-    queryKey: ["features", effectiveUserId],
+    queryKey: ["features", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("features")
         .select("*")
-        .eq("user_id", effectiveUserId);
+        .eq("product_id", currentProductId);
       if (error) throw error;
       return (data || []) as Array<{ id: string; board_column: ColumnId; position: number }>;
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Fetch goals
   const { data: goals = [] } = useQuery({
-    queryKey: ["goals", effectiveUserId],
+    queryKey: ["goals", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("goals")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Fetch initiatives
   const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", effectiveUserId],
+    queryKey: ["initiatives", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("initiatives")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Create feature mutation
@@ -266,11 +266,12 @@ const HypothesesPage = () => {
         }
       }
       
-      // Get total count of features for this user (sequential numbering)
+      // Get total count of features for this product (sequential numbering)
+      if (!currentProductId) throw new Error("No product selected");
       const { count } = await supabase
         .from("features")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
+        .eq("product_id", currentProductId);
       
       const featureNumber = (count || 0) + 1;
       const human_readable_id = `${prefix}-${featureNumber}`;
@@ -278,7 +279,7 @@ const HypothesesPage = () => {
       const { error } = await supabase
         .from("features")
         .insert({
-          user_id: user.id,
+          product_id: currentProductId,
           title: feature.title,
           description: feature.description || "",
           goal_id: feature.goal_id,

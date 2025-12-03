@@ -18,9 +18,18 @@ interface Initiative {
   archived_at?: string | null;
 }
 
+interface Product {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ProductContextType {
   metrics: Metric[];
   initiatives: Initiative[];
+  currentProductId: string | null;
   isLoading: boolean;
   refetchMetrics: () => void;
   refetchInitiatives: () => void;
@@ -36,72 +45,92 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
 
   const effectiveUserId = user?.id;
 
-  const { data: metrics = [], isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
-    queryKey: ["metrics", effectiveUserId],
+  // Get current product for the user (first/default product)
+  const { data: currentProduct, isLoading: productLoading } = useQuery({
+    queryKey: ["current_product", effectiveUserId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!effectiveUserId) return null;
       const { data, error } = await supabase
-        .from("metrics")
+        .from("products")
         .select("*")
         .eq("user_id", effectiveUserId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error && error.code !== "PGRST116") throw error;
+      return data as Product | null;
     },
     enabled: !!effectiveUserId,
   });
 
-  const { data: initiatives = [], isLoading: initiativesLoading, refetch: refetchInitiatives } = useQuery({
-    queryKey: ["initiatives", effectiveUserId],
+  const currentProductId = currentProduct?.id || null;
+
+  const { data: metrics = [], isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
+    queryKey: ["metrics", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
-        .from("initiatives")
+        .from("metrics")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
+  });
+
+  const { data: initiatives = [], isLoading: initiativesLoading, refetch: refetchInitiatives } = useQuery({
+    queryKey: ["initiatives", currentProductId],
+    queryFn: async () => {
+      if (!currentProductId) return [];
+      const { data, error } = await supabase
+        .from("initiatives")
+        .select("*")
+        .eq("product_id", currentProductId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!currentProductId,
   });
 
   // Fetch showArchived setting
   const { data: showArchivedData, refetch: refetchShowArchived } = useQuery({
-    queryKey: ["project_settings", effectiveUserId],
+    queryKey: ["project_settings", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return { show_archived: false };
+      if (!currentProductId) return { show_archived: false };
       const { data, error } = await supabase
         .from("project_settings")
         .select("show_archived")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .maybeSingle();
       if (error && error.code !== "PGRST116") throw error;
       return data || { show_archived: false };
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   const showArchived = showArchivedData?.show_archived ?? false;
 
   const setShowArchived = async (value: boolean) => {
-    if (!user) return;
+    if (!user || !currentProductId) return;
     
     const { data: existing } = await supabase
       .from("project_settings")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("product_id", currentProductId)
       .maybeSingle();
 
     if (existing) {
       await supabase
         .from("project_settings")
         .update({ show_archived: value })
-        .eq("user_id", user.id);
+        .eq("product_id", currentProductId);
     } else {
       await supabase
         .from("project_settings")
-        .insert({ user_id: user.id, show_archived: value });
+        .insert({ product_id: currentProductId, show_archived: value });
     }
     
     refetchShowArchived();
@@ -111,8 +140,9 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     <ProductContext.Provider 
       value={{ 
         metrics, 
-        initiatives, 
-        isLoading: metricsLoading || initiativesLoading,
+        initiatives,
+        currentProductId,
+        isLoading: productLoading || metricsLoading || initiativesLoading,
         refetchMetrics,
         refetchInitiatives,
         showArchived,

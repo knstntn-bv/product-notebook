@@ -224,10 +224,12 @@ The goal editing dialog provides a user-friendly interface for creating and edit
 ### Goal Organization
 
 - Goals are automatically organized by:
-  - **Initiative**: Which strategic initiative they belong to
+  - **Product**: All goals belong to a specific product (`product_id`)
+  - **Initiative**: Which strategic initiative they belong to (must be from the same product)
   - **Quarter**: Which time period they target
 - Goals can be moved between cells via drag and drop
 - Each goal must belong to exactly one initiative and one quarter
+- All goals and initiatives are scoped to the current product
 
 ### Relationships
 

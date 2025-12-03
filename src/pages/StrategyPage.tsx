@@ -16,9 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const StrategyPage = () => {
-  const { metrics, initiatives, refetchMetrics, refetchInitiatives, showArchived } = useProduct();
+  const { metrics, initiatives, refetchMetrics, refetchInitiatives, showArchived, currentProductId } = useProduct();
   const { user } = useAuth();
-  const effectiveUserId = user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -31,18 +30,18 @@ const StrategyPage = () => {
 
   // Fetch product formula
   const { data: formulaData } = useQuery({
-    queryKey: ["product_formula", effectiveUserId],
+    queryKey: ["product_formula", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return null;
+      if (!currentProductId) return null;
       const { data, error } = await supabase
         .from("product_formulas")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   useEffect(() => {
@@ -53,27 +52,28 @@ const StrategyPage = () => {
 
   // Fetch values
   const { data: values = [] } = useQuery({
-    queryKey: ["values", effectiveUserId],
+    queryKey: ["values", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("values")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("position", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Save formula mutation
   const saveFormulaMutation = useMutation({
     mutationFn: async (formula: string) => {
       if (!user) throw new Error("No user");
+      if (!currentProductId) throw new Error("No product selected");
       const { error } = await supabase
         .from("product_formulas")
-        .upsert({ user_id: user.id, formula }, { onConflict: "user_id" });
+        .upsert({ product_id: currentProductId, formula }, { onConflict: "product_id" });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -91,9 +91,10 @@ const StrategyPage = () => {
     mutationFn: async () => {
       if (!user) throw new Error("No user");
       const position = values.length;
+      if (!currentProductId) throw new Error("No product selected");
       const { error } = await supabase
         .from("values")
-        .insert({ user_id: user.id, value_text: "", position });
+        .insert({ product_id: currentProductId, value_text: "", position });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -128,9 +129,10 @@ const StrategyPage = () => {
   const addMetricMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("No user");
+      if (!currentProductId) throw new Error("No product selected");
       const { error } = await supabase
         .from("metrics")
-        .insert({ user_id: user.id, name: "" });
+        .insert({ product_id: currentProductId, name: "" });
       if (error) throw error;
     },
     onSuccess: () => refetchMetrics(),
@@ -163,9 +165,10 @@ const StrategyPage = () => {
   const addInitiativeMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("No user");
+      if (!currentProductId) throw new Error("No product selected");
       const { error } = await supabase
         .from("initiatives")
-        .insert({ user_id: user.id, name: "", description: "" });
+        .insert({ product_id: currentProductId, name: "", description: "" });
       if (error) throw error;
     },
     onSuccess: () => refetchInitiatives(),
