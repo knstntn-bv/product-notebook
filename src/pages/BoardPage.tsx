@@ -48,7 +48,7 @@ interface Initiative {
 
 const BoardPage = () => {
   const { user } = useAuth();
-  const effectiveUserId = user?.id;
+  const { currentProductId } = useProduct();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
@@ -83,50 +83,50 @@ const BoardPage = () => {
 
   // Fetch features
   const { data: features = [] } = useQuery({
-    queryKey: ["features", effectiveUserId],
+    queryKey: ["features", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("features")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("position", { ascending: true });
       if (error) throw error;
       return (data || []) as Feature[];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Fetch goals
   const { data: goals = [] } = useQuery({
-    queryKey: ["goals", effectiveUserId],
+    queryKey: ["goals", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("goals")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Fetch initiatives
   const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", effectiveUserId],
+    queryKey: ["initiatives", currentProductId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!currentProductId) return [];
       const { data, error } = await supabase
         .from("initiatives")
         .select("*")
-        .eq("user_id", effectiveUserId)
+        .eq("product_id", currentProductId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!currentProductId,
   });
 
   // Save feature mutation
@@ -166,11 +166,12 @@ const BoardPage = () => {
           }
         }
         
-        // Get total count of features for this user (sequential numbering)
+        // Get total count of features for this product (sequential numbering)
+        if (!currentProductId) throw new Error("No product selected");
         const { count } = await supabase
           .from("features")
           .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
+          .eq("product_id", currentProductId);
         
         const featureNumber = (count || 0) + 1;
         const human_readable_id = `${prefix}-${featureNumber}`;
@@ -178,7 +179,7 @@ const BoardPage = () => {
         const { error } = await supabase
           .from("features")
           .insert({
-            user_id: user.id,
+            product_id: currentProductId,
             title: feature.title!,
             description: feature.description || "",
             goal_id: feature.goal_id,
@@ -241,7 +242,7 @@ const BoardPage = () => {
     },
     onSettled: () => {
       // Always refetch after error or success to ensure sync
-      queryClient.invalidateQueries({ queryKey: ["features", effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ["features", currentProductId] });
     },
   });
 
@@ -347,7 +348,7 @@ const BoardPage = () => {
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
     // Store original state for preview
-    originalFeaturesRef.current = queryClient.getQueryData<Feature[]>(["features", effectiveUserId]) || null;
+    originalFeaturesRef.current = queryClient.getQueryData<Feature[]>(["features", currentProductId]) || null;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -360,7 +361,7 @@ const BoardPage = () => {
     
     if (activeId === overId) {
       // Same position, revert to original
-      queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
       setDragOverId(null);
       return;
     }
@@ -445,14 +446,14 @@ const BoardPage = () => {
       });
     } else {
       // No valid drop target, revert to original
-      queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
       setDragOverId(null);
       return;
     }
     
     // Apply preview update to show where item will land
     if (updatedFeatures.length > 0) {
-      queryClient.setQueryData(["features", effectiveUserId], updatedFeatures);
+      queryClient.setQueryData(["features", currentProductId], updatedFeatures);
     }
   };
 
@@ -464,7 +465,7 @@ const BoardPage = () => {
     if (!over) {
       // Drag cancelled, revert to original state
       if (originalFeaturesRef.current) {
-        queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+        queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
       }
       originalFeaturesRef.current = null;
       return;
@@ -476,17 +477,17 @@ const BoardPage = () => {
     if (activeId === overId) {
       // Same position, revert to original if we had a preview
       if (originalFeaturesRef.current) {
-        queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+        queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
       }
       originalFeaturesRef.current = null;
       return;
     }
 
     // Cancel any outgoing refetches
-    queryClient.cancelQueries({ queryKey: ["features", effectiveUserId] });
+    queryClient.cancelQueries({ queryKey: ["features", currentProductId] });
     
     // Get original state for rollback and feature lookup
-    const originalFeatures = originalFeaturesRef.current || queryClient.getQueryData<Feature[]>(["features", effectiveUserId]) || [];
+    const originalFeatures = originalFeaturesRef.current || queryClient.getQueryData<Feature[]>(["features", currentProductId]) || [];
     const activeFeature = originalFeatures.find(f => f.id === activeId);
     const overFeature = originalFeatures.find(f => f.id === overId);
     const overColumn = columns.find(col => col.id === overId);
@@ -638,13 +639,13 @@ const BoardPage = () => {
       });
     } else {
       // No valid drop, restore original state (should not happen, but safety check)
-      queryClient.setQueryData(["features", effectiveUserId], originalFeatures);
+      queryClient.setQueryData(["features", currentProductId], originalFeatures);
       return;
     }
 
     // Apply optimistic update immediately
     if (updatedFeatures.length > 0) {
-      queryClient.setQueryData(["features", effectiveUserId], updatedFeatures);
+      queryClient.setQueryData(["features", currentProductId], updatedFeatures);
     }
 
     // Then perform the mutation (will rollback on error)
@@ -654,7 +655,7 @@ const BoardPage = () => {
         onError: (error: any) => {
           // Rollback on error - use previousFeaturesForRollback that we stored
           if (previousFeaturesForRollback) {
-            queryClient.setQueryData(["features", effectiveUserId], previousFeaturesForRollback);
+            queryClient.setQueryData(["features", currentProductId], previousFeaturesForRollback);
           }
         },
       }
@@ -732,7 +733,7 @@ const BoardPage = () => {
   const handleDragCancel = () => {
     // Revert to original state if drag is cancelled
     if (originalFeaturesRef.current) {
-      queryClient.setQueryData(["features", effectiveUserId], originalFeaturesRef.current);
+      queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
       originalFeaturesRef.current = null;
     }
     setActiveId(null);

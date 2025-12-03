@@ -24,9 +24,9 @@ export type Database = {
           goal_id: string | null
           initiative_id: string | null
           position: number
+          product_id: string | null
           title: string
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           board_column: string
@@ -37,9 +37,9 @@ export type Database = {
           goal_id?: string | null
           initiative_id?: string | null
           position?: number
+          product_id?: string | null
           title: string
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           board_column?: string
@@ -50,9 +50,9 @@ export type Database = {
           goal_id?: string | null
           initiative_id?: string | null
           position?: number
+          product_id?: string | null
           title?: string
           updated_at?: string | null
-          user_id?: string
         }
         Relationships: [
           {
@@ -69,6 +69,13 @@ export type Database = {
             referencedRelation: "initiatives"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "features_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       hypotheses: {
@@ -79,11 +86,11 @@ export type Database = {
           insight: string | null
           problem_hypothesis: string | null
           problem_validation: string | null
+          product_id: string | null
           solution_hypothesis: string | null
           solution_validation: string | null
           status: string
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -92,11 +99,11 @@ export type Database = {
           insight?: string | null
           problem_hypothesis?: string | null
           problem_validation?: string | null
+          product_id?: string | null
           solution_hypothesis?: string | null
           solution_validation?: string | null
           status?: string
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -105,13 +112,21 @@ export type Database = {
           insight?: string | null
           problem_hypothesis?: string | null
           problem_validation?: string | null
+          product_id?: string | null
           solution_hypothesis?: string | null
           solution_validation?: string | null
           status?: string
           updated_at?: string | null
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hypotheses_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       goals: {
         Row: {
@@ -123,11 +138,11 @@ export type Database = {
           expected_result: string | null
           goal: string
           id: string
-          quarter: string
           initiative_id: string
+          product_id: string | null
+          quarter: string
           target_metrics: string[] | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           achieved_result?: string | null
@@ -139,10 +154,10 @@ export type Database = {
           goal: string
           id?: string
           initiative_id: string
+          product_id?: string | null
           quarter: string
           target_metrics?: string[] | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           achieved_result?: string | null
@@ -154,10 +169,10 @@ export type Database = {
           goal?: string
           id?: string
           initiative_id?: string
+          product_id?: string | null
           quarter?: string
           target_metrics?: string[] | null
           updated_at?: string | null
-          user_id?: string
         }
         Relationships: [
           {
@@ -165,6 +180,13 @@ export type Database = {
             columns: ["initiative_id"]
             isOneToOne: false
             referencedRelation: "initiatives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -175,24 +197,24 @@ export type Database = {
           id: string
           name: string
           parent_metric_id: string | null
+          product_id: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           name: string
           parent_metric_id?: string | null
+          product_id?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           name?: string
           parent_metric_id?: string | null
+          product_id?: string | null
           updated_at?: string | null
-          user_id?: string
         }
         Relationships: [
           {
@@ -202,6 +224,13 @@ export type Database = {
             referencedRelation: "metrics"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "metrics_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_formulas: {
@@ -209,48 +238,96 @@ export type Database = {
           created_at: string | null
           formula: string | null
           id: string
+          product_id: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           created_at?: string | null
           formula?: string | null
           id?: string
+          product_id?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           created_at?: string | null
           formula?: string | null
           id?: string
+          product_id?: string | null
           updated_at?: string | null
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_formulas_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_settings: {
         Row: {
           created_at: string | null
           id: string
+          product_id: string | null
           updated_at: string | null
-          user_id: string
           show_archived: boolean
         }
         Insert: {
           created_at?: string | null
           id?: string
+          product_id?: string | null
           updated_at?: string | null
-          user_id: string
           show_archived?: boolean
         }
         Update: {
           created_at?: string | null
           id?: string
+          product_id?: string | null
           updated_at?: string | null
-          user_id?: string
           show_archived?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "project_settings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       initiatives: {
         Row: {
@@ -261,8 +338,8 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          product_id: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           archived?: boolean
@@ -272,8 +349,8 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          product_id?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           archived?: boolean
@@ -283,37 +360,53 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          product_id?: string | null
           updated_at?: string | null
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "initiatives_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       values: {
         Row: {
           created_at: string | null
           id: string
           position: number
+          product_id: string | null
           updated_at: string | null
-          user_id: string
           value_text: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           position?: number
+          product_id?: string | null
           updated_at?: string | null
-          user_id: string
           value_text: string
         }
         Update: {
           created_at?: string | null
           id?: string
           position?: number
+          product_id?: string | null
           updated_at?: string | null
-          user_id?: string
           value_text?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

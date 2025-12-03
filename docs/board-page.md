@@ -228,14 +228,16 @@ The feature editing dialog provides a user-friendly interface for creating and e
 ### Feature Organization
 
 - Features are organized by:
+  - **Product**: All features belong to a specific product (`product_id`)
   - **Column**: Current stage in the workflow
   - **Position**: Order within the column
 - Features can be linked to:
-  - **Goal**: From the roadmap
-  - **Initiative**: From the strategy page
+  - **Goal**: From the roadmap (must be from the same product)
+  - **Initiative**: From the strategy page (must be from the same product)
 - Each feature has a unique **Human Readable ID**:
   - Automatically generated on creation
   - Format: `XXX-N` (prefix from initiative + sequential number)
+  - Sequential numbering is scoped to the product (each product has its own sequence)
   - Used for easy reference and identification
   - Immutable (cannot be changed after creation)
 
@@ -246,7 +248,7 @@ Each feature has a unique human-readable identifier that is automatically genera
 **Identifier Format:**
 - Format: `XXX-N` where:
   - `XXX` is a prefix consisting of the first 3 characters of the initiative name (uppercase) that the feature belongs to
-  - `N` is a sequential number across all features for the user
+  - `N` is a sequential number across all features for the current product
 
 **Prefix Generation Rules:**
 1. If the feature has a linked initiative:
@@ -266,6 +268,7 @@ Each feature has a unique human-readable identifier that is automatically genera
 - The identifier is generated only when creating a feature
 - The identifier does not change when editing a feature (immutable)
 - Changing the initiative does not affect the existing identifier
+- Sequential numbers are scoped to the product (each product has its own sequence)
 - Sequential numbers are not renumbered when features are deleted (history is preserved)
 - The identifier is displayed in the feature editing dialog as read-only text (for existing features only)
 

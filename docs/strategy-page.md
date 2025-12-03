@@ -128,13 +128,16 @@ The Strategy Page is where users define the foundational elements of their produ
 - All changes are persisted to Supabase database immediately
 - React Query handles caching and refetching
 - Changes are reflected across all pages that use the same data
+- All data operations are scoped to the current product (`product_id`)
 
 ### Data Relationships
+- All data is scoped to a specific product via `product_id`
 - Metrics can reference other metrics (parent-child relationships)
 - Initiatives are referenced by:
   - Goals (in Roadmap)
   - Features (in Board)
 - These relationships are maintained through foreign keys in the database
+- Product formula is unique per product (one formula per product)
 
 ### Validation
 - Product formula: Max 500 characters

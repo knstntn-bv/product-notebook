@@ -69,8 +69,11 @@ The application uses a tabbed interface to switch between different views:
 ### Data Context
 
 The main application wraps all pages in a `ProductProvider` context that:
-- Manages metrics and initiatives data
+- Manages the current product selection (`currentProductId`)
+- Automatically fetches the user's default product (first product by creation date)
+- Manages metrics and initiatives data for the current product
 - Supplies data to all child components
+- Ensures all data operations are scoped to the selected product
 
 ### State Management
 
@@ -78,10 +81,33 @@ The main application wraps all pages in a `ProductProvider` context that:
 - Tab state is local to the Index component
 - Settings dialog state is managed locally
 - All data mutations are handled by individual page components
+- Product selection is managed globally via `ProductContext`
+- All data queries are scoped to the current product (`product_id`)
 
 ### Error Handling
 
 - Protected routes redirect unauthenticated users to `/auth`
 - Loading states are handled by individual page components
 - Error states are displayed via toast notifications
+
+## Data Model
+
+### Products Entity
+
+The application uses a **product-based data model** where:
+- Each user can have multiple products (one-to-many relationship)
+- All data (features, goals, metrics, initiatives, etc.) is scoped to a specific product
+- The `ProductContext` manages the current product selection
+- When a user first accesses the application, their default product is automatically selected
+- All data operations (create, read, update, delete) are filtered by `product_id`
+
+**Benefits:**
+- Allows users to manage multiple products from a single account
+- Provides clear data isolation between products
+- Enables future features like product switching and multi-product dashboards
+
+**Current Product Selection:**
+- Automatically selects the user's first product (by creation date)
+- All pages display data for the currently selected product
+- Product selection is managed via `ProductContext.currentProductId`
 
