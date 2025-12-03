@@ -1,8 +1,7 @@
-import { createContext, useContext, ReactNode, useState, useEffect } from "react";
+import { createContext, useContext, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearchParams } from "react-router-dom";
 
 interface Metric {
   id: string;
@@ -25,8 +24,6 @@ interface ProductContextType {
   isLoading: boolean;
   refetchMetrics: () => void;
   refetchInitiatives: () => void;
-  isReadOnly: boolean;
-  sharedUserId: string | null;
   showArchived: boolean;
   setShowArchived: (value: boolean) => void;
   refetchShowArchived: () => void;
@@ -36,35 +33,8 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [sharedUserId, setSharedUserId] = useState<string | null>(null);
-  const [isReadOnly, setIsReadOnly] = useState(false);
 
-  const shareToken = searchParams.get("share");
-
-  useEffect(() => {
-    const fetchSharedUser = async () => {
-      if (shareToken) {
-        // Use the secure function to validate share token
-        const { data, error } = await supabase.rpc('get_shared_user_id', {
-          token: shareToken
-        });
-
-        if (data && !error) {
-          setSharedUserId(data);
-          // Set read-only if viewing someone else's project
-          setIsReadOnly(user ? data !== user.id : true);
-        }
-      } else if (user) {
-        setSharedUserId(null);
-        setIsReadOnly(false);
-      }
-    };
-
-    fetchSharedUser();
-  }, [shareToken, user]);
-
-  const effectiveUserId = sharedUserId || user?.id;
+  const effectiveUserId = user?.id;
 
   const { data: metrics = [], isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
     queryKey: ["metrics", effectiveUserId],
@@ -145,8 +115,6 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         isLoading: metricsLoading || initiativesLoading,
         refetchMetrics,
         refetchInitiatives,
-        isReadOnly,
-        sharedUserId,
         showArchived,
         setShowArchived,
         refetchShowArchived

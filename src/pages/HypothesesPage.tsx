@@ -57,9 +57,9 @@ interface Initiative {
 }
 
 const HypothesesPage = () => {
-  const { metrics, isReadOnly, sharedUserId } = useProduct();
+  const { metrics } = useProduct();
   const { user } = useAuth();
-  const effectiveUserId = sharedUserId || user?.id;
+  const effectiveUserId = user?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -396,7 +396,7 @@ const HypothesesPage = () => {
     <div className="space-y-6">
       <SectionHeader 
         title="Hypotheses Portfolio"
-        onAdd={!isReadOnly ? handleAddHypothesis : undefined}
+        onAdd={handleAddHypothesis}
         addLabel="Add Hypothesis"
       />
 
@@ -443,10 +443,10 @@ const HypothesesPage = () => {
               <TableRow 
                 key={hypothesis.id}
                 className={cn(
-                  !isReadOnly && "cursor-pointer hover:bg-muted/50",
+                  "cursor-pointer hover:bg-muted/50",
                   "transition-colors"
                 )}
-                onClick={() => !isReadOnly && handleEditHypothesis(hypothesis)}
+                onClick={() => handleEditHypothesis(hypothesis)}
               >
                 <TableCell className="w-auto px-2">
                   <span className="text-xs whitespace-nowrap">
@@ -505,8 +505,7 @@ const HypothesesPage = () => {
                   onClick={(e) => e.stopPropagation()} 
                   className="w-auto px-2"
                 >
-                  {!isReadOnly && (
-                    <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -517,7 +516,6 @@ const HypothesesPage = () => {
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                  )}
                 </TableCell>
               </TableRow>
             ))}

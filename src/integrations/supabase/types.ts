@@ -232,26 +232,23 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          is_public: boolean
-          share_token: string | null
           updated_at: string | null
           user_id: string
+          show_archived: boolean
         }
         Insert: {
           created_at?: string | null
           id?: string
-          is_public?: boolean
-          share_token?: string | null
           updated_at?: string | null
           user_id: string
+          show_archived?: boolean
         }
         Update: {
           created_at?: string | null
           id?: string
-          is_public?: boolean
-          share_token?: string | null
           updated_at?: string | null
           user_id?: string
+          show_archived?: boolean
         }
         Relationships: []
       }
@@ -323,8 +320,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_shared_user_id: { Args: { token: string }; Returns: string }
-      is_project_public: { Args: { check_user_id: string }; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
