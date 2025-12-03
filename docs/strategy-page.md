@@ -105,8 +105,10 @@ The Strategy Page is where users define the foundational elements of their produ
 - Archived initiatives are automatically moved to the end of the list
 - The archive date is saved when an initiative is archived
 - Click the restore icon (ArchiveRestore) to unarchive an initiative
-- Archived initiatives are hidden from the Roadmap page
-- Archiving preserves the initiative data while removing it from active views
+- Archived initiatives visibility is controlled by the global "Show Archived Items" setting in Settings menu
+- When "Show Archived Items" is unchecked: Only active initiatives are displayed
+- When "Show Archived Items" is checked: All initiatives are displayed, archived ones at the end with reduced opacity
+- Archiving preserves the initiative data while removing it from active views (when filter is enabled)
 
 **Color Usage:**
 - Initiative colors appear as visual indicators on:

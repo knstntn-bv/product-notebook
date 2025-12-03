@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const StrategyPage = () => {
-  const { metrics, initiatives, refetchMetrics, refetchInitiatives, isReadOnly, sharedUserId } = useProduct();
+  const { metrics, initiatives, refetchMetrics, refetchInitiatives, isReadOnly, sharedUserId, showArchived } = useProduct();
   const { user } = useAuth();
   const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
@@ -427,6 +427,7 @@ const StrategyPage = () => {
             </TableHeader>
             <TableBody>
               {[...initiatives]
+                .filter(initiative => showArchived || !initiative.archived)
                 .sort((a, b) => {
                   // Sort: non-archived first, then archived
                   if (a.archived && !b.archived) return 1;

@@ -27,6 +27,9 @@ interface ProductContextType {
   refetchInitiatives: () => void;
   isReadOnly: boolean;
   sharedUserId: string | null;
+  showArchived: boolean;
+  setShowArchived: (value: boolean) => void;
+  refetchShowArchived: () => void;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
@@ -93,6 +96,47 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     enabled: !!effectiveUserId,
   });
 
+  // Fetch showArchived setting
+  const { data: showArchivedData, refetch: refetchShowArchived } = useQuery({
+    queryKey: ["project_settings", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return { show_archived: false };
+      const { data, error } = await supabase
+        .from("project_settings")
+        .select("show_archived")
+        .eq("user_id", effectiveUserId)
+        .maybeSingle();
+      if (error && error.code !== "PGRST116") throw error;
+      return data || { show_archived: false };
+    },
+    enabled: !!effectiveUserId,
+  });
+
+  const showArchived = showArchivedData?.show_archived ?? false;
+
+  const setShowArchived = async (value: boolean) => {
+    if (!user) return;
+    
+    const { data: existing } = await supabase
+      .from("project_settings")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from("project_settings")
+        .update({ show_archived: value })
+        .eq("user_id", user.id);
+    } else {
+      await supabase
+        .from("project_settings")
+        .insert({ user_id: user.id, show_archived: value });
+    }
+    
+    refetchShowArchived();
+  };
+
   return (
     <ProductContext.Provider 
       value={{ 
@@ -102,7 +146,10 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         refetchMetrics,
         refetchInitiatives,
         isReadOnly,
-        sharedUserId
+        sharedUserId,
+        showArchived,
+        setShowArchived,
+        refetchShowArchived
       }}
     >
       {children}
