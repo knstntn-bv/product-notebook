@@ -807,8 +807,7 @@ const BoardPage = () => {
         exportLabel="Export to .md"
         isEditing={!!editingFeature?.id}
         saveLabel="Save Feature"
-      >
-        {editingFeature && (
+        leftContent={editingFeature && (
           <>
             {editingFeature.human_readable_id && (
               <div>
@@ -831,8 +830,13 @@ const BoardPage = () => {
                 value={editingFeature.description}
                 onChange={(e) => setEditingFeature({ ...editingFeature, description: e.target.value })}
                 placeholder="Enter feature description..."
+                rows={15}
               />
             </div>
+          </>
+        )}
+        rightContent={editingFeature && (
+          <>
             <div>
               <Label>Linked Goal</Label>
               <Popover open={goalOpen} onOpenChange={setGoalOpen}>
@@ -939,7 +943,7 @@ const BoardPage = () => {
             </div>
           </>
         )}
-      </EntityDialog>
+      />
 
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
