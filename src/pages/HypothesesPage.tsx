@@ -536,29 +536,8 @@ const HypothesesPage = () => {
         onDelete={editingHypothesis?.id ? handleDeleteHypothesis : undefined}
         isEditing={!!editingHypothesis?.id}
         saveLabel="Save Hypothesis"
-      >
-        {editingHypothesis && (
+        leftContent={editingHypothesis && (
           <>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={(editingHypothesis.status || "new") as Status}
-                onValueChange={(value: Status) => 
-                  setEditingHypothesis({ ...editingHypothesis, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map(status => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div>
               <Label htmlFor="insight">Insight</Label>
               <Textarea
@@ -566,7 +545,7 @@ const HypothesesPage = () => {
                 value={editingHypothesis.insight || ""}
                 onChange={(e) => setEditingHypothesis({ ...editingHypothesis, insight: e.target.value })}
                 placeholder="Enter insight..."
-                rows={3}
+                rows={5}
               />
             </div>
             <div>
@@ -576,7 +555,7 @@ const HypothesesPage = () => {
                 value={editingHypothesis.problem_hypothesis || ""}
                 onChange={(e) => setEditingHypothesis({ ...editingHypothesis, problem_hypothesis: e.target.value })}
                 placeholder="Enter problem hypothesis..."
-                rows={3}
+                rows={5}
               />
             </div>
             <div>
@@ -596,7 +575,7 @@ const HypothesesPage = () => {
                 value={editingHypothesis.solution_hypothesis || ""}
                 onChange={(e) => setEditingHypothesis({ ...editingHypothesis, solution_hypothesis: e.target.value })}
                 placeholder="Enter solution hypothesis..."
-                rows={3}
+                rows={5}
               />
             </div>
             <div>
@@ -620,7 +599,31 @@ const HypothesesPage = () => {
             </div>
           </>
         )}
-      </EntityDialog>
+        rightContent={editingHypothesis && (
+          <>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={(editingHypothesis.status || "new") as Status}
+                onValueChange={(value: Status) => 
+                  setEditingHypothesis({ ...editingHypothesis, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map(status => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+      />
 
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
@@ -648,8 +651,7 @@ const HypothesesPage = () => {
         title="Create Feature from Hypothesis"
         onSave={handleSaveFeature}
         saveLabel="Create Feature"
-      >
-        {creatingFeature && (
+        leftContent={creatingFeature && (
           <>
             <div>
               <Label htmlFor="title">Title *</Label>
@@ -667,9 +669,13 @@ const HypothesesPage = () => {
                 value={creatingFeature.description || ""}
                 onChange={(e) => setCreatingFeature({ ...creatingFeature, description: e.target.value })}
                 placeholder="Enter feature description..."
-                rows={4}
+                rows={5}
               />
             </div>
+          </>
+        )}
+        rightContent={creatingFeature && (
+          <>
             <div>
               <Label>Linked Goal</Label>
               <Popover open={goalOpen} onOpenChange={setGoalOpen}>
@@ -776,7 +782,7 @@ const HypothesesPage = () => {
             </div>
           </>
         )}
-      </EntityDialog>
+      />
     </div>
   );
 };

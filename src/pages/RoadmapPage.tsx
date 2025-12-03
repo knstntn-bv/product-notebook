@@ -480,8 +480,7 @@ const RoadmapPage = () => {
         isEditing={!!editingGoal?.id}
         saveLabel="Save Goal"
         isArchived={editingGoal?.archived || false}
-      >
-        {editingGoal && (
+        leftContent={editingGoal && (
           <>
             <div>
               <Label htmlFor="goal">Goal *</Label>
@@ -492,6 +491,39 @@ const RoadmapPage = () => {
                 placeholder="Enter goal..."
               />
             </div>
+            <div>
+              <Label htmlFor="expectedResult">Expected Result</Label>
+              <Textarea
+                id="expectedResult"
+                value={editingGoal.expected_result}
+                onChange={(e) => setEditingGoal({ ...editingGoal, expected_result: e.target.value })}
+                placeholder="Enter expected result..."
+                rows={6}
+              />
+            </div>
+            <div>
+              <Label htmlFor="achievedResult">Achieved Result</Label>
+              <Textarea
+                id="achievedResult"
+                value={editingGoal.achieved_result}
+                onChange={(e) => setEditingGoal({ ...editingGoal, achieved_result: e.target.value })}
+                placeholder="Enter achieved result..."
+                rows={6}
+              />
+            </div>
+            <div>
+              <Label htmlFor="targetMetrics">Target Metrics</Label>
+              <MetricTagInput
+                value={editingGoal.target_metrics || []}
+                onChange={(tags) => setEditingGoal({ ...editingGoal, target_metrics: tags })}
+                suggestions={metrics.map(m => m.name).filter(Boolean)}
+                placeholder="Type to add metrics..."
+              />
+            </div>
+          </>
+        )}
+        rightContent={editingGoal && (
+          <>
             <div>
               <Label htmlFor="quarter">Quarter *</Label>
               <Select
@@ -510,33 +542,6 @@ const RoadmapPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="expectedResult">Expected Result</Label>
-              <Textarea
-                id="expectedResult"
-                value={editingGoal.expected_result}
-                onChange={(e) => setEditingGoal({ ...editingGoal, expected_result: e.target.value })}
-                placeholder="Enter expected result..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="achievedResult">Achieved Result</Label>
-              <Textarea
-                id="achievedResult"
-                value={editingGoal.achieved_result}
-                onChange={(e) => setEditingGoal({ ...editingGoal, achieved_result: e.target.value })}
-                placeholder="Enter achieved result..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="targetMetrics">Target Metrics</Label>
-              <MetricTagInput
-                value={editingGoal.target_metrics || []}
-                onChange={(tags) => setEditingGoal({ ...editingGoal, target_metrics: tags })}
-                suggestions={metrics.map(m => m.name).filter(Boolean)}
-                placeholder="Type to add metrics..."
-              />
-            </div>
             <div className="flex items-center gap-2">
               <Checkbox
                 id="done"
@@ -547,7 +552,7 @@ const RoadmapPage = () => {
             </div>
           </>
         )}
-      </EntityDialog>
+      />
 
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
