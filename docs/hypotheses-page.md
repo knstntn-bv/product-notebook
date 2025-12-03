@@ -4,46 +4,6 @@
 
 The Hypotheses Page provides a comprehensive table for tracking and managing product hypotheses. It allows users to document insights, problem and solution hypotheses, validation results, and impact metrics in a structured format. The page uses a dialog-based editing approach for better user experience and data safety.
 
-## Recent Changes (2025-01-15)
-
-### Major UI/UX Improvements
-
-1. **Dialog-Based Editing**
-   - Replaced inline editing with dialog-based editing (consistent with Goals and Features)
-   - All fields are now edited in a dedicated dialog opened by clicking on a table row
-   - Eliminates risk of losing unsaved changes
-   - Better focus on editing task
-
-2. **Table Layout Reorganization**
-   - Combined related fields in single columns:
-     - Problem Hypothesis and Problem Validation are now in one column
-     - Solution Hypothesis and Solution Validation are now in one column
-   - Validation fields are displayed below their corresponding hypotheses with visual separators
-   - Improved space utilization and readability
-
-3. **Status Display**
-   - Status is now displayed as read-only text in the table
-   - Status can only be edited in the hypothesis editing dialog
-   - Column width automatically adjusts to content
-   - Removed inline status selector to simplify the table
-
-4. **Automatic Column Width Distribution**
-   - Table uses `table-auto` layout for automatic column width distribution
-   - Status and Actions columns automatically adjust to content width
-   - Other columns use percentage-based widths
-   - Better space utilization across different screen sizes
-
-5. **Improved Delete Flow**
-   - Delete action moved to the editing dialog
-   - Added confirmation dialog before deletion
-   - Prevents accidental deletions
-
-6. **Table Content**
-   - All table content is now read-only
-   - Table rows are clickable to open editing dialog
-   - Visual hover effects indicate interactive rows
-   - Better separation between viewing and editing modes
-
 ## Location
 
 - **Component**: `src/pages/HypothesesPage.tsx`
@@ -174,19 +134,36 @@ The hypotheses table contains the following columns:
 
 **Dialog-Based Editing:**
 - Click on any row in the table to open the editing dialog
+- The dialog uses a two-column layout on desktop and single-column stacked layout on mobile
 - All fields are editable in the dialog:
-  - Status (Select dropdown)
-  - Insight (Textarea)
-  - Problem Hypothesis (Textarea)
-  - Problem Validation (Textarea)
-  - Solution Hypothesis (Textarea)
-  - Solution Validation (Textarea)
-  - Impact Metrics (Tag input)
+  - **Left Column (Desktop)**: Text input fields
+    - Insight (Textarea, 5 rows)
+    - Problem Hypothesis (Textarea, 5 rows)
+    - Problem Validation (Textarea, 3 rows)
+    - Solution Hypothesis (Textarea, 5 rows)
+    - Solution Validation (Textarea, 3 rows)
+    - Impact Metrics (Tag input)
+  - **Right Column (Desktop)**: Selection fields and actions
+    - Status (Select dropdown)
+    - Delete button (at bottom)
 - Changes are made in the dialog, not in the table
 - No risk of losing changes - dialog must be explicitly closed
 
+**Dialog Layout:**
+- **Width**: 
+  - Desktop: Maximum width of 1152px (6xl) for two-column layout
+  - Mobile: Maximum width of 768px (3xl) for single-column layout
+- **Height**: 
+  - Minimum height of 660px for comfortable viewing
+  - Maximum height of 90% of viewport height
+- **Background**: Light gray (`bg-muted`) for better visual separation
+- **Scrolling**: 
+  - Desktop: Only the left column (text fields) scrolls; right column remains fixed
+  - Mobile: Entire content area scrolls
+- **Focus Rings**: Padding ensures that field focus highlights are fully visible
+
 **Saving Changes:**
-- Click "Save Hypothesis" button in the dialog
+- Click "Save Hypothesis" button in the dialog footer
 - All changes are saved at once
 - Success toast notification on save
 - Dialog closes and table updates
@@ -221,7 +198,7 @@ The hypotheses table contains the following columns:
 3. Modify any fields as needed
 4. Click "Create Feature" to add the feature to the Board
 
-**Note**: A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Human Readable ID documentation](./features-human-readable-id.md) for more details.
+**Note**: A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Board Page documentation](./board-page.md#human-readable-id) for more details.
 
 **Use Case**: This allows users to quickly turn validated hypotheses into actionable features without manual data entry.
 
@@ -322,9 +299,12 @@ The hypotheses table contains the following columns:
 ### Dialog Component
 
 - Uses `EntityDialog` component (shared with Goals and Features)
+- Two-column layout on desktop (70/30 split)
+- Single-column stacked layout on mobile
 - Consistent UI/UX across the application
 - Supports save, delete, and cancel actions
 - Responsive design for all screen sizes
+- Custom thin scrollbar for better visual appearance
 
 ### Table Layout
 

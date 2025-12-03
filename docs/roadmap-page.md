@@ -121,29 +121,54 @@ Goals can be archived to keep them in the database without cluttering the active
 
 ### Goal Dialog
 
-The goal editing dialog provides a user-friendly interface for creating and editing goals.
+The goal editing dialog provides a user-friendly interface for creating and editing goals using a two-column layout on desktop and a single-column stacked layout on mobile.
 
 **Dialog Layout:**
-- **Width**: Maximum width of 768px (3xl) to accommodate focus rings and prevent clipping
+- **Width**: 
+  - Desktop: Maximum width of 1152px (6xl) for two-column layout
+  - Mobile: Maximum width of 768px (3xl) for single-column layout
 - **Height**: 
-  - Minimum height of 660px to fit all goal fields without scrolling
+  - Minimum height of 660px for comfortable viewing
   - Maximum height of 90% of viewport height
   - Automatically adjusts to content size
-- **Scrolling**: When content exceeds the dialog height, only the form fields area scrolls while the header and action buttons remain fixed
-- **Focus Rings**: Dialog width ensures that field focus highlights are fully visible without being cut off
+- **Background**: Light gray (`bg-muted`) for better visual separation
+- **Scrolling**: 
+  - Desktop: Only the left column (text fields) scrolls; right column (dropdowns and buttons) remains fixed
+  - Mobile: Entire content area scrolls
+- **Focus Rings**: Padding ensures that field focus highlights are fully visible without being cut off
 
-**Dialog Structure:**
+**Dialog Structure (Desktop - Two-Column):**
 - **Header**: Fixed at the top, contains the dialog title
-- **Content Area**: Scrollable middle section containing all form fields
+- **Left Column (70%)**: Contains all text input fields:
+  - Goal (Input)
+  - Expected Result (Textarea, 6 rows)
+  - Achieved Result (Textarea, 6 rows)
+  - Target Metrics (Tag input)
+- **Right Column (30%)**: Contains:
+  - Quarter (Select dropdown)
+  - Done (Checkbox)
+  - Action buttons (fixed at bottom of right column):
+    - **Archive/Unarchive** button (when editing existing goals)
+    - **Delete** button (when editing existing goals)
+- **Footer**: Fixed at the bottom, contains:
+  - **Cancel** button
+  - **Save Goal** button
+
+**Dialog Structure (Mobile - Single-Column):**
+- **Header**: Fixed at the top, contains the dialog title
+- **Content Area**: Scrollable section containing all fields in order:
+  - Text input fields (Goal, Expected Result, Achieved Result, Target Metrics)
+  - Dropdown menus and checkbox (Quarter, Done)
+  - Action buttons (Archive/Unarchive, Delete)
 - **Footer**: Fixed at the bottom, contains Cancel and Save buttons
-  - When editing: Archive/Unarchive button (left side), Delete button (left side)
-  - Archive button shows Archive icon for archiving, ArchiveRestore icon for unarchiving
 
 **User Experience:**
-- All goal fields (Goal, Quarter, Expected Result, Achieved Result, Target Metrics, Done) fit comfortably without scrolling in most cases
+- Logical separation between text input and selection fields on desktop
+- All goal fields fit comfortably with scrolling when needed
 - Focus rings on active fields are never clipped
-- Scrollbar appears only when content exceeds available space
+- Custom thin scrollbar (6px width) appears only when content exceeds available space
 - Content is properly padded to prevent overlap with the scrollbar
+- Archive button shows Archive icon for archiving, ArchiveRestore icon for unarchiving
 
 ### Drag and Drop
 
@@ -169,14 +194,18 @@ The goal editing dialog provides a user-friendly interface for creating and edit
 ### Goal Details
 
 **Goal Fields:**
+
+**Left Column (Text Input Fields):**
 - **Goal**: Main goal statement (required, text input)
-- **Quarter**: Time period selection (required, dropdown)
-- **Expected Result**: What outcome is expected (optional, textarea)
-- **Achieved Result**: What was actually achieved (optional, textarea)
+- **Expected Result**: What outcome is expected (optional, textarea with 6 rows)
+- **Achieved Result**: What was actually achieved (optional, textarea with 6 rows)
 - **Target Metrics**: Metrics this goal impacts (optional, tag input)
   - Users can type to add metrics
   - Suggestions come from the metrics defined in Strategy page
   - Multiple metrics can be selected
+
+**Right Column (Selection Fields and Actions):**
+- **Quarter**: Time period selection (required, Select dropdown)
 - **Done**: Checkbox to mark goal as complete
 - **Archived**: Archive status (managed via Archive/Unarchive button, not a direct field)
   - When archived: `archived = true`, `archived_at` = timestamp

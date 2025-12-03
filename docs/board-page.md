@@ -70,7 +70,7 @@ Each feature card shows:
 
 **Note**: 
 - When a goal is selected, the linked initiative is automatically set to match the goal's initiative.
-- A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number.
+- A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Human Readable ID](#human-readable-id) section for details.
 
 ### Editing Features
 
@@ -112,30 +112,52 @@ Features can be exported to Markdown (.md) files for documentation, sharing, or 
 
 ### Feature Dialog
 
-The feature editing dialog provides a user-friendly interface for creating and editing features.
+The feature editing dialog provides a user-friendly interface for creating and editing features using a two-column layout on desktop and a single-column stacked layout on mobile.
 
 **Dialog Layout:**
-- **Width**: Maximum width of 768px (3xl) to accommodate focus rings and prevent clipping
+- **Width**: 
+  - Desktop: Maximum width of 1152px (6xl) for two-column layout
+  - Mobile: Maximum width of 768px (3xl) for single-column layout
 - **Height**: 
   - Minimum height of 660px for comfortable viewing
   - Maximum height of 90% of viewport height
   - Automatically adjusts to content size
-- **Scrolling**: When content exceeds the dialog height, only the form fields area scrolls while the header and action buttons remain fixed
-- **Focus Rings**: Dialog width ensures that field focus highlights are fully visible without being cut off
+- **Background**: Light gray (`bg-muted`) for better visual separation
+- **Scrolling**: 
+  - Desktop: Only the left column (text fields) scrolls; right column (dropdowns and buttons) remains fixed
+  - Mobile: Entire content area scrolls
+- **Focus Rings**: Padding ensures that field focus highlights are fully visible without being cut off
 
-**Dialog Structure:**
+**Dialog Structure (Desktop - Two-Column):**
 - **Header**: Fixed at the top, contains the dialog title
-- **Content Area**: Scrollable middle section containing all form fields
-- **Footer**: Fixed at the bottom, contains action buttons:
-  - **Delete** button (when editing existing features)
-  - **Export to .md** button (available for all features)
+- **Left Column (70%)**: Contains all text input fields:
+  - Human Readable ID (read-only, displayed for existing features)
+  - Title (Input)
+  - Description (Textarea)
+- **Right Column (30%)**: Contains:
+  - Linked Goal (Popover dropdown)
+  - Linked Initiative (Popover dropdown)
+  - Board Column (Select dropdown)
+  - Action buttons (fixed at bottom of right column):
+    - **Export to .md** button (available for all features)
+    - **Delete** button (when editing existing features)
+- **Footer**: Fixed at the bottom, contains:
   - **Cancel** button
   - **Save Feature** button
 
+**Dialog Structure (Mobile - Single-Column):**
+- **Header**: Fixed at the top, contains the dialog title
+- **Content Area**: Scrollable section containing all fields in order:
+  - Text input fields (Human Readable ID, Title, Description)
+  - Dropdown menus (Linked Goal, Linked Initiative, Board Column)
+  - Action buttons (Export, Delete)
+- **Footer**: Fixed at the bottom, contains Cancel and Save buttons
+
 **User Experience:**
+- Logical separation between text input and selection fields on desktop
 - All fields remain accessible through scrolling when needed
 - Focus rings on active fields are never clipped
-- Scrollbar appears only when content exceeds available space
+- Custom thin scrollbar (6px width) appears only when content exceeds available space
 - Content is properly padded to prevent overlap with the scrollbar
 
 ### Drag and Drop
@@ -164,6 +186,8 @@ The feature editing dialog provides a user-friendly interface for creating and e
 ### Feature Details
 
 **Feature Fields:**
+
+**Left Column (Text Input Fields):**
 - **Human Readable ID**: Unique identifier for the feature (read-only, displayed as text)
   - Format: `XXX-N` where:
     - `XXX` is the first 3 characters of the linked initiative name (uppercase), or "NNN" if no initiative is linked
@@ -171,16 +195,19 @@ The feature editing dialog provides a user-friendly interface for creating and e
   - Automatically generated when a feature is created
   - Displayed at the top of the feature editing dialog (for existing features only)
   - Cannot be edited or changed
+  - See [Human Readable ID](#human-readable-id) section for complete details
 - **Title**: Feature name (required, text input)
-- **Description**: Detailed description (optional, textarea)
-- **Linked Goal**: Goal from roadmap (optional, searchable dropdown)
+- **Description**: Detailed description (optional, textarea with 15 rows)
+
+**Right Column (Selection Fields and Actions):**
+- **Linked Goal**: Goal from roadmap (optional, searchable Popover dropdown)
   - Selecting a goal automatically sets the linked initiative
   - Goals are sorted alphabetically
-- **Linked Initiative**: Strategic initiative (optional, searchable dropdown)
+- **Linked Initiative**: Strategic initiative (optional, searchable Popover dropdown)
   - Initiatives are sorted alphabetically
   - Color is used for visual identification
   - Used to generate the human readable ID prefix
-- **Column**: Current board column (required, dropdown)
+- **Board Column**: Current board column (required, Select dropdown)
 
 ### Goal and Initiative Linking
 
@@ -211,6 +238,42 @@ The feature editing dialog provides a user-friendly interface for creating and e
   - Format: `XXX-N` (prefix from initiative + sequential number)
   - Used for easy reference and identification
   - Immutable (cannot be changed after creation)
+
+### Human Readable ID
+
+Each feature has a unique human-readable identifier that is automatically generated when the feature is created.
+
+**Identifier Format:**
+- Format: `XXX-N` where:
+  - `XXX` is a prefix consisting of the first 3 characters of the initiative name (uppercase) that the feature belongs to
+  - `N` is a sequential number across all features for the user
+
+**Prefix Generation Rules:**
+1. If the feature has a linked initiative:
+   - Take the first 3 characters of the initiative name
+   - Convert characters to uppercase
+   - If the name contains fewer than 3 characters, use all available characters (no padding)
+2. If the feature does not have a linked initiative:
+   - Use the prefix "NNN"
+
+**Examples:**
+- Initiative "Productivity" → `PRO-1`, `PRO-2`, `PRO-3`...
+- Initiative "AB" → `AB-1`, `AB-2`...
+- Initiative "A" → `A-1`, `A-2`...
+- No initiative → `NNN-1`, `NNN-2`...
+
+**Behavior:**
+- The identifier is generated only when creating a feature
+- The identifier does not change when editing a feature (immutable)
+- Changing the initiative does not affect the existing identifier
+- Sequential numbers are not renumbered when features are deleted (history is preserved)
+- The identifier is displayed in the feature editing dialog as read-only text (for existing features only)
+
+**Usage:**
+- Helps quickly reference a specific feature
+- Simplifies team communication (can use short ID instead of long name)
+- Allows easy identification of features by their relationship to initiatives
+- Used in exported Markdown filenames (e.g., `PRO-1 User Authentication.md`)
 
 ### Relationships
 
