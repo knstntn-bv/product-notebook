@@ -2,7 +2,10 @@
 
 ## Overview
 
-The Settings dialog allows users to manage project sharing and generate shareable links for their Product Notebook. This enables collaboration by allowing other registered users to view the project in read-only mode.
+The Settings system allows users to manage project sharing, generate shareable links, and control the visibility of archived items. Settings are accessible via the Settings dropdown menu in the main application header, with additional options available in the Settings dialog.
+
+**Settings Menu**: Quick access to toggle archived items visibility
+**Settings Dialog**: Manage project sharing and generate shareable links for collaboration
 
 ## Location
 
@@ -13,9 +16,16 @@ The Settings dialog allows users to manage project sharing and generate shareabl
 
 ### Opening Settings
 
+**Settings Menu:**
 1. Click the "Settings" button in the main application header
-2. Settings button is only visible when not in read-only mode
-3. Dialog opens with current project settings
+2. Dropdown menu appears with quick settings
+3. "Show Archived Items" checkbox is available directly in the menu
+
+**Settings Dialog:**
+1. Click the "Settings" button in the main application header
+2. Select "Open Project" from the dropdown menu
+3. Dialog opens with project sharing settings
+4. Settings button is only visible when not in read-only mode
 
 ### Availability
 
@@ -24,6 +34,32 @@ The Settings dialog allows users to manage project sharing and generate shareabl
 - Requires authentication
 
 ## Features
+
+### Show Archived Items Toggle
+
+**Purpose**: Control the visibility of archived initiatives and goals across Strategy and Roadmap pages.
+
+**Location**: Settings dropdown menu (not in the dialog)
+
+**Behavior:**
+- Checkbox item labeled "Show Archived Items" in the Settings dropdown menu
+- When unchecked (default):
+  - Strategy page: Only active (non-archived) initiatives are displayed
+  - Roadmap page: Only active initiatives appear as rows, only active goals are shown in cells
+- When checked:
+  - Strategy page: All initiatives are displayed, archived ones at the end with reduced opacity
+  - Roadmap page: All initiatives appear as rows (archived at the bottom), all goals are shown (archived with reduced opacity)
+
+**State Management:**
+- Setting is stored in `project_settings.show_archived` field in the database
+- Setting is persisted per user and synced across all pages
+- Changes take effect immediately without page refresh
+- Setting is loaded from database on application start
+
+**User Experience:**
+- Quick access from Settings menu without opening dialog
+- Consistent behavior across Strategy and Roadmap pages
+- Visual indicators (reduced opacity, muted colors) for archived items when visible
 
 ### Public Access Toggle
 
@@ -113,11 +149,15 @@ When the dialog opens:
 - `user_id`: Foreign key to the user who owns the project
 - `is_public`: Boolean indicating if project is publicly shareable
 - `share_token`: Unique token for the share link (generated automatically)
+- `show_archived`: Boolean indicating if archived items should be displayed (default: `false`)
 
 **Constraints:**
 - One settings record per user
 - Share token is unique
 - Settings are user-specific (not project-specific in multi-project scenarios)
+
+**Migrations:**
+- `20251203192902_add_show_archived_to_project_settings.sql`: Adds `show_archived` column (boolean, default: `false`)
 
 ## Security
 

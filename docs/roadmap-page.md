@@ -14,19 +14,28 @@ The Roadmap Page provides a matrix view for organizing goals by strategic initia
 ### Table Structure
 
 The roadmap is displayed as a table with:
-- **Rows**: One row per non-archived initiative
+- **Rows**: One row per initiative (filtered based on "Show Archived Items" setting)
 - **Columns**: 
   - First column: Initiative name (with color indicator)
   - Subsequent columns: Time periods (Current Quarter, Next Quarter, Next Half-Year)
-- **Note**: Archived initiatives are automatically filtered out and do not appear in the roadmap table
+- **Initiative Filtering**: 
+  - When "Show Archived Items" is unchecked (default): Only active initiatives appear as rows
+  - When "Show Archived Items" is checked: All initiatives appear as rows, archived ones at the bottom
+  - Archived initiatives are sorted to appear after active ones
 
-### Archive Filter
+### Archive Visibility Control
 
-Above the roadmap table, there is a filter control:
-- **Checkbox**: "Show archived goals"
-- **Default State**: Filter is enabled (archived goals are hidden by default)
-- **When Enabled**: Archived goals are visible with visual indicators (reduced opacity, muted colors, "Archived" badge)
-- **When Disabled**: Only active (non-archived) goals are displayed
+The visibility of archived items is controlled by a global setting accessible from the Settings menu:
+- **Location**: Settings dropdown menu → "Show Archived Items" checkbox
+- **Default State**: Unchecked (archived items are hidden by default)
+- **When Unchecked**: 
+  - Only active initiatives appear as table rows
+  - Only active goals are displayed in cells
+- **When Checked**: 
+  - All initiatives appear as rows (archived at the bottom)
+  - All goals are displayed in cells (archived with visual indicators)
+  - Archived goals show with reduced opacity, muted colors, and "Archived" badge
+  - Archived initiatives are sorted to appear after active ones
 
 ### Initiative Column
 
@@ -204,7 +213,7 @@ The goal editing dialog provides a user-friendly interface for creating and edit
 - Each goal has an `archived` boolean field (default: `false`)
 - Each goal has an `archived_at` timestamp field (nullable)
 - Archive status is preserved when goals are edited
-- Archived goals are filtered by default but can be shown via the filter control
+- Archived goals are filtered by default but can be shown via the "Show Archived Items" setting in Settings menu
 - Archive date is automatically set when archiving and cleared when unarchiving
 
 ### State Management
@@ -270,11 +279,15 @@ The `goals` table includes the following fields for archiving:
 
 **RoadmapPage.tsx:**
 - Added `archiveGoalMutation` for archiving/unarchiving operations
-- Added `showArchived` state for filter control (default: `false`)
-- Updated `getGoalsForCell` to filter archived goals based on filter state
+- Removed local `showArchived` state (now uses global setting from `ProductContext`)
+- Uses `showArchived` from `ProductContext` for consistent behavior across pages
+- Updated `getGoalsForCell` to filter archived goals based on global setting
+- Updated initiative filtering to show/hide archived initiatives based on global setting
+- Added sorting: active initiatives first, then archived (at bottom)
 - Updated `DraggableGoalCard` to disable dragging for archived goals
 - Added visual styling for archived goals (opacity, muted colors, badge)
 - Updated `Goal` interface to include `archived` and `archived_at` fields
+- Removed local archive filter checkbox (replaced by global Settings menu control)
 
 **EntityDialog.tsx:**
 - Added `onArchive` prop for archive/unarchive callback
@@ -282,11 +295,19 @@ The `goals` table includes the following fields for archiving:
 - Added Archive/Unarchive button with appropriate icons (Archive/ArchiveRestore from lucide-react)
 - Button appears only when editing existing goals
 
-### Archive Filter Behavior
+### Archive Visibility Behavior
 
-- **Default State**: Filter enabled (archived goals hidden)
-- **Filter Control**: Checkbox "Show archived goals" above the roadmap table
-- **When Filter Enabled**: Archived goals are visible with visual indicators
-- **When Filter Disabled**: Only active goals are displayed
-- **Sorting**: Active goals appear first, then archived goals within each cell
+- **Default State**: "Show Archived Items" setting is unchecked (archived items hidden)
+- **Control Location**: Settings dropdown menu → "Show Archived Items" checkbox
+- **Global Setting**: Controls visibility of both archived initiatives (table rows) and archived goals (in cells)
+- **When Setting Unchecked**: 
+  - Only active initiatives appear as table rows
+  - Only active goals are displayed in cells
+- **When Setting Checked**: 
+  - All initiatives appear as rows (archived sorted to bottom)
+  - All goals are displayed in cells (archived with visual indicators)
+- **Sorting**: 
+  - Initiatives: Active first, then archived (at bottom of table)
+  - Goals: Active first, then archived within each cell
+- **Persistence**: Setting is saved to database and persists across sessions
 

@@ -13,6 +13,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
@@ -20,7 +22,7 @@ const IndexContent = () => {
   const [activeTab, setActiveTab] = useState("strategy");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { signOut, user } = useAuth();
-  const { isReadOnly } = useProduct();
+  const { isReadOnly, showArchived, setShowArchived } = useProduct();
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,6 +41,13 @@ const IndexContent = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuCheckboxItem
+                        checked={showArchived}
+                        onCheckedChange={(checked) => setShowArchived(checked)}
+                      >
+                        Show Archived Items
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                         Open Project
                       </DropdownMenuItem>

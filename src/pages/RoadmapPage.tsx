@@ -35,7 +35,7 @@ interface Goal {
 }
 
 const RoadmapPage = () => {
-  const { initiatives, metrics, isReadOnly, sharedUserId } = useProduct();
+  const { initiatives, metrics, isReadOnly, sharedUserId, showArchived } = useProduct();
   const { user } = useAuth();
   const effectiveUserId = sharedUserId || user?.id;
   const { toast } = useToast();
@@ -44,7 +44,6 @@ const RoadmapPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false); // По умолчанию скрываем архивные
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -219,7 +218,7 @@ const RoadmapPage = () => {
 
   const getGoalsForCell = (initiativeId: string, quarter: "current" | "next" | "halfYear") => {
     let filteredGoals = goals.filter(i => i.initiative_id === initiativeId && i.quarter === quarter);
-    // Фильтруем архивные цели, если фильтр включен (по умолчанию включен - скрываем архивные)
+    // Фильтруем архивные цели, если настройка showArchived выключена
     if (!showArchived) {
       filteredGoals = filteredGoals.filter(goal => !goal.archived);
     }
@@ -407,18 +406,6 @@ const RoadmapPage = () => {
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="showArchived"
-              checked={showArchived}
-              onCheckedChange={(checked) => setShowArchived(checked as boolean)}
-            />
-            <Label htmlFor="showArchived" className="cursor-pointer">
-              Show archived goals
-            </Label>
-          </div>
-        </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -433,7 +420,13 @@ const RoadmapPage = () => {
             </thead>
             <tbody>
               {initiatives
-                .filter(initiative => !initiative.archived)
+                .filter(initiative => showArchived || !initiative.archived)
+                .sort((a, b) => {
+                  // Sort: non-archived first, then archived
+                  if (a.archived && !b.archived) return 1;  // archived should be later
+                  if (!a.archived && b.archived) return -1; // non-archived should be earlier
+                  return 0;
+                })
                 .map(initiative => (
                 <tr key={initiative.id}>
                   <td className="border border-border bg-card p-4 font-medium relative pl-4">
