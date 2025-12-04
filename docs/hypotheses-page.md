@@ -15,25 +15,30 @@ The Hypotheses Page provides a comprehensive table for tracking and managing pro
 
 The hypotheses table contains the following columns:
 
-1. **Status**: Current status of the hypothesis displayed as text (sortable)
-2. **Insight**: The initial insight or observation (read-only in table)
+1. **Status**: Current status of the hypothesis displayed as text (sortable, fixed width 90px)
+2. **Insight**: The initial insight or observation (read-only in table, fixed width 200px)
 3. **Problem Hypothesis**: Combined column showing:
    - Problem hypothesis (main text)
    - Problem validation (displayed below with separator)
+   - Fixed width 250px
 4. **Solution Hypothesis**: Combined column showing:
    - Solution hypothesis (main text)
    - Solution validation (displayed below with separator)
-5. **Impact Metrics**: Metrics that would be impacted by this hypothesis (displayed as tags)
-6. **Actions**: Button for creating features from hypothesis
+   - Fixed width 250px
+5. **Impact Metrics**: Metrics that would be impacted by this hypothesis (displayed as tags, fixed width 150px)
 
-**Note**: All content in the table is read-only. To edit a hypothesis, click on the table row to open the editing dialog.
+**Note**: All content in the table is read-only. To edit a hypothesis, click on the table row to open the editing dialog. To create a feature from a hypothesis, open the hypothesis editing dialog and use the "Create Feature" button in the right panel.
 
 ### Responsive Design
 
 **Desktop:**
-- Auto table layout with automatic column width distribution
-- Status and Actions columns automatically adjust to content width
-- Other columns use percentage-based widths
+- Fixed table layout (`table-fixed`) with strict column width control
+- All columns have fixed pixel widths for consistent layout
+- Status column: 90px (fixed)
+- Insight column: 200px (fixed)
+- Problem Hypothesis column: 250px (fixed)
+- Solution Hypothesis column: 250px (fixed)
+- Impact Metrics column: 150px (fixed)
 - All columns visible simultaneously
 
 **Mobile:**
@@ -56,7 +61,8 @@ The hypotheses table contains the following columns:
 - Can be edited in the hypothesis editing dialog
 - Sortable column (click header to sort)
 - Sorting cycles: None → Ascending → Descending → None
-- Column width automatically adjusts to content
+- Fixed column width: 90px (does not expand based on content)
+- Text truncates with ellipsis if too long
 
 ### Insight
 
@@ -145,6 +151,7 @@ The hypotheses table contains the following columns:
     - Impact Metrics (Tag input)
   - **Right Column (Desktop)**: Selection fields and actions
     - Status (Select dropdown)
+    - Create Feature button (converts hypothesis to feature)
     - Delete button (at bottom)
 - Changes are made in the dialog, not in the table
 - No risk of losing changes - dialog must be explicitly closed
@@ -188,21 +195,22 @@ The hypotheses table contains the following columns:
 **Purpose**: Convert validated hypotheses into features on the Board.
 
 **Behavior:**
-1. Click the "+" (Plus) button in the Actions column
-2. A dialog opens with a pre-filled feature form:
+1. Click on a hypothesis row to open the editing dialog
+2. In the right panel of the dialog, click the "Create Feature" button (located below the Status field)
+3. The hypothesis editing dialog closes and a feature creation dialog opens with pre-filled data:
    - **Title**: Pre-filled with the hypothesis "Insight"
-   - **Description**: Pre-filled with the "Solution Hypothesis"
+   - **Description**: Pre-filled with the "Solution Hypothesis" (15-row textarea)
    - **Column**: Defaults to "Backlog"
-   - **Linked Goal**: Optional, can be selected
-   - **Linked Initiative**: Optional, can be selected
-3. Modify any fields as needed
-4. Click "Create Feature" to add the feature to the Board
+   - **Linked Goal**: Optional, can be selected from dropdown
+   - **Linked Initiative**: Optional, can be selected from dropdown
+4. Modify any fields as needed
+5. Click "Create Feature" to add the feature to the Board
 
 **Note**: A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Board Page documentation](./board-page.md#human-readable-id) for more details.
 
-**Use Case**: This allows users to quickly turn validated hypotheses into actionable features without manual data entry.
+**Use Case**: This allows users to quickly turn validated hypotheses into actionable features without manual data entry. The feature creation is now integrated into the hypothesis editing workflow for better consistency.
 
-**Note**: The button click is isolated from row click - clicking the button does not open the hypothesis editing dialog.
+**Location**: The "Create Feature" button is located in the right panel of the hypothesis editing dialog, making it easily accessible when reviewing or editing a hypothesis.
 
 ### Status Sorting
 
@@ -277,15 +285,6 @@ The hypotheses table contains the following columns:
 - Supports links and evidence
 - Clear separation between hypothesis and validation
 
-### Read-Only Mode
-
-- In read-only mode:
-  - "Add Hypothesis" button is hidden
-  - Table rows are not clickable (no hover effect)
-  - Action buttons (Create Feature) are hidden
-  - Content is view-only
-  - Editing dialog cannot be opened
-
 ## Use Cases
 
 1. **Discovery**: Document insights and observations
@@ -310,10 +309,17 @@ The hypotheses table contains the following columns:
 
 ### Table Layout
 
-- Uses `table-auto` layout for automatic column width distribution
-- Status and Actions columns use `w-auto` to fit content
-- Other columns use percentage-based widths
+- Uses `table-fixed` layout for strict column width control
+- All columns have fixed pixel widths:
+  - Status: 90px
+  - Insight: 200px
+  - Problem Hypothesis: 250px
+  - Solution Hypothesis: 250px
+  - Impact Metrics: 150px
+- Fixed layout prevents column expansion based on content
+- Status column text truncates with ellipsis if content exceeds width
 - Combined columns (Problem/Solution Hypothesis with Validation) use visual separators
+- No Actions column - feature creation moved to editing dialog
 
 ### Data Normalization
 
