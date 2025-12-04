@@ -404,15 +404,18 @@ const HypothesesPage = () => {
       <div className="w-full overflow-x-auto">
         <Table className={cn(
           "w-full",
-          !isMobile && "table-auto",
+          !isMobile && "table-fixed",
           isMobile && "min-w-[1200px]"
         )}>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-auto">
+              <TableHead className={cn(
+                !isMobile && "w-[90px]",
+                isMobile && "min-w-[90px]"
+              )}>
                 <button
                   onClick={handleStatusSort}
-                  className="flex items-center gap-1 hover:opacity-80 transition-opacity text-xs whitespace-nowrap"
+                  className="flex items-center gap-1 hover:opacity-80 transition-opacity text-xs whitespace-nowrap w-full justify-start"
                   type="button"
                 >
                   Status
@@ -421,22 +424,21 @@ const HypothesesPage = () => {
                 </button>
               </TableHead>
               <TableHead className={cn(
-                !isMobile && "w-[15%]",
+                !isMobile && "w-[200px]",
                 isMobile && "min-w-[180px]"
               )}>Insight</TableHead>
               <TableHead className={cn(
-                !isMobile && "w-[20%]",
+                !isMobile && "w-[250px]",
                 isMobile && "min-w-[240px]"
               )}>Problem Hypothesis</TableHead>
               <TableHead className={cn(
-                !isMobile && "w-[20%]",
+                !isMobile && "w-[250px]",
                 isMobile && "min-w-[240px]"
               )}>Solution Hypothesis</TableHead>
               <TableHead className={cn(
-                !isMobile && "w-[10%]",
+                !isMobile && "w-[150px]",
                 isMobile && "min-w-[150px]"
               )}>Impact Metrics</TableHead>
-              <TableHead className="w-auto">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -449,8 +451,12 @@ const HypothesesPage = () => {
                 )}
                 onClick={() => handleEditHypothesis(hypothesis)}
               >
-                <TableCell className="w-auto px-2">
-                  <span className="text-xs whitespace-nowrap">
+                <TableCell className={cn(
+                  !isMobile && "w-[90px]",
+                  isMobile && "min-w-[90px]",
+                  "px-2 overflow-hidden"
+                )}>
+                  <span className="text-xs whitespace-nowrap block truncate">
                     {statuses.find(s => s.value === hypothesis.status)?.label || hypothesis.status}
                   </span>
                 </TableCell>
@@ -501,22 +507,6 @@ const HypothesesPage = () => {
                       <span className="text-xs text-muted-foreground italic">No metrics</span>
                     )}
                   </div>
-                </TableCell>
-                <TableCell 
-                  onClick={(e) => e.stopPropagation()} 
-                  className="w-auto px-2"
-                >
-                  <div className="flex flex-col gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-8 h-8 p-0"
-                        onClick={() => handleCreateFeature(hypothesis)}
-                        title="Create feature from hypothesis"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -622,6 +612,24 @@ const HypothesesPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (editingHypothesis?.id) {
+                    const hypothesis = hypotheses.find(h => h.id === editingHypothesis.id);
+                    if (hypothesis) {
+                      setIsDialogOpen(false);
+                      handleCreateFeature(hypothesis);
+                    }
+                  }
+                }}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Feature
+              </Button>
+            </div>
           </>
         )}
       />
@@ -670,7 +678,7 @@ const HypothesesPage = () => {
                 value={creatingFeature.description || ""}
                 onChange={(e) => setCreatingFeature({ ...creatingFeature, description: e.target.value })}
                 placeholder="Enter feature description..."
-                rows={5}
+                rows={15}
               />
             </div>
           </>
