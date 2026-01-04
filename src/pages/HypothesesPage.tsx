@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUp, ArrowDown, Plus, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Check, ChevronsUpDown, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -196,6 +196,38 @@ const HypothesesPage = () => {
     },
   });
 
+  // Clone hypothesis mutation
+  const cloneHypothesisMutation = useMutation({
+    mutationFn: async (hypothesis: Hypothesis) => {
+      if (!currentProductId) throw new Error("No product selected");
+      
+      const { error } = await supabase
+        .from("hypotheses")
+        .insert({
+          product_id: currentProductId,
+          status: hypothesis.status,
+          insight: hypothesis.insight || "",
+          problem_hypothesis: hypothesis.problem_hypothesis || "",
+          problem_validation: hypothesis.problem_validation || "",
+          solution_hypothesis: hypothesis.solution_hypothesis || "",
+          solution_validation: hypothesis.solution_validation || "",
+          impact_metrics: hypothesis.impact_metrics || [],
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
+      toast({ title: "Hypothesis cloned successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
 
   // Fetch features to calculate position
   const { data: features = [] } = useQuery({
@@ -355,6 +387,25 @@ const HypothesesPage = () => {
       board_column: "backlog",
     });
     setIsFeatureDialogOpen(true);
+  };
+
+  const handleCloneHypothesis = () => {
+    if (editingHypothesis?.id) {
+      // Use current state from editor (editingHypothesis) to clone with any unsaved changes
+      const hypothesisToClone: Hypothesis = {
+        id: editingHypothesis.id,
+        status: (editingHypothesis.status || "new") as Status,
+        insight: editingHypothesis.insight || "",
+        problem_hypothesis: editingHypothesis.problem_hypothesis || "",
+        problem_validation: editingHypothesis.problem_validation || "",
+        solution_hypothesis: editingHypothesis.solution_hypothesis || "",
+        solution_validation: editingHypothesis.solution_validation || "",
+        impact_metrics: Array.isArray(editingHypothesis.impact_metrics) 
+          ? editingHypothesis.impact_metrics 
+          : [],
+      };
+      cloneHypothesisMutation.mutate(hypothesisToClone);
+    }
   };
 
   const handleSaveFeature = () => {
@@ -630,6 +681,19 @@ const HypothesesPage = () => {
                 Create Feature
               </Button>
             </div>
+            {editingHypothesis?.id && (
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={handleCloneHypothesis}
+                  className="w-full"
+                  disabled={cloneHypothesisMutation.isPending}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Clone
+                </Button>
+              </div>
+            )}
           </>
         )}
       />
