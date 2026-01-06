@@ -48,12 +48,14 @@ interface Goal {
   id: string;
   goal: string;
   initiative_id: string;
+  archived?: boolean;
 }
 
 interface Initiative {
   id: string;
   name: string;
   color?: string;
+  archived?: boolean;
 }
 
 const HypothesesPage = () => {
@@ -436,13 +438,17 @@ const HypothesesPage = () => {
     return initiatives.find(i => i.id === id)?.name || "";
   };
 
-  const sortedGoals = [...goals].sort((a, b) => 
-    a.goal.localeCompare(b.goal)
-  );
+  const sortedGoals = goals
+    .filter(goal => !goal.archived)
+    .sort((a, b) => 
+      a.goal.localeCompare(b.goal)
+    );
 
-  const sortedInitiatives = [...initiatives].sort((a, b) => 
-    a.name.localeCompare(b.name)
-  );
+  const sortedInitiatives = initiatives
+    .filter(initiative => !initiative.archived)
+    .sort((a, b) => 
+      a.name.localeCompare(b.name)
+    );
 
   return (
     <div className="space-y-6">
