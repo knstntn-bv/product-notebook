@@ -38,12 +38,14 @@ interface Goal {
   id: string;
   goal: string;
   initiative_id: string;
+  archived?: boolean;
 }
 
 interface Initiative {
   id: string;
   name: string;
   color?: string;
+  archived?: boolean;
 }
 
 const BoardPage = () => {
@@ -664,13 +666,18 @@ const BoardPage = () => {
 
   const activeFeature = activeId ? features.find(f => f.id === activeId) : null;
 
-  // Sort goals and initiatives alphabetically for dropdowns
-  const sortedGoals = [...goals].sort((a, b) => 
-    (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" })
-  );
-  const sortedInitiatives = [...initiatives].sort((a, b) => 
-    (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
-  );
+  // Sort goals and initiatives alphabetically for dropdowns, excluding archived ones
+  const sortedGoals = goals
+    .filter(goal => !goal.archived)
+    .sort((a, b) => 
+      (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" })
+    );
+
+  const sortedInitiatives = initiatives
+    .filter(initiative => !initiative.archived)
+    .sort((a, b) => 
+      (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
+    );
 
   const autoScrollConfig = {
     threshold: {
