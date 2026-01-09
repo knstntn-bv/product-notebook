@@ -16,6 +16,8 @@ interface Initiative {
   color?: string;
   archived?: boolean;
   archived_at?: string | null;
+  target_metric_id?: string | null;
+  priority: number;
 }
 
 interface Product {
@@ -88,7 +90,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         .from("initiatives")
         .select("*")
         .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
+        .order("priority", { ascending: true });
       if (error) throw error;
       return data || [];
     },

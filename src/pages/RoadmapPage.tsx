@@ -421,7 +421,10 @@ const RoadmapPage = () => {
               {initiatives
                 .filter(initiative => showArchived || !initiative.archived)
                 .sort((a, b) => {
-                  // Sort: non-archived first, then archived
+                  // Sort: first by priority ASC, then non-archived before archived
+                  if (a.priority !== b.priority) {
+                    return a.priority - b.priority;
+                  }
                   if (a.archived && !b.archived) return 1;  // archived should be later
                   if (!a.archived && b.archived) return -1; // non-archived should be earlier
                   return 0;
