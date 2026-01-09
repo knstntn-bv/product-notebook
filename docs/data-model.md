@@ -64,6 +64,7 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 - `board_column`: Current stage in workflow
 - `position`: Order within column
 - `human_readable_id`: Unique identifier per product (format: `XXX-N`)
+- `closed_at`: Timestamp when feature was closed (moved to Done or Cancelled column) - nullable, updated on each move to these columns
 
 **Relationships:**
 - **Many-to-One with Hypotheses**: Multiple features can reference the same hypothesis
@@ -71,6 +72,12 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
   - When a hypothesis is deleted, `hypothesis_id` in linked features is set to `NULL` (ON DELETE SET NULL)
   - Used to track which features originated from or are related to a specific hypothesis
   - Supports the Discovery workflow: features can be created from hypotheses, and hypotheses can be created from features
+
+**Closed At Field:**
+- `closed_at` is automatically set to the current timestamp when a feature is moved to "Done" or "Cancelled" columns
+- The field is updated (not reset) each time a feature is moved to these columns
+- When a feature is moved from "Done"/"Cancelled" to another column, `closed_at` remains unchanged
+- This field is used for tracking when features were completed or cancelled (technical requirement for future functionality)
 
 **Note**: Sequential numbering in `human_readable_id` is scoped to the product.
 

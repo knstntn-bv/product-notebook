@@ -115,7 +115,8 @@ CREATE TABLE public.features (
   human_readable_id text,
   position integer NOT NULL DEFAULT 0,
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
+  updated_at timestamptz DEFAULT now(),
+  closed_at timestamptz
 );
 
 -- Project settings table
