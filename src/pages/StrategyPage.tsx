@@ -174,7 +174,15 @@ const StrategyPage = () => {
       const { error } = await supabase.from("initiatives").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => refetchInitiatives(),
+    onSuccess: () => {
+      refetchInitiatives();
+      setIsInitiativeDialogOpen(false);
+      setEditingInitiative(null);
+      toast({ title: "Initiative deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
 
   const archiveInitiativeMutation = useMutation({
@@ -636,7 +644,6 @@ const StrategyPage = () => {
                 if (editingInitiative?.id) {
                   deleteInitiativeMutation.mutate(editingInitiative.id);
                   setDeleteInitiativeAlertOpen(false);
-                  setEditingInitiative(null);
                 }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
