@@ -201,14 +201,23 @@ The hypotheses table contains the following columns:
    - **Title**: Pre-filled with the hypothesis "Insight"
    - **Description**: Pre-filled with the "Solution Hypothesis" (15-row textarea)
    - **Column**: Defaults to "Backlog"
+   - **Linked Hypothesis**: Automatically set to the current hypothesis (cannot be changed in this dialog)
    - **Linked Goal**: Optional, can be selected from dropdown
    - **Linked Initiative**: Optional, can be selected from dropdown
-4. Modify any fields as needed
+4. Modify any fields as needed (except Linked Hypothesis, which is automatically set)
 5. Click "Create Feature" to add the feature to the Board
 
-**Note**: A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Board Page documentation](./board-page.md#human-readable-id) for more details.
+**Automatic Linking:**
+- When a feature is created from a hypothesis, the feature is automatically linked to that hypothesis
+- The link is established via the `hypothesis_id` field in the features table
+- This creates a many-to-one relationship: one hypothesis can be linked to multiple features
+- The link can be viewed or changed later in the feature editing dialog on the Board page
 
-**Use Case**: This allows users to quickly turn validated hypotheses into actionable features without manual data entry. The feature creation is now integrated into the hypothesis editing workflow for better consistency.
+**Note**: 
+- A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Board Page documentation](./board-page.md#human-readable-id) for more details.
+- The hypothesis link is automatically established and cannot be changed during feature creation from a hypothesis. To change or remove the link, edit the feature on the Board page.
+
+**Use Case**: This allows users to quickly turn validated hypotheses into actionable features without manual data entry. The feature creation is now integrated into the hypothesis editing workflow for better consistency. The automatic linking maintains traceability between hypotheses and the features they generate.
 
 **Location**: The "Create Feature" button is located in the right panel of the hypothesis editing dialog, making it easily accessible when reviewing or editing a hypothesis.
 
@@ -251,6 +260,11 @@ The hypotheses table contains the following columns:
 - All hypotheses belong to a specific product (`product_id`)
 - Impact metrics reference metrics from the Strategy page (same product)
 - Features created from hypotheses can be linked to goals and initiatives (same product)
+- **One-to-Many with Features**: One hypothesis can be linked to multiple features
+  - Features reference hypotheses via `hypothesis_id` foreign key in the features table
+  - When a feature is created from a hypothesis, the link is automatically established
+  - When a hypothesis is deleted, all feature links are automatically cleared (ON DELETE SET NULL)
+  - Supports bidirectional workflow: features can be created from hypotheses, and hypotheses can be created from features
 - No direct database relationships (metrics stored as names, not IDs)
 - All data is scoped to the current product
 

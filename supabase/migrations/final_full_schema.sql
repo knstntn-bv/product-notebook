@@ -109,6 +109,7 @@ CREATE TABLE public.features (
   description text,
   goal_id uuid REFERENCES public.goals(id) ON DELETE SET NULL,
   initiative_id uuid REFERENCES public.initiatives(id) ON DELETE SET NULL,
+  hypothesis_id uuid REFERENCES public.hypotheses(id) ON DELETE SET NULL,
   board_column text NOT NULL CHECK (board_column IN ('inbox', 'discovery', 'backlog', 'design', 'development', 'onHold', 'done', 'cancelled')),
   human_readable_id text,
   position integer NOT NULL DEFAULT 0,
@@ -147,6 +148,9 @@ CREATE INDEX idx_features_human_readable_id ON public.features(product_id, human
 
 -- Index for better performance on position queries in features
 CREATE INDEX idx_features_board_column_position ON public.features(board_column, position);
+
+-- Index for better query performance when filtering features by hypothesis
+CREATE INDEX idx_features_hypothesis_id ON public.features(hypothesis_id);
 
 -- Index for better query performance when filtering archived initiatives
 CREATE INDEX idx_initiatives_archived ON public.initiatives(archived);

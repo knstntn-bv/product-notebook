@@ -60,9 +60,17 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 - `product_id`: Foreign key to products (NOT NULL)
 - `goal_id`: Optional reference to goals
 - `initiative_id`: Optional reference to initiatives
+- `hypothesis_id`: Optional reference to hypotheses (many-to-one relationship)
 - `board_column`: Current stage in workflow
 - `position`: Order within column
 - `human_readable_id`: Unique identifier per product (format: `XXX-N`)
+
+**Relationships:**
+- **Many-to-One with Hypotheses**: Multiple features can reference the same hypothesis
+  - One hypothesis can be linked to many features
+  - When a hypothesis is deleted, `hypothesis_id` in linked features is set to `NULL` (ON DELETE SET NULL)
+  - Used to track which features originated from or are related to a specific hypothesis
+  - Supports the Discovery workflow: features can be created from hypotheses, and hypotheses can be created from features
 
 **Note**: Sequential numbering in `human_readable_id` is scoped to the product.
 
@@ -85,6 +93,12 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 - `product_id`: Foreign key to products (NOT NULL)
 - `status`: Hypothesis status (new, inProgress, accepted, rejected)
 - `impact_metrics`: Array of metric names (not foreign keys)
+
+**Relationships:**
+- **One-to-Many with Features**: One hypothesis can be referenced by multiple features
+  - Features reference hypotheses via `hypothesis_id` foreign key
+  - Supports bidirectional linking: features can be created from hypotheses, and hypotheses can be created from features
+  - When a hypothesis is deleted, all feature references are automatically cleared (ON DELETE SET NULL)
 
 ### Metrics
 
