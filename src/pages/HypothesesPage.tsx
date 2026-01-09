@@ -40,6 +40,7 @@ interface Feature {
   description: string;
   goal_id?: string;
   initiative_id?: string;
+  hypothesis_id?: string;
   board_column: ColumnId;
   human_readable_id?: string;
 }
@@ -320,6 +321,7 @@ const HypothesesPage = () => {
           description: feature.description || "",
           goal_id: feature.goal_id,
           initiative_id: feature.initiative_id,
+          hypothesis_id: feature.hypothesis_id,
           board_column: feature.board_column,
           position: maxPosition + 1,
           human_readable_id: human_readable_id,
@@ -389,6 +391,7 @@ const HypothesesPage = () => {
       title: (hypothesis.insight || "").toString(),
       description: (hypothesis.solution_hypothesis || "").toString(),
       board_column: "backlog",
+      hypothesis_id: hypothesis.id,
     });
     setIsFeatureDialogOpen(true);
   };

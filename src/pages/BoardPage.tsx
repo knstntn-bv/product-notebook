@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { EntityDialog } from "@/components/EntityDialog";
+import { MetricTagInput } from "@/components/MetricTagInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProduct } from "@/contexts/ProductContext";
@@ -22,6 +23,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
+type Status = "new" | "inProgress" | "accepted" | "rejected";
 
 interface Feature {
   id: string;
@@ -29,6 +31,7 @@ interface Feature {
   description: string;
   goal_id?: string;
   initiative_id?: string;
+  hypothesis_id?: string;
   board_column: ColumnId;
   position: number;
   human_readable_id?: string;
@@ -52,17 +55,34 @@ interface Initiative {
 
 const BoardPage = () => {
   const { user } = useAuth();
-  const { currentProductId } = useProduct();
+  const { currentProductId, metrics } = useProduct();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
   const [initiativeOpen, setInitiativeOpen] = useState(false);
+  const [hypothesisOpen, setHypothesisOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const originalFeaturesRef = useRef<Feature[] | null>(null);
+  const [creatingHypothesisFromFeature, setCreatingHypothesisFromFeature] = useState<{
+    featureId: string;
+    title: string;
+    description: string;
+  } | null>(null);
+  const [isHypothesisDialogOpen, setIsHypothesisDialogOpen] = useState(false);
+  const [editingHypothesis, setEditingHypothesis] = useState<Partial<{
+    id: string;
+    status: Status;
+    insight: string;
+    problem_hypothesis: string;
+    problem_validation: string;
+    solution_hypothesis: string;
+    solution_validation: string;
+    impact_metrics: string[];
+  }> | null>(null);
 
   const isMobile = useIsMobile();
 
@@ -83,6 +103,13 @@ const BoardPage = () => {
     { id: "onHold", label: "On Hold / Blocked" },
     { id: "done", label: "Done" },
     { id: "cancelled", label: "Cancelled" },
+  ];
+
+  const statuses: { value: Status; label: string }[] = [
+    { value: "new", label: "New" },
+    { value: "inProgress", label: "In Progress" },
+    { value: "accepted", label: "Accepted" },
+    { value: "rejected", label: "Rejected" },
   ];
 
   // Fetch features
@@ -133,6 +160,22 @@ const BoardPage = () => {
     enabled: !!currentProductId,
   });
 
+  // Fetch hypotheses
+  const { data: hypotheses = [] } = useQuery({
+    queryKey: ["hypotheses", currentProductId],
+    queryFn: async () => {
+      if (!currentProductId) return [];
+      const { data, error } = await supabase
+        .from("hypotheses")
+        .select("*")
+        .eq("product_id", currentProductId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!currentProductId,
+  });
+
   // Save feature mutation
   const saveFeatureMutation = useMutation({
     mutationFn: async (feature: Partial<Feature>) => {
@@ -146,6 +189,7 @@ const BoardPage = () => {
             description: feature.description,
             goal_id: feature.goal_id,
             initiative_id: feature.initiative_id,
+            hypothesis_id: feature.hypothesis_id,
             board_column: feature.board_column,
             position: feature.position,
           })
@@ -188,6 +232,7 @@ const BoardPage = () => {
             description: feature.description || "",
             goal_id: feature.goal_id,
             initiative_id: feature.initiative_id,
+            hypothesis_id: feature.hypothesis_id,
             board_column: feature.board_column!,
             position: maxPosition + 1,
             human_readable_id: human_readable_id,
@@ -324,6 +369,14 @@ const BoardPage = () => {
     setInitiativeOpen(false);
   };
 
+  const handleHypothesisSelect = (hypothesisId: string | null) => {
+    setEditingFeature({
+      ...editingFeature,
+      hypothesis_id: hypothesisId || undefined,
+    });
+    setHypothesisOpen(false);
+  };
+
   const getGoalName = (goalId?: string) => {
     return goals.find(i => i.id === goalId)?.goal || "";
   };
@@ -334,6 +387,95 @@ const BoardPage = () => {
 
   const getInitiativeColor = (initiativeId?: string) => {
     return initiatives.find(i => i.id === initiativeId)?.color || "#8B5CF6";
+  };
+
+  const getHypothesisName = (hypothesisId?: string) => {
+    if (!hypothesisId) return "";
+    const hypothesis = hypotheses.find((h: any) => h.id === hypothesisId);
+    return hypothesis?.insight || "Untitled hypothesis";
+  };
+
+  const handleDiscoveryThisFeature = () => {
+    if (!editingFeature || !editingFeature.id) return;
+    
+    setCreatingHypothesisFromFeature({
+      featureId: editingFeature.id,
+      title: editingFeature.title || "",
+      description: editingFeature.description || "",
+    });
+    setIsHypothesisDialogOpen(true);
+  };
+
+  // Предзаполнение полей гипотезы при открытии диалога
+  useEffect(() => {
+    if (creatingHypothesisFromFeature && isHypothesisDialogOpen) {
+      setEditingHypothesis({
+        status: "new",
+        insight: creatingHypothesisFromFeature.title,
+        problem_hypothesis: creatingHypothesisFromFeature.description,
+        problem_validation: "",
+        solution_hypothesis: "",
+        solution_validation: "",
+        impact_metrics: [],
+      });
+    }
+  }, [creatingHypothesisFromFeature, isHypothesisDialogOpen]);
+
+  // Save hypothesis from feature mutation
+  const saveHypothesisFromFeatureMutation = useMutation({
+    mutationFn: async (hypothesis: NonNullable<typeof editingHypothesis>) => {
+      if (!currentProductId) throw new Error("No product selected");
+      if (!creatingHypothesisFromFeature) throw new Error("No feature context");
+      
+      // Создаем гипотезу
+      const { data: newHypothesis, error: hypothesisError } = await supabase
+        .from("hypotheses")
+        .insert({
+          product_id: currentProductId,
+          status: hypothesis.status || "new",
+          insight: hypothesis.insight || "",
+          problem_hypothesis: hypothesis.problem_hypothesis || "",
+          problem_validation: hypothesis.problem_validation || "",
+          solution_hypothesis: hypothesis.solution_hypothesis || "",
+          solution_validation: hypothesis.solution_validation || "",
+          impact_metrics: hypothesis.impact_metrics || [],
+        })
+        .select()
+        .single();
+      
+      if (hypothesisError) throw hypothesisError;
+      
+      // Обновляем фичу: привязываем гипотезу и переносим в Discovery
+      const { error: featureError } = await supabase
+        .from("features")
+        .update({
+          hypothesis_id: newHypothesis.id,
+          board_column: "discovery",
+        })
+        .eq("id", creatingHypothesisFromFeature.featureId);
+      
+      if (featureError) throw featureError;
+      
+      return newHypothesis;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["hypotheses", currentProductId] });
+      queryClient.invalidateQueries({ queryKey: ["features", currentProductId] });
+      setCreatingHypothesisFromFeature(null);
+      setEditingHypothesis(null);
+      setIsHypothesisDialogOpen(false);
+      setIsDialogOpen(false); // Закрываем диалог фичи
+      toast({ title: "Hypothesis created and feature linked successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSaveHypothesis = () => {
+    if (editingHypothesis) {
+      saveHypothesisFromFeatureMutation.mutate(editingHypothesis);
+    }
   };
 
   const getFeaturesForColumn = (columnId: ColumnId) => {
@@ -934,6 +1076,74 @@ const BoardPage = () => {
               </Popover>
             </div>
             <div>
+              <Label>Linked Hypothesis</Label>
+              <Popover open={hypothesisOpen} onOpenChange={setHypothesisOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={hypothesisOpen}
+                    className="w-full justify-between"
+                  >
+                    {editingFeature.hypothesis_id
+                      ? getHypothesisName(editingFeature.hypothesis_id)
+                      : "Select hypothesis..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput placeholder="Search hypothesis..." />
+                    <CommandList>
+                      <CommandEmpty>No hypothesis found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => handleHypothesisSelect(null)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              !editingFeature.hypothesis_id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          None
+                        </CommandItem>
+                        {hypotheses.map((hypothesis: any) => (
+                          <CommandItem
+                            key={hypothesis.id}
+                            value={hypothesis.id}
+                            onSelect={() => handleHypothesisSelect(hypothesis.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                editingFeature.hypothesis_id === hypothesis.id
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {hypothesis.insight || "Untitled hypothesis"}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Button
+                variant="outline"
+                onClick={handleDiscoveryThisFeature}
+                disabled={!editingFeature?.id}
+                className="w-full"
+                title={!editingFeature?.id ? "Save the feature first to create a hypothesis" : "Create hypothesis from this feature"}
+              >
+                Discovery this feature
+              </Button>
+            </div>
+            <div>
               <Label htmlFor="column">Column</Label>
               <Select
                 value={editingFeature.board_column}
@@ -946,6 +1156,108 @@ const BoardPage = () => {
                   {columns.map(col => (
                     <SelectItem key={col.id} value={col.id}>
                       {col.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+      />
+
+      <EntityDialog
+        open={isHypothesisDialogOpen}
+        onOpenChange={(open) => {
+          setIsHypothesisDialogOpen(open);
+          if (!open) {
+            setEditingHypothesis(null);
+            setCreatingHypothesisFromFeature(null);
+          }
+        }}
+        title="New Hypothesis"
+        onSave={handleSaveHypothesis}
+        isEditing={false}
+        saveLabel="Save Hypothesis"
+        leftContent={editingHypothesis && (
+          <>
+            <div>
+              <Label htmlFor="insight">Insight</Label>
+              <Textarea
+                id="insight"
+                value={editingHypothesis.insight || ""}
+                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, insight: e.target.value })}
+                placeholder="Enter insight..."
+                rows={5}
+              />
+            </div>
+            <div>
+              <Label htmlFor="problem_hypothesis">Problem Hypothesis</Label>
+              <Textarea
+                id="problem_hypothesis"
+                value={editingHypothesis.problem_hypothesis || ""}
+                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, problem_hypothesis: e.target.value })}
+                placeholder="Enter problem hypothesis..."
+                rows={5}
+              />
+            </div>
+            <div>
+              <Label htmlFor="problem_validation">Problem Validation</Label>
+              <Textarea
+                id="problem_validation"
+                value={editingHypothesis.problem_validation || ""}
+                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, problem_validation: e.target.value })}
+                placeholder="Enter validation (links supported)..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="solution_hypothesis">Solution Hypothesis</Label>
+              <Textarea
+                id="solution_hypothesis"
+                value={editingHypothesis.solution_hypothesis || ""}
+                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, solution_hypothesis: e.target.value })}
+                placeholder="Enter solution hypothesis..."
+                rows={5}
+              />
+            </div>
+            <div>
+              <Label htmlFor="solution_validation">Solution Validation</Label>
+              <Textarea
+                id="solution_validation"
+                value={editingHypothesis.solution_validation || ""}
+                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, solution_validation: e.target.value })}
+                placeholder="Enter validation (links supported)..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="impact_metrics">Impact Metrics</Label>
+              <MetricTagInput
+                value={Array.isArray(editingHypothesis.impact_metrics) ? editingHypothesis.impact_metrics : []}
+                onChange={(tags) => setEditingHypothesis({ ...editingHypothesis, impact_metrics: tags })}
+                suggestions={metrics.map(m => m.name).filter(Boolean)}
+                placeholder="Type to add metrics..."
+              />
+            </div>
+          </>
+        )}
+        rightContent={editingHypothesis && (
+          <>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={(editingHypothesis.status || "new") as Status}
+                onValueChange={(value: Status) => 
+                  setEditingHypothesis({ ...editingHypothesis, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map(status => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

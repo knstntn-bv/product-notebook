@@ -23,6 +23,7 @@ export type Database = {
           id: string
           goal_id: string | null
           initiative_id: string | null
+          hypothesis_id: string | null
           position: number
           product_id: string | null
           title: string
@@ -36,6 +37,7 @@ export type Database = {
           id?: string
           goal_id?: string | null
           initiative_id?: string | null
+          hypothesis_id?: string | null
           position?: number
           product_id?: string | null
           title: string
@@ -49,6 +51,7 @@ export type Database = {
           id?: string
           goal_id?: string | null
           initiative_id?: string | null
+          hypothesis_id?: string | null
           position?: number
           product_id?: string | null
           title?: string
@@ -67,6 +70,13 @@ export type Database = {
             columns: ["initiative_id"]
             isOneToOne: false
             referencedRelation: "initiatives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "features_hypothesis_id_fkey"
+            columns: ["hypothesis_id"]
+            isOneToOne: false
+            referencedRelation: "hypotheses"
             referencedColumns: ["id"]
           },
           {

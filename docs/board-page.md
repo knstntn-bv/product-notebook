@@ -65,6 +65,7 @@ Each feature card shows:
    - **Description**: Detailed description (optional)
    - **Linked Goal**: Select a goal from the roadmap (optional)
    - **Linked Initiative**: Select an initiative (optional)
+   - **Linked Hypothesis**: Select a hypothesis (optional)
    - **Column**: Select which column the feature starts in (required)
 4. Click "Save Feature" to create
 
@@ -207,6 +208,21 @@ The feature editing dialog provides a user-friendly interface for creating and e
   - Initiatives are sorted alphabetically
   - Color is used for visual identification
   - Used to generate the human readable ID prefix
+- **Linked Hypothesis**: Hypothesis from the hypotheses page (optional, searchable Popover dropdown)
+  - Shows hypothesis insight text as the display value
+  - Supports "None" option to clear the link
+  - Automatically set when creating a feature from a hypothesis
+  - Automatically set when creating a hypothesis from a feature via "Discovery this feature"
+  - Many features can reference the same hypothesis (many-to-one relationship)
+- **Discovery this feature**: Button to create a hypothesis from the current feature
+  - Only available for saved features (disabled for unsaved features)
+  - Opens hypothesis creation dialog with pre-filled fields:
+    - Insight: Pre-filled with feature title
+    - Problem Hypothesis: Pre-filled with feature description
+  - After saving the hypothesis:
+    - Feature is automatically linked to the created hypothesis
+    - Feature is automatically moved to "Discovery" column
+    - Both dialogs close automatically
 - **Board Column**: Current board column (required, Select dropdown)
 
 ### Goal and Initiative Linking
@@ -223,6 +239,30 @@ The feature editing dialog provides a user-friendly interface for creating and e
 - Visual color indicator matches the initiative color
 - Helps organize features by strategic theme
 
+### Hypothesis Linking
+
+**Hypothesis Selection:**
+- Searchable dropdown with all hypotheses
+- Shows hypothesis insight text for each option
+- Supports "None" option to clear the link
+- Many features can reference the same hypothesis (many-to-one relationship)
+- Automatically set when:
+  - Creating a feature from a hypothesis (via "Create Feature" button in hypothesis dialog)
+  - Creating a hypothesis from a feature (via "Discovery this feature" button)
+
+**Discovery This Feature:**
+- Button located in the right column of the feature editing dialog
+- Only enabled for saved features (disabled for unsaved features with tooltip explanation)
+- Creates a new hypothesis from the current feature:
+  - Opens hypothesis creation dialog
+  - Pre-fills Insight with feature title
+  - Pre-fills Problem Hypothesis with feature description
+  - After saving:
+    - Feature is automatically linked to the created hypothesis
+    - Feature is automatically moved to "Discovery" column
+    - Both dialogs close automatically
+- Supports the Discovery workflow: converting features that need research into hypotheses
+
 ## Data Management
 
 ### Feature Organization
@@ -234,6 +274,7 @@ The feature editing dialog provides a user-friendly interface for creating and e
 - Features can be linked to:
   - **Goal**: From the roadmap (must be from the same product)
   - **Initiative**: From the strategy page (must be from the same product)
+  - **Hypothesis**: From the hypotheses page (must be from the same product, many-to-one relationship)
 - Each feature has a unique **Human Readable ID**:
   - Automatically generated on creation
   - Format: `XXX-N` (prefix from initiative + sequential number)
@@ -282,7 +323,10 @@ Each feature has a unique human-readable identifier that is automatically genera
 
 - Features can reference goals (optional)
 - Features can reference initiatives (optional)
+- Features can reference hypotheses (optional, many-to-one relationship)
 - When a goal is selected, the initiative is automatically set
+- When a feature is created from a hypothesis, the hypothesis link is automatically set
+- When a hypothesis is created from a feature (via "Discovery this feature"), the hypothesis link is automatically set
 - Initiative colors provide visual grouping
 
 ### State Management
