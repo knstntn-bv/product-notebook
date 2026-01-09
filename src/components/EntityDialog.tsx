@@ -100,12 +100,6 @@ export const EntityDialog = ({
                     {exportLabel}
                   </Button>
                 )}
-
-                {showDeleteButton && (
-                  <Button variant="destructive" onClick={onDelete}>
-                    {deleteLabel}
-                  </Button>
-                )}
               </div>
             </div>
           </div>
@@ -136,42 +130,15 @@ export const EntityDialog = ({
                   {exportLabel}
                 </Button>
               )}
-
-              {showDeleteButton && (
-                <Button variant="destructive" onClick={onDelete}>
-                  {deleteLabel}
-                </Button>
-              )}
             </div>
           </div>
         )}
 
         <div className="flex justify-between gap-2 flex-shrink-0 pt-4 border-t">
-          {!useTwoColumn && (
-            <div className="flex gap-2">
-              {showArchiveButton && (
-                <Button
-                  variant="outline"
-                  onClick={onArchive}
-                  title={archiveButtonLabel}
-                >
-                  <ArchiveIcon className="h-4 w-4 mr-2" />
-                  {archiveButtonLabel}
-                </Button>
-              )}
-
-              {showDeleteButton && (
-                <Button variant="destructive" onClick={onDelete}>
-                  {deleteLabel}
-                </Button>
-              )}
-
-              {showExportButton && (
-                <Button variant="outline" onClick={onExport}>
-                  {exportLabel}
-                </Button>
-              )}
-            </div>
+          {showDeleteButton && (
+            <Button variant="destructive" onClick={onDelete}>
+              {deleteLabel}
+            </Button>
           )}
 
           <div className="flex gap-2 ml-auto">
