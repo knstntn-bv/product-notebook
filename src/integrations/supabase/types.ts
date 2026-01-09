@@ -339,6 +339,8 @@ export type Database = {
           id: string
           name: string
           product_id: string | null
+          target_metric_id: string | null
+          priority: number
           updated_at: string | null
         }
         Insert: {
@@ -350,6 +352,8 @@ export type Database = {
           id?: string
           name: string
           product_id?: string | null
+          target_metric_id?: string | null
+          priority?: number
           updated_at?: string | null
         }
         Update: {
@@ -361,6 +365,8 @@ export type Database = {
           id?: string
           name?: string
           product_id?: string | null
+          target_metric_id?: string | null
+          priority?: number
           updated_at?: string | null
         }
         Relationships: [
@@ -369,6 +375,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "initiatives_target_metric_id_fkey"
+            columns: ["target_metric_id"]
+            isOneToOne: false
+            referencedRelation: "metrics"
             referencedColumns: ["id"]
           },
         ]

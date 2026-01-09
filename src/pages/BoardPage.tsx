@@ -46,6 +46,8 @@ interface Initiative {
   name: string;
   color?: string;
   archived?: boolean;
+  target_metric_id?: string | null;
+  priority: number;
 }
 
 const BoardPage = () => {

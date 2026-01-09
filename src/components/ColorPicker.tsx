@@ -17,14 +17,15 @@ const INITIATIVE_COLORS: { value: string; label: string }[] = [
 interface ColorPickerProps {
   value: string;
   onChange: (color: string) => void;
+  className?: string;
 }
 
-export const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
+export const ColorPicker = ({ value, onChange, className }: ColorPickerProps) => {
   const current = INITIATIVE_COLORS.find((c) => c.value === value) || INITIATIVE_COLORS[0];
 
   return (
     <Select value={current.value} onValueChange={(val) => onChange(val)}>
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger className={cn("w-[180px]", className)}>
         <SelectValue placeholder="Select color" />
       </SelectTrigger>
       <SelectContent>

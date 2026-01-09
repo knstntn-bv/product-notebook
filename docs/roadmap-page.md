@@ -21,7 +21,7 @@ The roadmap is displayed as a table with:
 - **Initiative Filtering**: 
   - When "Show Archived Items" is unchecked (default): Only active initiatives appear as rows
   - When "Show Archived Items" is checked: All initiatives appear as rows, archived ones at the bottom
-  - Archived initiatives are sorted to appear after active ones
+  - Initiatives are sorted by priority (ascending), then by archive status (active before archived)
 
 ### Archive Visibility Control
 
@@ -42,6 +42,8 @@ The visibility of archived items is controlled by a global setting accessible fr
 - Displays the initiative name
 - Shows a colored vertical bar on the left edge (matching the initiative's color)
 - Color helps visually identify which initiative each row belongs to
+- Initiatives are sorted by priority (ascending) - lower priority number = higher priority
+- Within the same priority, non-archived initiatives appear before archived ones
 
 ### Time Period Columns
 
@@ -298,6 +300,7 @@ The goal editing dialog provides a user-friendly interface for creating and edit
 
 ### Database Schema
 
+**Goals Table:**
 The `goals` table includes the following fields for archiving:
 - `archived` (boolean, NOT NULL, DEFAULT false): Archive status flag
 - `archived_at` (timestamptz, nullable): Timestamp when the goal was archived
@@ -305,6 +308,16 @@ The `goals` table includes the following fields for archiving:
 **Migration**: `supabase/migrations/20250115000002_add_archive_to_goals.sql`
 - Adds `archived` and `archived_at` columns to the `goals` table
 - Creates index `idx_goals_archived` for optimized filtering queries
+
+**Initiatives Table:**
+The `initiatives` table includes the following new fields:
+- `target_metric_id` (uuid, nullable, FK to metrics.id): Optional reference to target metric
+- `priority` (integer, NOT NULL, DEFAULT 3): Priority number for sorting (lower = higher priority)
+
+**Migration**: `supabase/migrations/20260109145221_add_initiative_fields.sql`
+- Adds `target_metric_id` and `priority` columns to the `initiatives` table
+- Creates foreign key constraint for `target_metric_id`
+- Sets default `priority = 3` for existing initiatives
 
 ### Component Updates
 
@@ -314,7 +327,7 @@ The `goals` table includes the following fields for archiving:
 - Uses `showArchived` from `ProductContext` for consistent behavior across pages
 - Updated `getGoalsForCell` to filter archived goals based on global setting
 - Updated initiative filtering to show/hide archived initiatives based on global setting
-- Added sorting: active initiatives first, then archived (at bottom)
+- Updated sorting: initiatives sorted by priority (ascending), then active before archived
 - Updated `DraggableGoalCard` to disable dragging for archived goals
 - Added visual styling for archived goals (opacity, muted colors, badge)
 - Updated `Goal` interface to include `archived` and `archived_at` fields
@@ -338,7 +351,7 @@ The `goals` table includes the following fields for archiving:
   - All initiatives appear as rows (archived sorted to bottom)
   - All goals are displayed in cells (archived with visual indicators)
 - **Sorting**: 
-  - Initiatives: Active first, then archived (at bottom of table)
+  - Initiatives: First by priority (ascending), then active before archived (at bottom of table)
   - Goals: Active first, then archived within each cell
 - **Persistence**: Setting is saved to database and persists across sessions
 

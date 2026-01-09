@@ -102,9 +102,16 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 **Key Fields:**
 - `product_id`: Foreign key to products (NOT NULL)
 - `name`: Initiative name
-- `color`: Visual color identifier
+- `description`: Initiative description (optional)
+- `color`: Visual color identifier (default: #8B5CF6)
+- `target_metric_id`: Optional reference to target metric (FK to metrics.id)
+- `priority`: Priority number (integer, NOT NULL, DEFAULT 3) - lower number = higher priority
 - `archived`: Archive status
 - `archived_at`: Archive timestamp
+
+**Sorting:**
+- Initiatives are sorted by `priority ASC` (lower priority number = higher priority)
+- Within the same priority, non-archived initiatives appear before archived ones
 
 ### Values
 

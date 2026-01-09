@@ -63,6 +63,8 @@ CREATE TABLE public.initiatives (
   color text DEFAULT '#8B5CF6',
   archived boolean NOT NULL DEFAULT false,
   archived_at timestamptz,
+  target_metric_id uuid REFERENCES public.metrics(id) ON DELETE SET NULL,
+  priority integer NOT NULL DEFAULT 3,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
