@@ -90,7 +90,8 @@ CREATE TABLE public.goals (
 CREATE TABLE public.hypotheses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id uuid NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
-  status text NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'inProgress', 'accepted', 'rejected')),
+  status text NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'inProgress', 'accepted', 'done', 'rejected')),
+  priority integer NOT NULL DEFAULT 3,
   insight text,
   problem_hypothesis text,
   problem_validation text,
