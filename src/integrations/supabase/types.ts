@@ -28,6 +28,7 @@ export type Database = {
           product_id: string | null
           title: string
           updated_at: string | null
+          closed_at: string | null
         }
         Insert: {
           board_column: string
@@ -42,6 +43,7 @@ export type Database = {
           product_id?: string | null
           title: string
           updated_at?: string | null
+          closed_at?: string | null
         }
         Update: {
           board_column?: string
@@ -56,6 +58,7 @@ export type Database = {
           product_id?: string | null
           title?: string
           updated_at?: string | null
+          closed_at?: string | null
         }
         Relationships: [
           {

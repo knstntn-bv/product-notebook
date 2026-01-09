@@ -35,6 +35,7 @@ interface Feature {
   board_column: ColumnId;
   position: number;
   human_readable_id?: string;
+  closed_at?: string | null;
 }
 
 interface Goal {
@@ -182,17 +183,24 @@ const BoardPage = () => {
       if (!user) throw new Error("No user");
       
       if (feature.id) {
+        const updateData: any = {
+          title: feature.title,
+          description: feature.description,
+          goal_id: feature.goal_id,
+          initiative_id: feature.initiative_id,
+          hypothesis_id: feature.hypothesis_id,
+          board_column: feature.board_column,
+          position: feature.position,
+        };
+        
+        // Set closed_at when board_column is done or cancelled
+        if (feature.board_column === 'done' || feature.board_column === 'cancelled') {
+          updateData.closed_at = new Date().toISOString();
+        }
+        
         const { error } = await supabase
           .from("features")
-          .update({
-            title: feature.title,
-            description: feature.description,
-            goal_id: feature.goal_id,
-            initiative_id: feature.initiative_id,
-            hypothesis_id: feature.hypothesis_id,
-            board_column: feature.board_column,
-            position: feature.position,
-          })
+          .update(updateData)
           .eq("id", feature.id);
         if (error) throw error;
       } else {
@@ -224,19 +232,26 @@ const BoardPage = () => {
         const featureNumber = (count || 0) + 1;
         const human_readable_id = `${prefix}-${featureNumber}`;
         
+        const insertData: any = {
+          product_id: currentProductId,
+          title: feature.title!,
+          description: feature.description || "",
+          goal_id: feature.goal_id,
+          initiative_id: feature.initiative_id,
+          hypothesis_id: feature.hypothesis_id,
+          board_column: feature.board_column!,
+          position: maxPosition + 1,
+          human_readable_id: human_readable_id,
+        };
+        
+        // Set closed_at when board_column is done or cancelled
+        if (feature.board_column === 'done' || feature.board_column === 'cancelled') {
+          insertData.closed_at = new Date().toISOString();
+        }
+        
         const { error } = await supabase
           .from("features")
-          .insert({
-            product_id: currentProductId,
-            title: feature.title!,
-            description: feature.description || "",
-            goal_id: feature.goal_id,
-            initiative_id: feature.initiative_id,
-            hypothesis_id: feature.hypothesis_id,
-            board_column: feature.board_column!,
-            position: maxPosition + 1,
-            human_readable_id: human_readable_id,
-          });
+          .insert(insertData);
         if (error) throw error;
       }
     },
@@ -276,12 +291,19 @@ const BoardPage = () => {
   // Drag mutation - optimistic update is handled in handleDragEnd
   const dragFeatureMutation = useMutation({
     mutationFn: async ({ updates }: { updates: Array<{ id: string; position: number; board_column?: string }> }) => {
-      const promises = updates.map(update =>
-        supabase.from("features").update({ 
+      const promises = updates.map(update => {
+        const updateData: any = { 
           position: update.position,
           ...(update.board_column && { board_column: update.board_column })
-        }).eq("id", update.id)
-      );
+        };
+        
+        // Set closed_at when moving to done or cancelled
+        if (update.board_column === 'done' || update.board_column === 'cancelled') {
+          updateData.closed_at = new Date().toISOString();
+        }
+        
+        return supabase.from("features").update(updateData).eq("id", update.id);
+      });
       const results = await Promise.all(promises);
       const errors = results.filter(r => r.error);
       if (errors.length > 0) throw errors[0].error;
@@ -737,11 +759,18 @@ const BoardPage = () => {
         updatedFeatures = originalFeatures.map(feature => {
           const update = updates.find(u => u.id === feature.id);
           if (update) {
-            return {
+            const updatedFeature = {
               ...feature,
               position: update.position,
               ...(update.board_column && { board_column: update.board_column as ColumnId })
             };
+            
+            // Set closed_at when moving to done or cancelled
+            if (update.board_column === 'done' || update.board_column === 'cancelled') {
+              updatedFeature.closed_at = new Date().toISOString();
+            }
+            
+            return updatedFeature;
           }
           return feature;
         });
@@ -775,11 +804,18 @@ const BoardPage = () => {
       updatedFeatures = originalFeatures.map(feature => {
         const update = updates.find(u => u.id === feature.id);
         if (update) {
-          return {
+          const updatedFeature = {
             ...feature,
             position: update.position,
             ...(update.board_column && { board_column: update.board_column as ColumnId })
           };
+          
+          // Set closed_at when moving to done or cancelled
+          if (update.board_column === 'done' || update.board_column === 'cancelled') {
+            updatedFeature.closed_at = new Date().toISOString();
+          }
+          
+          return updatedFeature;
         }
         return feature;
       });
