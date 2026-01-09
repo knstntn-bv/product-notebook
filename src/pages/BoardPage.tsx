@@ -1158,7 +1158,7 @@ const BoardPage = () => {
                 className="w-full"
                 title={!editingFeature?.id ? "Save the feature first to create a hypothesis" : "Create hypothesis from this feature"}
               >
-                Discovery this feature
+                Discover this feature
               </Button>
             </div>
           </>
