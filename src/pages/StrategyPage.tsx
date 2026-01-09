@@ -467,13 +467,13 @@ const StrategyPage = () => {
           onAdd={createInitiative}
           addLabel="Add Initiative"
         />
-        <Table>
+        <Table className="table-fixed w-full">
             <TableHeader>
               <TableRow>
-                <TableHead>Initiative</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Target Metric</TableHead>
-                <TableHead>Color</TableHead>
+                <TableHead className="w-[20%]">Initiative</TableHead>
+                <TableHead className="w-[45%]">Description</TableHead>
+                <TableHead className="w-[25%]">Target Metric</TableHead>
+                <TableHead className="w-[10%]">Color</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -503,13 +503,22 @@ const StrategyPage = () => {
                     )}
                     onClick={() => editInitiative(initiative)}
                   >
-                    <TableCell className={isArchived ? "text-muted-foreground" : ""}>
+                    <TableCell className={cn(
+                      isArchived ? "text-muted-foreground" : "",
+                      "break-words"
+                    )}>
                       {initiative.name}
                     </TableCell>
-                    <TableCell className={isArchived ? "text-muted-foreground" : ""}>
+                    <TableCell className={cn(
+                      isArchived ? "text-muted-foreground" : "",
+                      "break-words"
+                    )}>
                       {initiative.description || "—"}
                     </TableCell>
-                    <TableCell className={isArchived ? "text-muted-foreground" : ""}>
+                    <TableCell className={cn(
+                      isArchived ? "text-muted-foreground" : "",
+                      "break-words"
+                    )}>
                       {targetMetric ? targetMetric.name : "—"}
                     </TableCell>
                     <TableCell>
