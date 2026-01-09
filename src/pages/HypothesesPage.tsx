@@ -20,12 +20,13 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type Status = "new" | "inProgress" | "accepted" | "rejected";
+type Status = "new" | "inProgress" | "accepted" | "done" | "rejected";
 type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
 
 interface Hypothesis {
   id: string;
   status: Status;
+  priority: number;
   insight: string;
   problem_hypothesis: string;
   problem_validation: string;
@@ -68,6 +69,7 @@ const HypothesesPage = () => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null);
+  const [prioritySort, setPrioritySort] = useState<"asc" | "desc" | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHypothesis, setEditingHypothesis] = useState<Partial<Hypothesis> | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
@@ -89,8 +91,9 @@ const HypothesesPage = () => {
 
   const statuses: { value: Status; label: string }[] = [
     { value: "new", label: "New" },
-    { value: "inProgress", label: "In Progress" },
+    { value: "inProgress", label: "In work" },
     { value: "accepted", label: "Accepted" },
+    { value: "done", label: "Done" },
     { value: "rejected", label: "Rejected" },
   ];
 
@@ -109,6 +112,7 @@ const HypothesesPage = () => {
       return (data || []).map((h: any) => ({
         id: h.id,
         status: h.status as Status,
+        priority: h.priority ?? 3,
         insight: h.insight || "",
         problem_hypothesis: h.problem_hypothesis || "",
         problem_validation: h.problem_validation || "",
@@ -124,6 +128,7 @@ const HypothesesPage = () => {
   const handleAddHypothesis = () => {
     setEditingHypothesis({
       status: "new",
+      priority: 3,
       insight: "",
       problem_hypothesis: "",
       problem_validation: "",
@@ -142,6 +147,7 @@ const HypothesesPage = () => {
         // Update existing
         const updates: any = {};
         if (hypothesis.status !== undefined) updates.status = hypothesis.status;
+        if (hypothesis.priority !== undefined) updates.priority = hypothesis.priority;
         if (hypothesis.insight !== undefined) updates.insight = hypothesis.insight;
         if (hypothesis.problem_hypothesis !== undefined) updates.problem_hypothesis = hypothesis.problem_hypothesis;
         if (hypothesis.problem_validation !== undefined) updates.problem_validation = hypothesis.problem_validation;
@@ -162,6 +168,7 @@ const HypothesesPage = () => {
           .insert({
             product_id: currentProductId,
             status: hypothesis.status || "new",
+            priority: hypothesis.priority ?? 3,
             insight: hypothesis.insight || "",
             problem_hypothesis: hypothesis.problem_hypothesis || "",
             problem_validation: hypothesis.problem_validation || "",
@@ -211,6 +218,7 @@ const HypothesesPage = () => {
         .insert({
           product_id: currentProductId,
           status: hypothesis.status,
+          priority: hypothesis.priority ?? 3,
           insight: hypothesis.insight || "",
           problem_hypothesis: hypothesis.problem_hypothesis || "",
           problem_validation: hypothesis.problem_validation || "",
@@ -372,18 +380,52 @@ const HypothesesPage = () => {
     }
   };
 
+  const handlePrioritySort = () => {
+    if (prioritySort === null) {
+      setPrioritySort("asc");
+    } else if (prioritySort === "asc") {
+      setPrioritySort("desc");
+    } else {
+      setPrioritySort(null);
+    }
+  };
+
   const sortedHypotheses = [...hypotheses].sort((a, b) => {
-    if (statusSort === null) return 0;
-    
     const statusOrder: Record<Status, number> = {
       new: 1,
       inProgress: 2,
       accepted: 3,
-      rejected: 4,
+      done: 4,
+      rejected: 5,
     };
+
+    // Если активна сортировка по приоритету
+    if (prioritySort !== null) {
+      const priorityComparison = (a.priority || 3) - (b.priority || 3);
+      if (priorityComparison !== 0) {
+        return prioritySort === "asc" ? priorityComparison : -priorityComparison;
+      }
+      // Если приоритеты равны, сортируем по статусу (если активна сортировка по статусу)
+      if (statusSort !== null) {
+        const statusComparison = statusOrder[a.status] - statusOrder[b.status];
+        return statusSort === "asc" ? statusComparison : -statusComparison;
+      }
+      return 0;
+    }
     
-    const comparison = statusOrder[a.status] - statusOrder[b.status];
-    return statusSort === "asc" ? comparison : -comparison;
+    // Если активна сортировка по статусу
+    if (statusSort !== null) {
+      const statusComparison = statusOrder[a.status] - statusOrder[b.status];
+      if (statusComparison !== 0) {
+        return statusSort === "asc" ? statusComparison : -statusComparison;
+      }
+      // Если статусы равны, сортируем по приоритету
+      const priorityComparison = (a.priority || 3) - (b.priority || 3);
+      return priorityComparison;
+    }
+    
+    // Если сортировка неактивна
+    return 0;
   });
 
   const handleCreateFeature = (hypothesis: Hypothesis) => {
@@ -402,6 +444,7 @@ const HypothesesPage = () => {
       const hypothesisToClone: Hypothesis = {
         id: editingHypothesis.id,
         status: (editingHypothesis.status || "new") as Status,
+        priority: editingHypothesis.priority ?? 3,
         insight: editingHypothesis.insight || "",
         problem_hypothesis: editingHypothesis.problem_hypothesis || "",
         problem_validation: editingHypothesis.problem_validation || "",
@@ -486,6 +529,20 @@ const HypothesesPage = () => {
                 </button>
               </TableHead>
               <TableHead className={cn(
+                !isMobile && "w-[80px]",
+                isMobile && "min-w-[80px]"
+              )}>
+                <button
+                  onClick={handlePrioritySort}
+                  className="flex items-center gap-1 hover:opacity-80 transition-opacity text-xs whitespace-nowrap w-full justify-start"
+                  type="button"
+                >
+                  Priority
+                  {prioritySort === "asc" && <ArrowUp className="h-3 w-3" />}
+                  {prioritySort === "desc" && <ArrowDown className="h-3 w-3" />}
+                </button>
+              </TableHead>
+              <TableHead className={cn(
                 !isMobile && "w-[200px]",
                 isMobile && "min-w-[180px]"
               )}>Insight</TableHead>
@@ -522,40 +579,45 @@ const HypothesesPage = () => {
                     {statuses.find(s => s.value === hypothesis.status)?.label || hypothesis.status}
                   </span>
                 </TableCell>
+                <TableCell className={cn(
+                  !isMobile && "w-[80px]",
+                  isMobile && "min-w-[80px]",
+                  "px-2 overflow-hidden"
+                )}>
+                  <span className="text-xs whitespace-nowrap block truncate">
+                    {hypothesis.priority ?? 3}
+                  </span>
+                </TableCell>
                 <TableCell className="break-words">
                   <div className="text-sm whitespace-pre-wrap">
                     {hypothesis.insight || <span className="text-muted-foreground italic">No insight</span>}
                   </div>
                 </TableCell>
                 <TableCell className="break-words">
-                  <div className="space-y-2">
-                    <div className="text-sm whitespace-pre-wrap">
-                      {hypothesis.problem_hypothesis || <span className="text-muted-foreground italic">No problem hypothesis</span>}
-                    </div>
-                    {hypothesis.problem_validation && (
-                      <>
-                        <div className="border-t border-border pt-2 mt-2" />
-                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">
-                          {hypothesis.problem_validation}
-                        </div>
-                      </>
-                    )}
+                  <div className="text-sm whitespace-pre-wrap">
+                    {hypothesis.problem_hypothesis || <span className="text-muted-foreground italic">No problem hypothesis</span>}
                   </div>
+                  {hypothesis.problem_validation && (
+                    <>
+                      <div className="border-t border-border pt-2 mt-2" />
+                      <div className="text-xs text-muted-foreground whitespace-pre-wrap">
+                        {hypothesis.problem_validation}
+                      </div>
+                    </>
+                  )}
                 </TableCell>
                 <TableCell className="break-words">
-                  <div className="space-y-2">
-                    <div className="text-sm whitespace-pre-wrap">
-                      {hypothesis.solution_hypothesis || <span className="text-muted-foreground italic">No solution hypothesis</span>}
-                    </div>
-                    {hypothesis.solution_validation && (
-                      <>
-                        <div className="border-t border-border pt-2 mt-2" />
-                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">
-                          {hypothesis.solution_validation}
-                        </div>
-                      </>
-                    )}
+                  <div className="text-sm whitespace-pre-wrap">
+                    {hypothesis.solution_hypothesis || <span className="text-muted-foreground italic">No solution hypothesis</span>}
                   </div>
+                  {hypothesis.solution_validation && (
+                    <>
+                      <div className="border-t border-border pt-2 mt-2" />
+                      <div className="text-xs text-muted-foreground whitespace-pre-wrap">
+                        {hypothesis.solution_validation}
+                      </div>
+                    </>
+                  )}
                 </TableCell>
                 <TableCell className="break-words">
                   <div className="flex flex-wrap gap-1">
@@ -673,6 +735,31 @@ const HypothesesPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="priority">Priority</Label>
+              <Input
+                id="priority"
+                type="text"
+                inputMode="numeric"
+                value={editingHypothesis.priority ?? 3}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) && value >= 1 && value <= 99) {
+                    setEditingHypothesis({ 
+                      ...editingHypothesis, 
+                      priority: value 
+                    });
+                  } else if (e.target.value === "") {
+                    // Allow empty input for better UX
+                    setEditingHypothesis({ 
+                      ...editingHypothesis, 
+                      priority: undefined 
+                    });
+                  }
+                }}
+                placeholder="3"
+              />
             </div>
             <div>
               <Button

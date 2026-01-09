@@ -96,6 +96,7 @@ export type Database = {
           insight: string | null
           problem_hypothesis: string | null
           problem_validation: string | null
+          priority: number
           product_id: string | null
           solution_hypothesis: string | null
           solution_validation: string | null
@@ -109,6 +110,7 @@ export type Database = {
           insight?: string | null
           problem_hypothesis?: string | null
           problem_validation?: string | null
+          priority?: number
           product_id?: string | null
           solution_hypothesis?: string | null
           solution_validation?: string | null
@@ -122,6 +124,7 @@ export type Database = {
           insight?: string | null
           problem_hypothesis?: string | null
           problem_validation?: string | null
+          priority?: number
           product_id?: string | null
           solution_hypothesis?: string | null
           solution_validation?: string | null

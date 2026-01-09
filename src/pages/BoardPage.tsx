@@ -1133,17 +1133,6 @@ const BoardPage = () => {
               </Popover>
             </div>
             <div>
-              <Button
-                variant="outline"
-                onClick={handleDiscoveryThisFeature}
-                disabled={!editingFeature?.id}
-                className="w-full"
-                title={!editingFeature?.id ? "Save the feature first to create a hypothesis" : "Create hypothesis from this feature"}
-              >
-                Discovery this feature
-              </Button>
-            </div>
-            <div>
               <Label htmlFor="column">Column</Label>
               <Select
                 value={editingFeature.board_column}
@@ -1160,6 +1149,17 @@ const BoardPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="mt-auto pt-4">
+              <Button
+                variant="outline"
+                onClick={handleDiscoveryThisFeature}
+                disabled={!editingFeature?.id}
+                className="w-full"
+                title={!editingFeature?.id ? "Save the feature first to create a hypothesis" : "Create hypothesis from this feature"}
+              >
+                Discover this feature
+              </Button>
             </div>
           </>
         )}

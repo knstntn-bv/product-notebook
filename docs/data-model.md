@@ -91,8 +91,20 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 
 **Key Fields:**
 - `product_id`: Foreign key to products (NOT NULL)
-- `status`: Hypothesis status (new, inProgress, accepted, rejected)
+- `status`: Hypothesis status (new, inProgress, accepted, done, rejected)
+- `priority`: Priority number (integer, NOT NULL, DEFAULT 3) - lower number = higher priority
 - `impact_metrics`: Array of metric names (not foreign keys)
+
+**Status Order:**
+- Statuses have a defined order for sorting: New → In work → Accepted → Done → Rejected
+- This order is used in the status selection menu and when sorting by status
+
+**Sorting:**
+- Hypotheses can be sorted by priority (ascending/descending)
+- Hypotheses can be sorted by status (ascending/descending)
+- When sorting by priority, secondary sort by status is applied if status sort is active
+- When sorting by status, secondary sort by priority is always applied for equal statuses
+- Both sorts can be active simultaneously, with the primary sort taking precedence
 
 **Relationships:**
 - **One-to-Many with Features**: One hypothesis can be referenced by multiple features
