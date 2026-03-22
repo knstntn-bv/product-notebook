@@ -69,4 +69,4 @@
 - `src/pages/HypothesesPage.tsx`
 - `src/integrations/supabase/types.ts`
 - `docs/data-model.md`
-- `docs/testing-checklist-hypothesis-priority-status-sort.md` (новый)
+- `docs/testing-checklists/testing-checklist-hypothesis-priority-status-sort.md` (новый)

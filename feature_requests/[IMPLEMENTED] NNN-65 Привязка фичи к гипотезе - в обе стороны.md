@@ -93,7 +93,7 @@
 - ✅ Обновлен `docs/data-model.md` с описанием связи features-hypotheses
 - ✅ Обновлен `docs/board-page.md` с описанием новой функциональности
 - ✅ Обновлен `docs/hypotheses-page.md` с описанием автоматической привязки
-- ✅ Создан чеклист тестирования `docs/testing-checklist-hypothesis-feature-link.md`
+- ✅ Создан чеклист тестирования `docs/testing-checklists/testing-checklist-hypothesis-feature-link.md`
 
 ## Технические детали
 

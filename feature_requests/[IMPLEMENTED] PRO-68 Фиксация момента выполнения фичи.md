@@ -20,4 +20,4 @@
 
 **Миграция**: `20260109212407_add_closed_at_to_features.sql`
 
-**Документация**: `docs/implementation-plan-feature-closed-at.md`
+**Документация**: `docs/implementation-plans/implementation-plan-feature-closed-at.md`
