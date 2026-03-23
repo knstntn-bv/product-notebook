@@ -22,6 +22,8 @@ interface EntityDialogProps {
   isEditing?: boolean;
   isArchived?: boolean;
   contentClassName?: string;
+  /** When true, the primary save action is disabled (e.g. invalid form state). */
+  saveDisabled?: boolean;
 }
 
 export const EntityDialog = ({
@@ -41,6 +43,7 @@ export const EntityDialog = ({
   isEditing = false,
   isArchived = false,
   contentClassName,
+  saveDisabled = false,
 }: EntityDialogProps) => {
   const isMobile = useIsMobile();
   const showArchiveButton = isEditing && onArchive;
@@ -145,7 +148,9 @@ export const EntityDialog = ({
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button onClick={onSave}>{saveLabel}</Button>
+            <Button onClick={onSave} disabled={saveDisabled}>
+              {saveLabel}
+            </Button>
           </div>
         </div>
       </DialogContent>
