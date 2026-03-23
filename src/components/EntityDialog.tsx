@@ -67,7 +67,7 @@ export const EntityDialog = ({
       <DialogContent
         className={cn(
           useTwoColumn ? "max-w-6xl" : "max-w-3xl",
-          "max-h-[90vh] min-h-[660px] !grid grid-rows-[auto_1fr_auto] bg-muted",
+          "max-h-[90vh] min-h-[600px] !grid grid-rows-[auto_1fr_auto] bg-muted",
           contentClassName
         )}
       >

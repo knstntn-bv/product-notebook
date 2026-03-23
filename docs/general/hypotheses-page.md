@@ -161,7 +161,7 @@ The hypotheses table contains the following columns:
   - Desktop: Maximum width of 1152px (6xl) for two-column layout
   - Mobile: Maximum width of 768px (3xl) for single-column layout
 - **Height**: 
-  - Minimum height of 660px for comfortable viewing
+  - Minimum height of 600px for comfortable viewing
   - Maximum height of 90% of viewport height
 - **Background**: Light gray (`bg-muted`) for better visual separation
 - **Scrolling**: 
