@@ -62,6 +62,18 @@ interface Initiative {
   priority: number;
 }
 
+/** Priority field: integer 1–99 after trim; empty or non-integer / out of range → invalid. */
+function parseHypothesisPriorityInput(
+  raw: string
+): { ok: true; value: number } | { ok: false } {
+  const trimmed = raw.trim();
+  if (trimmed === "") return { ok: false };
+  if (!/^\d+$/.test(trimmed)) return { ok: false };
+  const n = Number(trimmed);
+  if (!Number.isInteger(n) || n < 1 || n > 99) return { ok: false };
+  return { ok: true, value: n };
+}
+
 const HypothesesPage = () => {
   const { metrics, currentProductId } = useProduct();
   const { user } = useAuth();
@@ -77,6 +89,8 @@ const HypothesesPage = () => {
   const [creatingFeature, setCreatingFeature] = useState<Feature | null>(null);
   const [goalOpen, setGoalOpen] = useState(false);
   const [initiativeOpen, setInitiativeOpen] = useState(false);
+  const [priorityInput, setPriorityInput] = useState("");
+  const [priorityFieldError, setPriorityFieldError] = useState(false);
 
   const columns: { id: ColumnId; label: string }[] = [
     { id: "inbox", label: "Inbox" },
@@ -126,6 +140,8 @@ const HypothesesPage = () => {
 
   // Add hypothesis mutation - теперь открывает диалог
   const handleAddHypothesis = () => {
+    setPriorityInput("3");
+    setPriorityFieldError(false);
     setEditingHypothesis({
       status: "new",
       priority: 3,
@@ -183,6 +199,8 @@ const HypothesesPage = () => {
       queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
       setIsDialogOpen(false);
       setEditingHypothesis(null);
+      setPriorityInput("");
+      setPriorityFieldError(false);
       toast({ title: "Hypothesis saved successfully" });
     },
     onError: (error: any) => {
@@ -200,6 +218,8 @@ const HypothesesPage = () => {
       queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
       setIsDialogOpen(false);
       setEditingHypothesis(null);
+      setPriorityInput("");
+      setPriorityFieldError(false);
       setDeleteAlertOpen(false);
       toast({ title: "Hypothesis deleted" });
     },
@@ -348,12 +368,23 @@ const HypothesesPage = () => {
   });
 
   const handleSaveHypothesis = () => {
-    if (editingHypothesis) {
-      saveHypothesisMutation.mutate(editingHypothesis);
+    if (!editingHypothesis) return;
+    const parsed = parseHypothesisPriorityInput(priorityInput);
+    if (!parsed.ok) {
+      setPriorityFieldError(true);
+      toast({
+        title: "Invalid priority",
+        description: "Enter a whole number from 1 to 99.",
+        variant: "destructive",
+      });
+      return;
     }
+    saveHypothesisMutation.mutate({ ...editingHypothesis, priority: parsed.value });
   };
 
   const handleEditHypothesis = (hypothesis: Hypothesis) => {
+    setPriorityInput(String(hypothesis.priority));
+    setPriorityFieldError(false);
     setEditingHypothesis({ ...hypothesis });
     setIsDialogOpen(true);
   };
@@ -440,11 +471,15 @@ const HypothesesPage = () => {
 
   const handleCloneHypothesis = () => {
     if (editingHypothesis?.id) {
+      const parsedPriority = parseHypothesisPriorityInput(priorityInput);
+      const priority = parsedPriority.ok
+        ? parsedPriority.value
+        : (editingHypothesis.priority ?? 3);
       // Use current state from editor (editingHypothesis) to clone with any unsaved changes
       const hypothesisToClone: Hypothesis = {
         id: editingHypothesis.id,
         status: (editingHypothesis.status || "new") as Status,
-        priority: editingHypothesis.priority ?? 3,
+        priority,
         insight: editingHypothesis.insight || "",
         problem_hypothesis: editingHypothesis.problem_hypothesis || "",
         problem_validation: editingHypothesis.problem_validation || "",
@@ -644,6 +679,8 @@ const HypothesesPage = () => {
           setIsDialogOpen(open);
           if (!open) {
             setEditingHypothesis(null);
+            setPriorityInput("");
+            setPriorityFieldError(false);
           }
         }}
         title={editingHypothesis?.id ? "Edit Hypothesis" : "New Hypothesis"}
@@ -651,6 +688,7 @@ const HypothesesPage = () => {
         onDelete={editingHypothesis?.id ? handleDeleteHypothesis : undefined}
         isEditing={!!editingHypothesis?.id}
         saveLabel="Save Hypothesis"
+        saveDisabled={!!editingHypothesis && priorityFieldError}
         leftContent={editingHypothesis && (
           <>
             <div>
@@ -742,24 +780,32 @@ const HypothesesPage = () => {
                 id="priority"
                 type="text"
                 inputMode="numeric"
-                value={editingHypothesis.priority ?? 3}
+                value={priorityInput}
                 onChange={(e) => {
-                  const value = parseInt(e.target.value, 10);
-                  if (!isNaN(value) && value >= 1 && value <= 99) {
-                    setEditingHypothesis({ 
-                      ...editingHypothesis, 
-                      priority: value 
-                    });
-                  } else if (e.target.value === "") {
-                    // Allow empty input for better UX
-                    setEditingHypothesis({ 
-                      ...editingHypothesis, 
-                      priority: undefined 
-                    });
+                  const next = e.target.value;
+                  setPriorityInput(next);
+                  const parsed = parseHypothesisPriorityInput(next);
+                  if (!parsed.ok) {
+                    setPriorityFieldError(true);
+                  } else {
+                    setPriorityFieldError(false);
+                    setEditingHypothesis((prev) =>
+                      prev ? { ...prev, priority: parsed.value } : prev
+                    );
                   }
                 }}
-                placeholder="3"
+                aria-invalid={priorityFieldError}
+                aria-describedby={priorityFieldError ? "priority-error" : undefined}
+                className={cn(
+                  priorityFieldError &&
+                    "border-destructive/55 focus-visible:ring-0 focus-visible:ring-offset-0"
+                )}
               />
+              {priorityFieldError && (
+                <p id="priority-error" className="text-sm text-destructive mt-1">
+                  Enter a whole number from 1 to 99.
+                </p>
+              )}
             </div>
             <div>
               <Button
