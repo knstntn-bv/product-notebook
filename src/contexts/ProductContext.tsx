@@ -32,7 +32,9 @@ interface ProductContextType {
   metrics: Metric[];
   initiatives: Initiative[];
   currentProductId: string | null;
+  currentProductName: string | null;
   isLoading: boolean;
+  refetchCurrentProduct: () => void;
   refetchMetrics: () => void;
   refetchInitiatives: () => void;
   showArchived: boolean;
@@ -48,7 +50,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const effectiveUserId = user?.id;
 
   // Get current product for the user (first/default product)
-  const { data: currentProduct, isLoading: productLoading } = useQuery({
+  const { data: currentProduct, isLoading: productLoading, refetch: refetchCurrentProduct } = useQuery({
     queryKey: ["current_product", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return null;
@@ -66,6 +68,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const currentProductId = currentProduct?.id || null;
+  const currentProductName = currentProduct?.name || null;
 
   const { data: metrics = [], isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
     queryKey: ["metrics", currentProductId],
@@ -144,7 +147,9 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         metrics, 
         initiatives,
         currentProductId,
+        currentProductName,
         isLoading: productLoading || metricsLoading || initiativesLoading,
+        refetchCurrentProduct,
         refetchMetrics,
         refetchInitiatives,
         showArchived,

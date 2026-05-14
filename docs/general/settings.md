@@ -2,9 +2,9 @@
 
 ## Overview
 
-The Settings system allows users to control the visibility of archived items. Settings are accessible via the Settings dropdown menu in the main application header.
+The Settings system allows users to control product-level preferences, including archived items visibility and the current product name. Settings are accessible via the Settings dropdown menu in the main application header.
 
-**Settings Menu**: Quick access to toggle archived items visibility
+**Settings Menu**: Quick access to toggle archived items visibility and open project settings dialog
 
 ## Location
 
@@ -19,11 +19,12 @@ The Settings system allows users to control the visibility of archived items. Se
 1. Click the "Settings" button in the main application header
 2. Dropdown menu appears with quick settings
 3. "Show Archived Items" checkbox is available directly in the menu
+4. "Open Project Settings" opens the settings dialog
 
 **Settings Dialog:**
 1. Click the "Settings" button in the main application header
-2. Select "Open Project" from the dropdown menu
-3. Dialog opens (currently reserved for future settings)
+2. Select "Open Project Settings" from the dropdown menu
+3. Dialog opens with editable product name field
 
 ### Availability
 
@@ -58,6 +59,24 @@ The Settings system allows users to control the visibility of archived items. Se
 - Quick access from Settings menu without opening dialog
 - Consistent behavior across Strategy and Roadmap pages
 - Visual indicators (reduced opacity, muted colors) for archived items when visible
+
+### Product Name Editing
+
+**Purpose**: Update the display name of the currently selected product.
+
+**Location**: Settings dialog (`Open Project Settings` menu item).
+
+**Behavior:**
+- Input is pre-filled with the current product name.
+- Save is enabled only when the value is changed and valid.
+- Validation rules:
+  - Name is required after trimming.
+  - Maximum length is 100 characters.
+- On successful save:
+  - `products.name` is updated for the current product.
+  - Header title updates to the new product name without page refresh.
+- On error:
+  - An error toast is shown.
 
 
 ## Behavior
@@ -109,6 +128,7 @@ When the dialog opens:
 ### Workflow
 
 1. **Toggle Archived Items**: Use the checkbox in the Settings menu to show/hide archived items
+2. **Rename Product**: Open project settings, edit name, and save changes
 
 ### Feedback
 

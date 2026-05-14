@@ -22,14 +22,16 @@ const IndexContent = () => {
   const [activeTab, setActiveTab] = useState("strategy");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { signOut, user } = useAuth();
-  const { showArchived, setShowArchived } = useProduct();
+  const { showArchived, setShowArchived, currentProductName } = useProduct();
 
   return (
     <div className="min-h-screen bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <header className="sticky top-0 z-50 border-b border-border bg-card">
           <div className="container mx-auto px-4 py-2 md:py-4 flex items-center justify-between">
-            <h1 className="text-lg md:text-2xl font-bold text-foreground">Product Notebook</h1>
+            <h1 className="text-lg md:text-2xl font-bold text-foreground">
+              {currentProductName?.trim() || "Product Notebook"}
+            </h1>
             <div className="flex gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -48,6 +50,10 @@ const IndexContent = () => {
                       checked={showArchived}
                       onCheckedChange={(checked) => setShowArchived(checked)}
                     />
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                    Open Project Settings
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

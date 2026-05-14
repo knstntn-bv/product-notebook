@@ -15,9 +15,9 @@ The Main Application is the central hub of the Product Notebook. It provides a t
 ### Header
 
 The header contains:
-- **Title**: "Product Notebook" (left side)
+- **Title**: Current product name (left side, fallback: "Product Notebook")
 - **Action Buttons** (right side):
-  - **Settings Button**: Opens project settings dialog
+  - **Settings Button**: Opens settings menu (archive toggle + project settings dialog)
   - **Profile Button**: Dropdown menu with "Sign Out" option
 
 ### Navigation Tabs
@@ -58,7 +58,8 @@ The application uses a tabbed interface to switch between different views:
 ### Settings Dialog
 
 - Accessible via the Settings button in the header
-- Currently reserved for future settings
+- Opened from the "Open Project Settings" menu item
+- Supports editing current product name
 
 ### User Profile
 
@@ -110,4 +111,5 @@ The application uses a **product-based data model** where:
 - Automatically selects the user's first product (by creation date)
 - All pages display data for the currently selected product
 - Product selection is managed via `ProductContext.currentProductId`
+- Header title uses `ProductContext.currentProductName`
 
