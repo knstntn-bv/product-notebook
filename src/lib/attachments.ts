@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export const ATTACHMENTS_BUCKET = "attachments";
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_PRODUCT_BYTES = 200 * 1024 * 1024;
@@ -54,6 +56,95 @@ export async function sha256Hex(file: File): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
+}
+
+export type EnsureAttachmentResult =
+  | { ok: true; attachmentId: string; created: boolean }
+  | { ok: false; message: string };
+
+export async function findAttachmentIdByHash(
+  productId: string,
+  contentHash: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("attachments")
+    .select("id")
+    .eq("product_id", productId)
+    .eq("content_hash", contentHash)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
+export async function ensureAttachmentFromFile(
+  productId: string,
+  file: File,
+  usedBytes: number,
+): Promise<EnsureAttachmentResult> {
+  const validation = validateAttachmentFile(file, usedBytes);
+  if (!validation.ok) return validation;
+
+  const contentHash = await sha256Hex(file);
+  const existingId = await findAttachmentIdByHash(productId, contentHash);
+  if (existingId) {
+    return { ok: true, attachmentId: existingId, created: false };
+  }
+
+  const id = crypto.randomUUID();
+  const storagePath = attachmentStoragePath(productId, id);
+
+  const { error: uploadError } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .upload(storagePath, file, {
+      contentType: file.type || undefined,
+      upsert: false,
+    });
+  if (uploadError) {
+    return { ok: false, message: uploadError.message };
+  }
+
+  const { error: insertError } = await supabase.from("attachments").insert({
+    id,
+    product_id: productId,
+    display_name: file.name,
+    original_filename: file.name,
+    content_hash: contentHash,
+    size_bytes: file.size,
+    mime_type: file.type || null,
+    storage_path: storagePath,
+  });
+
+  if (insertError) {
+    await supabase.storage.from(ATTACHMENTS_BUCKET).remove([storagePath]);
+    if (insertError.code === "23505") {
+      const racedId = await findAttachmentIdByHash(productId, contentHash);
+      if (racedId) {
+        return { ok: true, attachmentId: racedId, created: false };
+      }
+    }
+    return { ok: false, message: insertError.message };
+  }
+
+  return { ok: true, attachmentId: id, created: true };
+}
+
+export async function downloadAttachmentFile(attachment: {
+  storage_path: string;
+  original_filename: string;
+}): Promise<void> {
+  const { data, error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .download(attachment.storage_path);
+  if (error) throw error;
+
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = attachment.original_filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function validateAttachmentFile(

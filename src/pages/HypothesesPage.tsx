@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUp, ArrowDown, Plus, Check, ChevronsUpDown, Copy } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Check, ChevronsUpDown, Copy, Paperclip } from "lucide-react";
+import { EntityAttachmentsDialog } from "@/components/EntityAttachmentsDialog";
+import { copyAttachmentLinks } from "@/lib/attachmentLinks";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,6 +93,7 @@ const HypothesesPage = () => {
   const [initiativeOpen, setInitiativeOpen] = useState(false);
   const [priorityInput, setPriorityInput] = useState("");
   const [priorityFieldError, setPriorityFieldError] = useState(false);
+  const [attachmentsDialogOpen, setAttachmentsDialogOpen] = useState(false);
 
   const columns: { id: ColumnId; label: string }[] = [
     { id: "inbox", label: "Inbox" },
@@ -233,7 +236,7 @@ const HypothesesPage = () => {
     mutationFn: async (hypothesis: Hypothesis) => {
       if (!currentProductId) throw new Error("No product selected");
       
-      const { error } = await supabase
+      const { data: cloned, error } = await supabase
         .from("hypotheses")
         .insert({
           product_id: currentProductId,
@@ -245,11 +248,18 @@ const HypothesesPage = () => {
           solution_hypothesis: hypothesis.solution_hypothesis || "",
           solution_validation: hypothesis.solution_validation || "",
           impact_metrics: hypothesis.impact_metrics || [],
-        });
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (hypothesis.id && cloned?.id) {
+        await copyAttachmentLinks("hypothesis", hypothesis.id, "hypothesis", cloned.id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
+      queryClient.invalidateQueries({ queryKey: ["hypothesis_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
       toast({ title: "Hypothesis cloned successfully" });
     },
     onError: (error: any) => {
@@ -341,7 +351,7 @@ const HypothesesPage = () => {
       const featureNumber = (count || 0) + 1;
       const human_readable_id = `${prefix}-${featureNumber}`;
       
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from("features")
         .insert({
           product_id: currentProductId,
@@ -353,11 +363,18 @@ const HypothesesPage = () => {
           board_column: feature.board_column,
           position: maxPosition + 1,
           human_readable_id: human_readable_id,
-        });
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (feature.hypothesis_id && created?.id) {
+        await copyAttachmentLinks("hypothesis", feature.hypothesis_id, "feature", created.id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["features"] });
+      queryClient.invalidateQueries({ queryKey: ["feature_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
       setCreatingFeature(null);
       setIsFeatureDialogOpen(false);
       toast({ title: "Feature created successfully" });
@@ -681,6 +698,7 @@ const HypothesesPage = () => {
             setEditingHypothesis(null);
             setPriorityInput("");
             setPriorityFieldError(false);
+            setAttachmentsDialogOpen(false);
           }
         }}
         title={editingHypothesis?.id ? "Edit Hypothesis" : "New Hypothesis"}
@@ -826,21 +844,43 @@ const HypothesesPage = () => {
               </Button>
             </div>
             {editingHypothesis?.id && (
-              <div>
-                <Button
-                  variant="outline"
-                  onClick={handleCloneHypothesis}
-                  className="w-full"
-                  disabled={cloneHypothesisMutation.isPending}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Clone
-                </Button>
-              </div>
+              <>
+                <div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setAttachmentsDialogOpen(true)}
+                    className="w-full"
+                  >
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Attachments
+                  </Button>
+                </div>
+                <div>
+                  <Button
+                    variant="outline"
+                    onClick={handleCloneHypothesis}
+                    className="w-full"
+                    disabled={cloneHypothesisMutation.isPending}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Clone
+                  </Button>
+                </div>
+              </>
             )}
           </>
         )}
       />
+
+      {currentProductId && editingHypothesis?.id && (
+        <EntityAttachmentsDialog
+          open={attachmentsDialogOpen}
+          onOpenChange={setAttachmentsDialogOpen}
+          productId={currentProductId}
+          kind="hypothesis"
+          entityId={editingHypothesis.id}
+        />
+      )}
 
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>

@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Check, ChevronsUpDown, Paperclip } from "lucide-react";
 import { EntityDialog } from "@/components/EntityDialog";
+import { EntityAttachmentsDialog } from "@/components/EntityAttachmentsDialog";
+import { copyAttachmentLinks } from "@/lib/attachmentLinks";
 import { MetricTagInput } from "@/components/MetricTagInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -74,6 +76,7 @@ const BoardPage = () => {
     description: string;
   } | null>(null);
   const [isHypothesisDialogOpen, setIsHypothesisDialogOpen] = useState(false);
+  const [attachmentsDialogOpen, setAttachmentsDialogOpen] = useState(false);
   const [editingHypothesis, setEditingHypothesis] = useState<Partial<{
     id: string;
     status: Status;
@@ -477,12 +480,21 @@ const BoardPage = () => {
         .eq("id", creatingHypothesisFromFeature.featureId);
       
       if (featureError) throw featureError;
+
+      await copyAttachmentLinks(
+        "feature",
+        creatingHypothesisFromFeature.featureId,
+        "hypothesis",
+        newHypothesis.id,
+      );
       
       return newHypothesis;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["hypotheses", currentProductId] });
       queryClient.invalidateQueries({ queryKey: ["features", currentProductId] });
+      queryClient.invalidateQueries({ queryKey: ["hypothesis_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
       setCreatingHypothesisFromFeature(null);
       setEditingHypothesis(null);
       setIsHypothesisDialogOpen(false);
@@ -987,7 +999,10 @@ const BoardPage = () => {
 
       <EntityDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setAttachmentsDialogOpen(false);
+        }}
         title="Feature Details"
         onSave={saveFeature}
         onDelete={editingFeature?.id ? () => setDeleteAlertOpen(true) : undefined}
@@ -1186,6 +1201,18 @@ const BoardPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            {editingFeature.id && (
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={() => setAttachmentsDialogOpen(true)}
+                  className="w-full"
+                >
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Attachments
+                </Button>
+              </div>
+            )}
             <div className="mt-auto pt-4">
               <Button
                 variant="outline"
@@ -1200,6 +1227,16 @@ const BoardPage = () => {
           </>
         )}
       />
+
+      {currentProductId && editingFeature?.id && (
+        <EntityAttachmentsDialog
+          open={attachmentsDialogOpen}
+          onOpenChange={setAttachmentsDialogOpen}
+          productId={currentProductId}
+          kind="feature"
+          entityId={editingFeature.id}
+        />
+      )}
 
       <EntityDialog
         open={isHypothesisDialogOpen}

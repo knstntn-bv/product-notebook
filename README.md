@@ -120,6 +120,7 @@ src/
   ├── pages/            # Page components
   │   ├── AuthPage.tsx
   │   ├── BoardPage.tsx
+  │   ├── AttachmentsPage.tsx
   │   ├── HypothesesPage.tsx
   │   ├── Index.tsx
   │   ├── NotFound.tsx
@@ -169,6 +170,7 @@ Additional documentation is available in the `docs/` directory:
 - `roadmap-page.md` - Roadmap page documentation
 - `hypotheses-page.md` - Hypotheses page documentation
 - `board-page.md` - Board page documentation
+- `attachments-page.md` - Attachments library page
 - `authentication.md` - Authentication flow
 - `settings.md` - Settings configuration
 

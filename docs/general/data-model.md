@@ -40,6 +40,8 @@ All data in the application is scoped to a specific product via the `product_id`
 - **Values**: Each value belongs to a product
 - **Product Formulas**: One formula per product (unique constraint on `product_id`)
 - **Project Settings**: Settings are stored per product
+- **Attachments**: Each file belongs to a product
+- **Attachment links**: Junction rows belong to the product of the linked hypothesis or feature (must match the file's product)
 
 ### Product Context
 
@@ -72,6 +74,8 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
   - When a hypothesis is deleted, `hypothesis_id` in linked features is set to `NULL` (ON DELETE SET NULL)
   - Used to track which features originated from or are related to a specific hypothesis
   - Supports the Discovery workflow: features can be created from hypotheses, and hypotheses can be created from features
+- **Many-to-Many with Attachments** via `feature_attachments`
+  - Deleting a feature removes only the links; files stay in the product library
 
 **Closed At Field:**
 - `closed_at` is automatically set to the current timestamp when a feature is moved to "Done" or "Cancelled" columns
@@ -118,6 +122,28 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
   - Features reference hypotheses via `hypothesis_id` foreign key
   - Supports bidirectional linking: features can be created from hypotheses, and hypotheses can be created from features
   - When a hypothesis is deleted, all feature references are automatically cleared (ON DELETE SET NULL)
+- **Many-to-Many with Attachments** via `hypothesis_attachments`
+  - Deleting a hypothesis removes only the links; files stay in the product library
+  - Cloning a hypothesis copies the links (same files, no Storage duplicates)
+
+### Attachments
+
+**Table**: `attachments`
+
+**Purpose**: Product-level file library. Files are not owned by a single hypothesis or feature.
+
+**Key Fields:**
+- `product_id`: Foreign key to products (NOT NULL)
+- `display_name`, `original_filename`
+- `content_hash`: SHA-256 hex; unique together with `product_id` (dedup)
+- `size_bytes`: max 10 MB per file; 200 MB total per product
+- `storage_path`: object key in the private `attachments` bucket
+
+**Junction tables:**
+- `hypothesis_attachments` (`hypothesis_id`, `attachment_id`)
+- `feature_attachments` (`feature_id`, `attachment_id`)
+
+Both use `ON DELETE CASCADE` from the entity and from the attachment. A trigger requires the file and the entity to share the same `product_id`.
 
 ### Metrics
 

@@ -214,6 +214,7 @@ The feature editing dialog provides a user-friendly interface for creating and e
   - Automatically set when creating a feature from a hypothesis
   - Automatically set when creating a hypothesis from a feature via "Discovery this feature"
   - Many features can reference the same hypothesis (many-to-one relationship)
+- **Attachments**: Button on saved features only. Opens a dialog to attach library files, upload new ones (duplicates are reused), or detach. Does not delete files from the product. Changing **Linked Hypothesis** does not copy or remove file links.
 - **Discovery this feature**: Button to create a hypothesis from the current feature
   - Only available for saved features (disabled for unsaved features)
   - Opens hypothesis creation dialog with pre-filled fields:
@@ -222,6 +223,7 @@ The feature editing dialog provides a user-friendly interface for creating and e
   - After saving the hypothesis:
     - Feature is automatically linked to the created hypothesis
     - Feature is automatically moved to "Discovery" column
+    - Files attached to the feature are attached to the new hypothesis
     - Both dialogs close automatically
 - **Board Column**: Current board column (required, Select dropdown)
 
