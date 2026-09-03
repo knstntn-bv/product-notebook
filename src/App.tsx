@@ -2,10 +2,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
+import { AppLayout } from "@/components/AppLayout";
+import { DEFAULT_SECTION_PATH } from "@/lib/navigation";
+import StrategyPage from "./pages/StrategyPage";
+import RoadmapPage from "./pages/RoadmapPage";
+import BoardPage from "./pages/BoardPage";
+import HypothesesPage from "./pages/HypothesesPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -24,11 +29,20 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Index />
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to={DEFAULT_SECTION_PATH} replace />} />
+              <Route path="strategy" element={<StrategyPage />} />
+              <Route path="roadmap" element={<RoadmapPage />} />
+              <Route path="hypotheses" element={<HypothesesPage />} />
+              <Route path="board" element={<BoardPage />} />
+            </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
