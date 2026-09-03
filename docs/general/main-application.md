@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Main Application is the central hub of the Product Notebook. It provides a sidebar navigation to switch between different views of the product management system: Strategy, Roadmap, Hypotheses, and Board.
+The Main Application is the central hub of the Product Notebook. It provides a sidebar navigation to switch between different views of the product management system: Strategy, Roadmap, Hypotheses, Board, and Attachments.
 
 ## Location
 
-- **Routes**: `/`, `/strategy`, `/roadmap`, `/hypotheses`, `/board`
+- **Routes**: `/`, `/strategy`, `/roadmap`, `/hypotheses`, `/board`, `/attachments`
 - **Layout**: `src/components/AppLayout.tsx`
 - **Sidebar**: `src/components/AppSidebar.tsx`
 - **Protected**: Yes (requires authentication)
@@ -45,6 +45,7 @@ The header in the main content area contains:
 2. **Roadmap** (`/roadmap`) - Goals organized by initiatives and time periods
 3. **Hypotheses** (`/hypotheses`) - Hypothesis tracking and validation
 4. **Board** (`/board`) - Kanban-style feature board
+5. **Attachments** (`/attachments`) - Product file library
 
 ### Responsive Design
 
@@ -71,6 +72,7 @@ The header in the main content area contains:
   - `/roadmap` → `RoadmapPage`
   - `/hypotheses` → `HypothesesPage`
   - `/board` → `BoardPage`
+  - `/attachments` → `AttachmentsPage`
 
 Navigation items are defined in `src/lib/navigation.ts`.
 

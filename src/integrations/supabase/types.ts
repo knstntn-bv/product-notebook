@@ -61,6 +61,39 @@ export type Database = {
           },
         ]
       }
+      feature_attachments: {
+        Row: {
+          attachment_id: string
+          created_at: string | null
+          feature_id: string
+        }
+        Insert: {
+          attachment_id: string
+          created_at?: string | null
+          feature_id: string
+        }
+        Update: {
+          attachment_id?: string
+          created_at?: string | null
+          feature_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_attachments_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_attachments_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       features: {
         Row: {
           board_column: string
@@ -134,6 +167,39 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hypothesis_attachments: {
+        Row: {
+          attachment_id: string
+          created_at: string | null
+          hypothesis_id: string
+        }
+        Insert: {
+          attachment_id: string
+          created_at?: string | null
+          hypothesis_id: string
+        }
+        Update: {
+          attachment_id?: string
+          created_at?: string | null
+          hypothesis_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_attachments_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hypothesis_attachments_hypothesis_id_fkey"
+            columns: ["hypothesis_id"]
+            isOneToOne: false
+            referencedRelation: "hypotheses"
             referencedColumns: ["id"]
           },
         ]

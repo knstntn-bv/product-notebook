@@ -5,6 +5,7 @@
 -- Updated to reflect final state after BIG-52 migration (all stages completed)
 -- and product-level attachments library (NEW: Библиотека вложений продукта)
 -- including private Storage bucket attachments and object RLS
+-- and junction tables linking attachments to hypotheses and features
 -- 
 -- Key differences from previous full_schema:
 -- - All data tables have product_id (NOT NULL) but NO user_id
@@ -130,7 +131,7 @@ CREATE TABLE public.project_settings (
   updated_at timestamptz DEFAULT now()
 );
 
--- Attachments table (product-level file library; no entity links yet)
+-- Attachments table (product-level file library)
 CREATE TABLE public.attachments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id uuid NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
@@ -161,6 +162,20 @@ CREATE TABLE public.attachments (
     )
 );
 
+CREATE TABLE public.hypothesis_attachments (
+  hypothesis_id uuid NOT NULL REFERENCES public.hypotheses(id) ON DELETE CASCADE,
+  attachment_id uuid NOT NULL REFERENCES public.attachments(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  PRIMARY KEY (hypothesis_id, attachment_id)
+);
+
+CREATE TABLE public.feature_attachments (
+  feature_id uuid NOT NULL REFERENCES public.features(id) ON DELETE CASCADE,
+  attachment_id uuid NOT NULL REFERENCES public.attachments(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  PRIMARY KEY (feature_id, attachment_id)
+);
+
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
@@ -178,6 +193,10 @@ CREATE INDEX idx_hypotheses_product_id ON public.hypotheses(product_id);
 CREATE INDEX idx_features_product_id ON public.features(product_id);
 CREATE INDEX idx_project_settings_product_id ON public.project_settings(product_id);
 CREATE INDEX idx_attachments_product_id ON public.attachments(product_id);
+CREATE INDEX idx_hypothesis_attachments_attachment_id
+  ON public.hypothesis_attachments(attachment_id);
+CREATE INDEX idx_feature_attachments_attachment_id
+  ON public.feature_attachments(attachment_id);
 
 -- Index for faster lookups on features human_readable_id (using product_id)
 CREATE INDEX idx_features_human_readable_id ON public.features(product_id, human_readable_id);
@@ -209,6 +228,8 @@ ALTER TABLE public.hypotheses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.features ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attachments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hypothesis_attachments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feature_attachments ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- FUNCTIONS
@@ -294,6 +315,51 @@ BEGIN
 
   IF v_total + NEW.size_bytes > v_limit THEN
     RAISE EXCEPTION 'Product attachment quota exceeded (200 MB)'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.enforce_attachment_link_same_product()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_attachment_product uuid;
+  v_entity_product uuid;
+BEGIN
+  SELECT product_id INTO v_attachment_product
+  FROM public.attachments
+  WHERE id = NEW.attachment_id;
+
+  IF v_attachment_product IS NULL THEN
+    RAISE EXCEPTION 'Attachment not found'
+      USING ERRCODE = 'foreign_key_violation';
+  END IF;
+
+  IF TG_TABLE_NAME = 'hypothesis_attachments' THEN
+    SELECT product_id INTO v_entity_product
+    FROM public.hypotheses
+    WHERE id = NEW.hypothesis_id;
+  ELSIF TG_TABLE_NAME = 'feature_attachments' THEN
+    SELECT product_id INTO v_entity_product
+    FROM public.features
+    WHERE id = NEW.feature_id;
+  ELSE
+    RAISE EXCEPTION 'enforce_attachment_link_same_product fired on unexpected table %', TG_TABLE_NAME;
+  END IF;
+
+  IF v_entity_product IS NULL THEN
+    RAISE EXCEPTION 'Linked entity not found'
+      USING ERRCODE = 'foreign_key_violation';
+  END IF;
+
+  IF v_attachment_product IS DISTINCT FROM v_entity_product THEN
+    RAISE EXCEPTION 'Attachment and entity must belong to the same product'
       USING ERRCODE = 'check_violation';
   END IF;
 
@@ -728,6 +794,76 @@ CREATE POLICY "Users can delete their own attachments"
   );
 
 -- ============================================================================
+-- RLS POLICIES - HYPOTHESIS_ATTACHMENTS / FEATURE_ATTACHMENTS
+-- ============================================================================
+
+CREATE POLICY "Users can view their own hypothesis attachments"
+  ON public.hypothesis_attachments FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.hypotheses
+      JOIN public.products ON products.id = hypotheses.product_id
+      WHERE hypotheses.id = hypothesis_attachments.hypothesis_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert their own hypothesis attachments"
+  ON public.hypothesis_attachments FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.hypotheses
+      JOIN public.products ON products.id = hypotheses.product_id
+      WHERE hypotheses.id = hypothesis_attachments.hypothesis_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete their own hypothesis attachments"
+  ON public.hypothesis_attachments FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.hypotheses
+      JOIN public.products ON products.id = hypotheses.product_id
+      WHERE hypotheses.id = hypothesis_attachments.hypothesis_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can view their own feature attachments"
+  ON public.feature_attachments FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.features
+      JOIN public.products ON products.id = features.product_id
+      WHERE features.id = feature_attachments.feature_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert their own feature attachments"
+  ON public.feature_attachments FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.features
+      JOIN public.products ON products.id = features.product_id
+      WHERE features.id = feature_attachments.feature_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete their own feature attachments"
+  ON public.feature_attachments FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.features
+      JOIN public.products ON products.id = features.product_id
+      WHERE features.id = feature_attachments.feature_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+-- ============================================================================
 -- TRIGGERS
 -- ============================================================================
 
@@ -823,6 +959,16 @@ CREATE TRIGGER auto_populate_product_id_attachments
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_populate_product_id();
 
+CREATE TRIGGER enforce_hypothesis_attachment_same_product
+  BEFORE INSERT OR UPDATE ON public.hypothesis_attachments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_attachment_link_same_product();
+
+CREATE TRIGGER enforce_feature_attachment_same_product
+  BEFORE INSERT OR UPDATE ON public.feature_attachments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_attachment_link_same_product();
+
 -- ============================================================================
 -- STORAGE (requires Supabase storage schema)
 -- Private bucket for attachment bytes. Path: {product_id}/{attachment_id}
@@ -839,6 +985,14 @@ GRANT EXECUTE ON FUNCTION public.user_owns_attachment_object(text) TO service_ro
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.attachments TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.attachments TO authenticated;
 GRANT ALL ON TABLE public.attachments TO service_role;
+
+GRANT SELECT, INSERT, DELETE ON TABLE public.hypothesis_attachments TO anon;
+GRANT SELECT, INSERT, DELETE ON TABLE public.hypothesis_attachments TO authenticated;
+GRANT ALL ON TABLE public.hypothesis_attachments TO service_role;
+
+GRANT SELECT, INSERT, DELETE ON TABLE public.feature_attachments TO anon;
+GRANT SELECT, INSERT, DELETE ON TABLE public.feature_attachments TO authenticated;
+GRANT ALL ON TABLE public.feature_attachments TO service_role;
 
 CREATE POLICY "Users can view their own attachment files"
   ON storage.objects FOR SELECT

@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { Download, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -9,12 +10,12 @@ import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { attachmentLinkFlags } from "@/lib/attachmentLinks";
 import {
   ATTACHMENTS_BUCKET,
-  attachmentStoragePath,
+  downloadAttachmentFile,
+  ensureAttachmentFromFile,
   formatBytes,
-  sha256Hex,
-  validateAttachmentFile,
 } from "@/lib/attachments";
 
 type Attachment = Tables<"attachments">;
@@ -43,7 +44,20 @@ const AttachmentsPage = () => {
     enabled: !!currentProductId,
   });
 
+  const { data: linkFlags } = useQuery({
+    queryKey: ["attachment_link_flags", currentProductId, attachments.map((item) => item.id)],
+    queryFn: () => attachmentLinkFlags(attachments.map((item) => item.id)),
+    enabled: attachments.length > 0,
+  });
+
   const usedBytes = attachments.reduce((sum, item) => sum + item.size_bytes, 0);
+
+  const invalidateAttachmentQueries = () => {
+    queryClient.invalidateQueries({ queryKey: attachmentsQueryKey });
+    queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
+    queryClient.invalidateQueries({ queryKey: ["hypothesis_attachments"] });
+    queryClient.invalidateQueries({ queryKey: ["feature_attachments"] });
+  };
 
   const uploadMutation = useMutation({
     mutationFn: async (files: File[]) => {
@@ -53,68 +67,15 @@ const AttachmentsPage = () => {
       let uploaded = 0;
 
       for (const file of files) {
-        const validation = validateAttachmentFile(file, used);
-        if (!validation.ok) {
-          toast({ title: "Error", description: `${file.name}: ${validation.message}`, variant: "destructive" });
+        const result = await ensureAttachmentFromFile(currentProductId, file, used);
+        if (!result.ok) {
+          toast({ title: "Error", description: `${file.name}: ${result.message}`, variant: "destructive" });
           continue;
         }
-
-        const contentHash = await sha256Hex(file);
-        const { data: existing, error: existingError } = await supabase
-          .from("attachments")
-          .select("id")
-          .eq("product_id", currentProductId)
-          .eq("content_hash", contentHash)
-          .maybeSingle();
-        if (existingError) throw existingError;
-        if (existing) {
+        if (!result.created) {
           toast({ title: "This file already exists", description: file.name });
           continue;
         }
-
-        const id = crypto.randomUUID();
-        const storagePath = attachmentStoragePath(currentProductId, id);
-
-        const { error: uploadError } = await supabase.storage
-          .from(ATTACHMENTS_BUCKET)
-          .upload(storagePath, file, {
-            contentType: file.type || undefined,
-            upsert: false,
-          });
-        if (uploadError) {
-          toast({
-            title: "Error",
-            description: `${file.name}: ${uploadError.message}`,
-            variant: "destructive",
-          });
-          continue;
-        }
-
-        const { error: insertError } = await supabase.from("attachments").insert({
-          id,
-          product_id: currentProductId,
-          display_name: file.name,
-          original_filename: file.name,
-          content_hash: contentHash,
-          size_bytes: file.size,
-          mime_type: file.type || null,
-          storage_path: storagePath,
-        });
-
-        if (insertError) {
-          await supabase.storage.from(ATTACHMENTS_BUCKET).remove([storagePath]);
-          if (insertError.code === "23505") {
-            toast({ title: "This file already exists", description: file.name });
-            continue;
-          }
-          toast({
-            title: "Error",
-            description: `${file.name}: ${insertError.message}`,
-            variant: "destructive",
-          });
-          continue;
-        }
-
         used += file.size;
         uploaded += 1;
       }
@@ -122,7 +83,7 @@ const AttachmentsPage = () => {
       return { uploaded };
     },
     onSuccess: ({ uploaded }) => {
-      queryClient.invalidateQueries({ queryKey: attachmentsQueryKey });
+      invalidateAttachmentQueries();
       if (uploaded > 0) {
         toast({
           title: uploaded === 1 ? "File uploaded" : `${uploaded} files uploaded`,
@@ -130,7 +91,7 @@ const AttachmentsPage = () => {
       }
     },
     onError: (error: Error) => {
-      queryClient.invalidateQueries({ queryKey: attachmentsQueryKey });
+      invalidateAttachmentQueries();
       toast({
         title: "Error",
         description: error.message,
@@ -150,7 +111,7 @@ const AttachmentsPage = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: attachmentsQueryKey });
+      invalidateAttachmentQueries();
       setAttachmentToDelete(null);
       toast({ title: "Attachment deleted" });
     },
@@ -160,22 +121,15 @@ const AttachmentsPage = () => {
   });
 
   const handleDownload = async (attachment: Attachment) => {
-    const { data, error } = await supabase.storage
-      .from(ATTACHMENTS_BUCKET)
-      .download(attachment.storage_path);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-      return;
+    try {
+      await downloadAttachmentFile(attachment);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Download failed",
+        variant: "destructive",
+      });
     }
-
-    const url = URL.createObjectURL(data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = attachment.original_filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   };
 
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -215,6 +169,7 @@ const AttachmentsPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead className="w-[160px]">Linked to</TableHead>
                 <TableHead className="w-[120px]">Size</TableHead>
                 <TableHead className="w-[180px]">Uploaded</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
@@ -224,6 +179,16 @@ const AttachmentsPage = () => {
               {attachments.map((attachment) => (
                 <TableRow key={attachment.id}>
                   <TableCell className="font-medium">{attachment.display_name}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {linkFlags?.hypothesisIds.has(attachment.id) && (
+                        <Badge variant="secondary">Hypotheses</Badge>
+                      )}
+                      {linkFlags?.featureIds.has(attachment.id) && (
+                        <Badge variant="secondary">Features</Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{formatBytes(attachment.size_bytes)}</TableCell>
                   <TableCell>
                     {attachment.created_at
@@ -269,7 +234,7 @@ const AttachmentsPage = () => {
             <AlertDialogDescription>
               Are you sure you want to delete{" "}
               {attachmentToDelete ? `"${attachmentToDelete.display_name}"` : "this file"}? This
-              action cannot be undone.
+              detaches it from all hypotheses and features. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

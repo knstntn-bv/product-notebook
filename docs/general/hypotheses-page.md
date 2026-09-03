@@ -152,6 +152,7 @@ The hypotheses table contains the following columns:
   - **Right Column (Desktop)**: Selection fields and actions
     - Status (Select dropdown)
     - Create Feature button (converts hypothesis to feature)
+    - Attachments button (saved hypotheses only; opens a separate dialog)
     - Delete button (at bottom)
 - Changes are made in the dialog, not in the table
 - No risk of losing changes - dialog must be explicitly closed
@@ -189,6 +190,20 @@ The hypotheses table contains the following columns:
 4. Click "Delete" in the confirmation dialog to proceed
 5. Hypothesis is deleted and removed from the table
 6. Success toast notification
+7. Linked files stay in the product library (only the hypothesis–file links are removed)
+
+### Attachments on a Hypothesis
+
+Saved hypotheses have an **Attachments** button in the right panel. It opens a dialog (not the library page) to:
+
+- see files already attached to this hypothesis
+- attach a file from the product library
+- upload a new file (duplicate content is reused and attached, not stored twice)
+- detach a file from this hypothesis (does not delete the file)
+
+Deleting a file is only possible on the Attachments page.
+
+Cloning a hypothesis copies attachment **links** to the new hypothesis.
 
 ### Creating Features from Hypotheses
 
@@ -212,6 +227,7 @@ The hypotheses table contains the following columns:
 - The link is established via the `hypothesis_id` field in the features table
 - This creates a many-to-one relationship: one hypothesis can be linked to multiple features
 - The link can be viewed or changed later in the feature editing dialog on the Board page
+- Files attached to the source hypothesis are also attached to the new feature (same library files, no extra Storage objects)
 
 **Note**: 
 - A human readable ID is automatically generated when the feature is created. The ID format is `XXX-N` where `XXX` is derived from the initiative name (or "NNN" if no initiative) and `N` is a sequential number. See [Board Page documentation](./board-page.md#human-readable-id) for more details.
