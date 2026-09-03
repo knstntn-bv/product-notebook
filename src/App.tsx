@@ -11,6 +11,7 @@ import StrategyPage from "./pages/StrategyPage";
 import RoadmapPage from "./pages/RoadmapPage";
 import BoardPage from "./pages/BoardPage";
 import HypothesesPage from "./pages/HypothesesPage";
+import AttachmentsPage from "./pages/AttachmentsPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="roadmap" element={<RoadmapPage />} />
               <Route path="hypotheses" element={<HypothesesPage />} />
               <Route path="board" element={<BoardPage />} />
+              <Route path="attachments" element={<AttachmentsPage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
