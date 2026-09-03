@@ -3,6 +3,7 @@
 -- It includes products table, all tables with product_id (NO user_id in data tables),
 -- functions, triggers, indexes, and RLS policies
 -- Updated to reflect final state after BIG-52 migration (all stages completed)
+-- and product-level attachments library (NEW: Библиотека вложений продукта)
 -- 
 -- Key differences from previous full_schema:
 -- - All data tables have product_id (NOT NULL) but NO user_id
@@ -128,6 +129,37 @@ CREATE TABLE public.project_settings (
   updated_at timestamptz DEFAULT now()
 );
 
+-- Attachments table (product-level file library; no entity links yet)
+CREATE TABLE public.attachments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id uuid NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  display_name text NOT NULL,
+  original_filename text NOT NULL,
+  content_hash text NOT NULL,
+  size_bytes bigint NOT NULL,
+  mime_type text,
+  storage_path text NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  CONSTRAINT attachments_content_hash_sha256_check
+    CHECK (content_hash ~ '^[a-f0-9]{64}$'),
+  CONSTRAINT attachments_size_bytes_check
+    CHECK (size_bytes > 0 AND size_bytes <= 10485760),
+  CONSTRAINT attachments_storage_path_key
+    UNIQUE (storage_path),
+  CONSTRAINT attachments_product_content_hash_key
+    UNIQUE (product_id, content_hash),
+  CONSTRAINT attachments_no_executables_check
+    CHECK (
+      lower(substring(original_filename from '\.([^.]+)$')) IS NULL
+      OR lower(substring(original_filename from '\.([^.]+)$')) NOT IN (
+        'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'pif', 'cpl',
+        'dll', 'so', 'dylib', 'app', 'sh', 'bash', 'ps1', 'vbs',
+        'vbe', 'jse', 'wsf', 'wsh', 'msc', 'hta'
+      )
+    )
+);
+
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
@@ -144,6 +176,7 @@ CREATE INDEX idx_goals_product_id ON public.goals(product_id);
 CREATE INDEX idx_hypotheses_product_id ON public.hypotheses(product_id);
 CREATE INDEX idx_features_product_id ON public.features(product_id);
 CREATE INDEX idx_project_settings_product_id ON public.project_settings(product_id);
+CREATE INDEX idx_attachments_product_id ON public.attachments(product_id);
 
 -- Index for faster lookups on features human_readable_id (using product_id)
 CREATE INDEX idx_features_human_readable_id ON public.features(product_id, human_readable_id);
@@ -174,6 +207,7 @@ ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hypotheses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.features ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attachments ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- FUNCTIONS
@@ -234,6 +268,34 @@ BEGIN
     NEW.product_id := public.get_or_create_default_product(auth.uid());
   END IF;
   
+  RETURN NEW;
+END;
+$$;
+
+-- Enforce 200 MB total attachments size per product
+CREATE OR REPLACE FUNCTION public.enforce_attachments_product_quota()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_total bigint;
+  v_limit constant bigint := 209715200;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext(NEW.product_id::text));
+
+  SELECT COALESCE(SUM(size_bytes), 0)
+  INTO v_total
+  FROM public.attachments
+  WHERE product_id = NEW.product_id
+    AND (TG_OP = 'INSERT' OR id IS DISTINCT FROM NEW.id);
+
+  IF v_total + NEW.size_bytes > v_limit THEN
+    RAISE EXCEPTION 'Product attachment quota exceeded (200 MB)'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -588,6 +650,50 @@ CREATE POLICY "Users can manage their own project settings"
   );
 
 -- ============================================================================
+-- RLS POLICIES - ATTACHMENTS
+-- ============================================================================
+
+CREATE POLICY "Users can view their own attachments"
+  ON public.attachments FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.products
+      WHERE products.id = attachments.product_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert their own attachments"
+  ON public.attachments FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.products
+      WHERE products.id = attachments.product_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can update their own attachments"
+  ON public.attachments FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.products
+      WHERE products.id = attachments.product_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete their own attachments"
+  ON public.attachments FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.products
+      WHERE products.id = attachments.product_id
+      AND products.user_id = auth.uid()
+    )
+  );
+
+-- ============================================================================
 -- TRIGGERS
 -- ============================================================================
 
@@ -628,6 +734,15 @@ CREATE TRIGGER update_project_settings_updated_at
   BEFORE UPDATE ON public.project_settings
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+CREATE TRIGGER update_attachments_updated_at
+  BEFORE UPDATE ON public.attachments
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER enforce_attachments_product_quota
+  BEFORE INSERT OR UPDATE OF size_bytes, product_id ON public.attachments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_attachments_product_quota();
+
 -- Triggers for automatic product_id population
 CREATE TRIGGER auto_populate_product_id_product_formulas
   BEFORE INSERT ON public.product_formulas
@@ -666,6 +781,11 @@ CREATE TRIGGER auto_populate_product_id_features
 
 CREATE TRIGGER auto_populate_product_id_project_settings
   BEFORE INSERT ON public.project_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.auto_populate_product_id();
+
+CREATE TRIGGER auto_populate_product_id_attachments
+  BEFORE INSERT ON public.attachments
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_populate_product_id();
 
