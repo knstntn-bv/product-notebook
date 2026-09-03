@@ -2,58 +2,77 @@
 
 ## Overview
 
-The Main Application is the central hub of the Product Notebook. It provides a tabbed interface to navigate between different views of the product management system: Strategy, Roadmap, Hypotheses, and Board.
+The Main Application is the central hub of the Product Notebook. It provides a sidebar navigation to switch between different views of the product management system: Strategy, Roadmap, Hypotheses, and Board.
 
 ## Location
 
-- **Route**: `/`
-- **Component**: `src/pages/Index.tsx`
+- **Routes**: `/`, `/strategy`, `/roadmap`, `/hypotheses`, `/board`
+- **Layout**: `src/components/AppLayout.tsx`
+- **Sidebar**: `src/components/AppSidebar.tsx`
 - **Protected**: Yes (requires authentication)
+
+Visiting `/` redirects to `/strategy`.
 
 ## Layout Structure
 
+### Sidebar
+
+The left sidebar contains:
+- **Header**: Product name with app icon
+- **Navigation**: Four main sections with icons and labels
+- **Collapse toggle**: Via trigger button, sidebar rail, or `Ctrl/Cmd+B`
+
+The sidebar has two desktop states:
+- **Expanded** (~256px): icon + label for each section
+- **Collapsed** (~48px): icons only, labels shown in tooltips
+
+The chosen state is persisted in a cookie (`sidebar:state`) between sessions.
+
+On mobile (`< md`), the sidebar opens as a **Sheet drawer** overlay. Selecting a section closes the drawer.
+
 ### Header
 
-The header contains:
-- **Title**: Current product name (left side, fallback: "Product Notebook")
+The header in the main content area contains:
+- **Sidebar trigger**: Opens/toggles sidebar (drawer on mobile)
+- **Title**: Current product name (fallback: "Product Notebook")
 - **Action Buttons** (right side):
   - **Settings Button**: Opens settings menu (archive toggle + project settings dialog)
   - **Profile Button**: Dropdown menu with "Sign Out" option
 
-### Navigation Tabs
+### Navigation Sections
 
-The application uses a tabbed interface to switch between different views:
-
-1. **Strategy** - Product strategy, values, metrics, and initiatives
-2. **Roadmap** - Goals organized by initiatives and time periods
-3. **Hypotheses** - Hypothesis tracking and validation
-4. **Board** - Kanban-style feature board
+1. **Strategy** (`/strategy`) - Product strategy, values, metrics, and initiatives
+2. **Roadmap** (`/roadmap`) - Goals organized by initiatives and time periods
+3. **Hypotheses** (`/hypotheses`) - Hypothesis tracking and validation
+4. **Board** (`/board`) - Kanban-style feature board
 
 ### Responsive Design
 
 **Desktop View:**
-- Tabs are displayed in a horizontal list below the header
-- Sticky positioning keeps tabs visible while scrolling
-- Full-width tab content area
+- Fixed sidebar on the left (expanded or collapsed)
+- Main content area fills remaining width
+- Board view uses full viewport height minus header
 
 **Mobile View:**
-- Tabs are displayed as a full-width grid below the header
-- Each tab shows an icon and label
-- Tabs are always visible at the top of the screen
-- Optimized touch targets for mobile interaction
+- Sidebar hidden by default
+- Header includes sidebar trigger (hamburger)
+- Sidebar opens as full-height Sheet drawer
+- Drawer closes automatically after navigation
 
 ## Behavior
 
-### Tab Navigation
+### Section Navigation
 
-- Users can switch between tabs by clicking on the tab buttons
-- The active tab is visually highlighted
-- Tab state is managed locally using React state
-- Each tab renders its corresponding page component:
-  - Strategy → `StrategyPage`
-  - Roadmap → `RoadmapPage`
-  - Hypotheses → `HypothesesPage`
-  - Board → `BoardPage`
+- Users switch sections via sidebar links
+- Active section is highlighted in the sidebar
+- Each section has its own URL route (browser back/forward works)
+- Each route renders its corresponding page component:
+  - `/strategy` → `StrategyPage`
+  - `/roadmap` → `RoadmapPage`
+  - `/hypotheses` → `HypothesesPage`
+  - `/board` → `BoardPage`
+
+Navigation items are defined in `src/lib/navigation.ts`.
 
 ### Settings Dialog
 
@@ -79,8 +98,9 @@ The main application wraps all pages in a `ProductProvider` context that:
 ### State Management
 
 - Uses React Query for data fetching and caching
-- Tab state is local to the Index component
-- Settings dialog state is managed locally
+- Active section is determined by the current URL (React Router)
+- Sidebar expanded/collapsed state is persisted in a cookie
+- Settings dialog state is managed locally in `AppLayout`
 - All data mutations are handled by individual page components
 - Product selection is managed globally via `ProductContext`
 - All data queries are scoped to the current product (`product_id`)
@@ -111,5 +131,4 @@ The application uses a **product-based data model** where:
 - Automatically selects the user's first product (by creation date)
 - All pages display data for the currently selected product
 - Product selection is managed via `ProductContext.currentProductId`
-- Header title uses `ProductContext.currentProductName`
-
+- Header title and sidebar header use `ProductContext.currentProductName`
