@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      attachments: {
+        Row: {
+          content_hash: string
+          created_at: string | null
+          display_name: string
+          id: string
+          mime_type: string | null
+          original_filename: string
+          product_id: string | null
+          size_bytes: number
+          storage_path: string
+          updated_at: string | null
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string | null
+          display_name: string
+          id?: string
+          mime_type?: string | null
+          original_filename: string
+          product_id?: string | null
+          size_bytes: number
+          storage_path: string
+          updated_at?: string | null
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          mime_type?: string | null
+          original_filename?: string
+          product_id?: string | null
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       features: {
         Row: {
           board_column: string

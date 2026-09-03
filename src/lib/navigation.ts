@@ -1,6 +1,6 @@
-import { FileText, Lightbulb, Map, Trello, type LucideIcon } from "lucide-react";
+import { FileText, Lightbulb, Map, Paperclip, Trello, type LucideIcon } from "lucide-react";
 
-export type AppSection = "strategy" | "roadmap" | "hypotheses" | "board";
+export type AppSection = "strategy" | "roadmap" | "hypotheses" | "board" | "attachments";
 
 export interface NavItem {
   section: AppSection;
@@ -14,6 +14,7 @@ export const NAV_ITEMS: NavItem[] = [
   { section: "roadmap", path: "/roadmap", label: "Roadmap", icon: Map },
   { section: "hypotheses", path: "/hypotheses", label: "Hypotheses", icon: Lightbulb },
   { section: "board", path: "/board", label: "Board", icon: Trello },
+  { section: "attachments", path: "/attachments", label: "Attachments", icon: Paperclip },
 ];
 
 export const DEFAULT_SECTION_PATH = "/strategy";

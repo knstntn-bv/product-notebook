@@ -4,6 +4,7 @@
 -- functions, triggers, indexes, and RLS policies
 -- Updated to reflect final state after BIG-52 migration (all stages completed)
 -- and product-level attachments library (NEW: Библиотека вложений продукта)
+-- including private Storage bucket attachments and object RLS
 -- 
 -- Key differences from previous full_schema:
 -- - All data tables have product_id (NOT NULL) but NO user_id
@@ -297,6 +298,39 @@ BEGIN
   END IF;
 
   RETURN NEW;
+END;
+$$;
+
+-- Storage object path {product_id}/... belongs to a product owned by auth.uid()
+CREATE OR REPLACE FUNCTION public.user_owns_attachment_object(object_name text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_segment text;
+  v_product_id uuid;
+BEGIN
+  v_segment := split_part(object_name, '/', 1);
+  IF v_segment IS NULL OR v_segment = '' THEN
+    RETURN false;
+  END IF;
+
+  BEGIN
+    v_product_id := v_segment::uuid;
+  EXCEPTION
+    WHEN invalid_text_representation THEN
+      RETURN false;
+  END;
+
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.products
+    WHERE id = v_product_id
+      AND user_id = auth.uid()
+  );
 END;
 $$;
 
@@ -788,4 +822,42 @@ CREATE TRIGGER auto_populate_product_id_attachments
   BEFORE INSERT ON public.attachments
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_populate_product_id();
+
+-- ============================================================================
+-- STORAGE (requires Supabase storage schema)
+-- Private bucket for attachment bytes. Path: {product_id}/{attachment_id}
+-- ============================================================================
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('attachments', 'attachments', false, 10485760);
+
+REVOKE ALL ON FUNCTION public.user_owns_attachment_object(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.user_owns_attachment_object(text) TO anon;
+GRANT EXECUTE ON FUNCTION public.user_owns_attachment_object(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.user_owns_attachment_object(text) TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.attachments TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.attachments TO authenticated;
+GRANT ALL ON TABLE public.attachments TO service_role;
+
+CREATE POLICY "Users can view their own attachment files"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'attachments'
+    AND public.user_owns_attachment_object(name)
+  );
+
+CREATE POLICY "Users can upload their own attachment files"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'attachments'
+    AND public.user_owns_attachment_object(name)
+  );
+
+CREATE POLICY "Users can delete their own attachment files"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'attachments'
+    AND public.user_owns_attachment_object(name)
+  );
 
