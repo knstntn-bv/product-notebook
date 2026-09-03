@@ -20,8 +20,21 @@
               "icon": "lucide-file",
               "title": "2026-03-25-attachments-library-hypotheses"
             }
+          },
+          {
+            "id": "fb773be7926162ac",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.13.4"
+              },
+              "icon": "lucide-book-up",
+              "title": "примечания к выпуску 1.13.4"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -41,7 +54,9 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "Файловый менеджер"
@@ -183,7 +198,7 @@
       "bases:Создать новую базу": false
     }
   },
-  "active": "1746a59aae2b6500",
+  "active": "fb773be7926162ac",
   "lastOpenFiles": [
     "2026-03-26-github-full-export-import.md",
     "2025-03-23-br-feature-import-single.md",
