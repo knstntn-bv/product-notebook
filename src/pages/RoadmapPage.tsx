@@ -307,6 +307,8 @@ const RoadmapPage = () => {
   // Draggable Goal Card Component
   const DraggableGoalCard = ({ goal }: { goal: Goal }) => {
     const isArchived = goal.archived || false;
+    const initiativeColor =
+      initiatives.find((initiative) => initiative.id === goal.initiative_id)?.color || "#8B5CF6";
     const {
       attributes,
       listeners,
@@ -327,7 +329,7 @@ const RoadmapPage = () => {
       <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
         <Card
           className={cn(
-            "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
+            "relative cursor-grab overflow-hidden active:cursor-grabbing hover:shadow-md transition-shadow",
             isDragging && "ring-2 ring-primary",
             isArchived && "opacity-50"
           )}
@@ -339,7 +341,11 @@ const RoadmapPage = () => {
             }
           }}
         >
-          <CardContent className="p-3">
+          <div
+            className="absolute left-0 top-0 bottom-0 w-1"
+            style={{ backgroundColor: initiativeColor }}
+          />
+          <CardContent className="p-3 pl-4">
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-2">
                 <p className={cn("text-sm font-bold", isArchived && "text-muted-foreground")}>
@@ -404,7 +410,7 @@ const RoadmapPage = () => {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="space-y-6">
+      <div className="flex min-h-0 flex-col gap-4">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -580,8 +586,16 @@ const RoadmapPage = () => {
 
       <DragOverlay>
         {activeGoal ? (
-          <Card className="w-64 opacity-90">
-            <CardContent className="p-3">
+          <Card className="relative w-64 overflow-hidden opacity-90">
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1"
+              style={{
+                backgroundColor:
+                  initiatives.find((initiative) => initiative.id === activeGoal.initiative_id)?.color ||
+                  "#8B5CF6",
+              }}
+            />
+            <CardContent className="p-3 pl-4">
               <div className="flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
                   <p className={cn("text-sm font-bold", activeGoal.archived && "text-muted-foreground")}>

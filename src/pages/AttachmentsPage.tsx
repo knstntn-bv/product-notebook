@@ -1,11 +1,11 @@
 import { useRef, useState, type ChangeEvent } from "react";
-import { Download, Trash2 } from "lucide-react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { SectionHeader } from "@/components/SectionHeader";
+import { HeaderActions } from "@/components/HeaderActions";
 import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,16 +140,20 @@ const AttachmentsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        title="Attachments"
-        description={`${formatBytes(usedBytes)} of 200 MB used`}
-        onAdd={() => {
-          if (uploadMutation.isPending) return;
-          fileInputRef.current?.click();
-        }}
-        addLabel={uploadMutation.isPending ? "Uploading..." : "Upload"}
-      />
+    <div className="flex min-h-0 flex-col gap-4">
+      <HeaderActions>
+        <Button
+          size="sm"
+          disabled={uploadMutation.isPending}
+          onClick={() => {
+            if (uploadMutation.isPending) return;
+            fileInputRef.current?.click();
+          }}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          {uploadMutation.isPending ? "Uploading..." : "Upload"}
+        </Button>
+      </HeaderActions>
       <input
         ref={fileInputRef}
         type="file"
@@ -162,64 +166,78 @@ const AttachmentsPage = () => {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : attachments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No attachments yet.</p>
+        <>
+          <p className="text-sm text-muted-foreground">No attachments yet.</p>
+          <p className="text-sm text-muted-foreground">
+            {formatBytes(usedBytes)} of 200 MB used
+          </p>
+        </>
       ) : (
-        <div className="w-full overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-[160px]">Linked to</TableHead>
-                <TableHead className="w-[120px]">Size</TableHead>
-                <TableHead className="w-[180px]">Uploaded</TableHead>
-                <TableHead className="w-[100px] text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {attachments.map((attachment) => (
-                <TableRow key={attachment.id}>
-                  <TableCell className="font-medium">{attachment.display_name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {linkFlags?.hypothesisIds.has(attachment.id) && (
-                        <Badge variant="secondary">Hypotheses</Badge>
-                      )}
-                      {linkFlags?.featureIds.has(attachment.id) && (
-                        <Badge variant="secondary">Features</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatBytes(attachment.size_bytes)}</TableCell>
-                  <TableCell>
-                    {attachment.created_at
-                      ? new Date(attachment.created_at).toLocaleString()
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Download ${attachment.display_name}`}
-                      onClick={() => handleDownload(attachment)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${attachment.display_name}`}
-                      onClick={() => setAttachmentToDelete(attachment)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+        <>
+          <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="w-[160px]">Linked to</TableHead>
+                  <TableHead className="w-[120px]">Size</TableHead>
+                  <TableHead className="w-[180px]">Uploaded</TableHead>
+                  <TableHead className="w-[100px] text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {attachments.map((attachment) => (
+                  <TableRow key={attachment.id}>
+                    <TableCell className="font-medium">{attachment.display_name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {linkFlags?.hypothesisIds.has(attachment.id) && (
+                          <Badge variant="secondary">Hypotheses</Badge>
+                        )}
+                        {linkFlags?.featureIds.has(attachment.id) && (
+                          <Badge variant="secondary">Features</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatBytes(attachment.size_bytes)}</TableCell>
+                    <TableCell>
+                      {attachment.created_at
+                        ? new Date(attachment.created_at).toLocaleString()
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="inline-flex items-center justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`Download ${attachment.display_name}`}
+                          onClick={() => handleDownload(attachment)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`Delete ${attachment.display_name}`}
+                          onClick={() => setAttachmentToDelete(attachment)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {formatBytes(usedBytes)} of 200 MB used
+          </p>
+        </>
       )}
 
       <AlertDialog

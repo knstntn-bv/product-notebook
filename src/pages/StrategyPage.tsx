@@ -291,9 +291,10 @@ const StrategyPage = () => {
   };
 
   return (
-    <div className="space-y-0"> {/* Remove card spacing. Use manual spacing and dividers */}
+    <div className="flex flex-col gap-4">
+      <div className="divide-y divide-border">
       {/* Product Formula */}
-      <div className="py-8">
+      <section className="space-y-4 pb-6">
         <SectionHeader 
           title="Product Formula" 
           description="Define your product's core formula"
@@ -318,12 +319,10 @@ const StrategyPage = () => {
             </Button>
           </div>
         )}
-      </div>
-
-      <div className="border-b border-border" />
+      </section>
 
       {/* Values */}
-      <div className="py-8">
+      <section className="space-y-4 py-6">
         <SectionHeader 
           title="Values" 
           description="Define your product values"
@@ -373,12 +372,10 @@ const StrategyPage = () => {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="border-b border-border" />
+      </section>
 
       {/* Metrics Table */}
-      <div className="py-8">
+      <section className="space-y-4 py-6">
         <SectionHeader 
           title="Metrics" 
           description="Define your product metrics hierarchy"
@@ -463,12 +460,10 @@ const StrategyPage = () => {
               })}
             </TableBody>
           </Table>
-      </div>
-
-      <div className="border-b border-border" />
+      </section>
 
       {/* Initiatives Table */}
-      <div className="py-8">
+      <section className="space-y-4 pt-6">
         <SectionHeader 
           title="Initiatives" 
           description="Define your product initiatives"
@@ -542,6 +537,7 @@ const StrategyPage = () => {
               })}
             </TableBody>
           </Table>
+      </section>
       </div>
 
       {/* Initiative Editor Dialog */}
