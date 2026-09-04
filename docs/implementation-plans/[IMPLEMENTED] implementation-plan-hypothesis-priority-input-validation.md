@@ -10,7 +10,7 @@
 
 **Область изменений:** клиент, `src/pages/HypothesesPage.tsx`. Схема БД и миграции **не** требуются.
 
-**Связанный уже реализованный план:** [implementation-plan-hypothesis-priority-status-sort.md](./implementation-plan-hypothesis-priority-status-sort.md) (поле `priority` в таблице и базовый UI).
+**Связанный уже реализованный план:** [implementation-plan-hypothesis-priority-status-sort.md](./%5BIMPLEMENTED%5D%20implementation-plan-hypothesis-priority-status-sort.md) (поле `priority` в таблице и базовый UI).
 
 ---
 

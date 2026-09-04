@@ -11,7 +11,7 @@
 | Выбор существующей гипотезы в редакторе фичи (update) | **не копирует** |
 | Сброс Linked Hypothesis в None | не копирует и не отвязывает файлы |
 
-Старый план вложений (`implementation-plan-attachment-links.md`, допущение 3) и `docs/general/board-page.md` сознательно **не** копировали при ручной смене Linked Hypothesis. Аудит H6 считает это дырой: два из трёх способов связать сущности делят файлы, третий — нет. Этот план **перекрывает** старое допущение: связь = обмен ссылками.
+Старый план вложений (`[IMPLEMENTED] implementation-plan-attachment-links.md`, допущение 3) и `docs/general/board-page.md` сознательно **не** копировали при ручной смене Linked Hypothesis. Аудит H6 считает это дырой: два из трёх способов связать сущности делят файлы, третий — нет. Этот план **перекрывает** старое допущение: связь = обмен ссылками.
 
 Миграции БД не нужны.
 
@@ -88,7 +88,7 @@ export async function syncAttachmentLinksForFeatureHypothesis(
 Обновить в одном духе:
 
 - `docs/general/board-page.md` — сейчас: смена Linked Hypothesis не копирует. Станет: при выборе гипотезы ссылки копируются в обе стороны (как Create Feature / Discover); None и повторный save с той же гипотезой ссылки не меняют.
-- `docs/implementation-plans/implementation-plan-attachment-links.md` — допущение 3 снять или пометить перекрытым H6.
+- `docs/implementation-plans/[IMPLEMENTED] implementation-plan-attachment-links.md` — допущение 3 снять или пометить перекрытым H6.
 - `docs/testing-checklists/testing-checklist-attachment-links.md` сценарий 6.4: смена Linked Hypothesis **добавляет** на фичу ссылки выбранной гипотезы (и наоборот); уже бывшие ссылки фичи не удаляются.
 
 ## Шаги

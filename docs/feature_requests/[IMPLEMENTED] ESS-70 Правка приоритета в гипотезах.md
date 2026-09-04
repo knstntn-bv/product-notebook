@@ -14,4 +14,4 @@
 - При **изменении** значения пересчитываются признак ошибки и синхронизация `editingHypothesis.priority` при валидном вводе; кнопка сохранения отключена при ошибке (`saveDisabled` в `EntityDialog`, `src/components/EntityDialog.tsx`). *Отличие от исходной формулировки:* проверка привязана к `onChange`, а не к blur, чтобы ошибка и блокировка Save совпадали по моменту срабатывания.
 - Нет подстановки дефолта в отображаемое значение при очистке поля; для **новой** гипотезы в поле изначально выставляется `3`. Плейсхолдер у поля не используется.
 - Сообщение об ошибке под полем, `aria-invalid` / `aria-describedby`; подсветка — только полупрозрачный `border-destructive`, без focus-ring.
-- Детальный план: [implementation-plan-hypothesis-priority-input-validation.md](../docs/implementation-plans/implementation-plan-hypothesis-priority-input-validation.md).
+- Детальный план: [implementation-plan-hypothesis-priority-input-validation.md](../implementation-plans/%5BIMPLEMENTED%5D%20implementation-plan-hypothesis-priority-input-validation.md).

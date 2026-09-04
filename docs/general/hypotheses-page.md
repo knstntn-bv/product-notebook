@@ -244,8 +244,8 @@ Cloning a hypothesis copies attachment **links** to the new hypothesis.
 - Click the "Status" column header to sort
 - Sorting cycles through three states:
   1. **None**: Original order (by creation date)
-  2. **Ascending**: New → In Progress → Accepted → Rejected
-  3. **Descending**: Rejected → Accepted → In Progress → New
+  2. **Ascending**: New → Accepted → In Progress → Done → Rejected
+  3. **Descending**: Rejected → Done → In Progress → Accepted → New
 - Visual indicator (arrow up/down) shows current sort direction
 - Sorting applies to all hypotheses in the table
 
@@ -370,7 +370,7 @@ Cloning a hypothesis copies attachment **links** to the new hypothesis.
 
 - Client-side sorting
 - Maintains original order when sort is cleared
-- Status order is predefined (New < In Progress < Accepted < Rejected)
+- Status order is predefined (New < Accepted < In Progress < Done < Rejected)
 - Visual indicators show sort direction
 
 ### Mutation Handling

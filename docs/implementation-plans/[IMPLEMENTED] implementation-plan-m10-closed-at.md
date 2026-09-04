@@ -84,7 +84,7 @@ Grep `closed_at = new Date` / `isTerminalBoardColumn` для записи дат
 - HypothesesPage (нет своего write `closed_at`).
 - M16: общий optimistic DnD.
 - Не рештампить `closed_at` только при смене колонки на Save (можно позже).
-- SQL COMMENT / старый `implementation-plan-feature-closed-at.md`.
+- SQL COMMENT / старый `[IMPLEMENTED] implementation-plan-feature-closed-at.md`.
 - Показ `closed_at` на карточке.
 - Типизация `updateData: any` в drag (L5).
 

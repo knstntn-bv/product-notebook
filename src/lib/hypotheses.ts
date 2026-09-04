@@ -14,8 +14,8 @@ export const DEFAULT_HYPOTHESIS_PRIORITY = 3;
 
 export const hypothesisStatusOrder: Record<HypothesisStatus, number> = {
   new: 1,
-  inProgress: 2,
-  accepted: 3,
+  accepted: 2,
+  inProgress: 3,
   done: 4,
   rejected: 5,
 };
