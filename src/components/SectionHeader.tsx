@@ -15,9 +15,9 @@ export const SectionHeader = ({
   addLabel = "Add",
 }: SectionHeaderProps) => {
   return (
-    <div className="flex items-center justify-between mb-2">
+    <div className="flex items-center justify-between gap-4">
       <div>
-        <h2 className="text-xl font-bold">{title}</h2>
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
         {description && (
           <p className="text-muted-foreground text-sm">{description}</p>
         )}

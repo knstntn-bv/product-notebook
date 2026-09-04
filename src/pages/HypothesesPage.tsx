@@ -12,8 +12,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
-import { SectionHeader } from "@/components/SectionHeader";
 import { EntityDialog } from "@/components/EntityDialog";
+import { HeaderActions } from "@/components/HeaderActions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -551,12 +551,13 @@ const HypothesesPage = () => {
     );
 
   return (
-    <div className="space-y-6">
-      <SectionHeader 
-        title="Hypotheses Portfolio"
-        onAdd={handleAddHypothesis}
-        addLabel="Add Hypothesis"
-      />
+    <div className="flex min-h-0 flex-col gap-4">
+      <HeaderActions>
+        <Button onClick={handleAddHypothesis} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Hypothesis
+        </Button>
+      </HeaderActions>
 
       <div className="w-full overflow-x-auto">
         <Table className={cn(

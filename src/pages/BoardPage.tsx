@@ -949,9 +949,9 @@ const BoardPage = () => {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-        <div className="w-full flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth min-h-0">
-          <div className="flex gap-4 h-full px-[7.5vw] md:pl-4 md:pr-4 pb-4 pt-4 md:pt-0 items-stretch">
+      <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
+        <div className="w-full min-h-0 flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth">
+          <div className="flex h-full items-stretch gap-4 px-[calc(7.5vw-1rem)] md:px-0">
             {columns.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
