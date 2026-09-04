@@ -54,6 +54,7 @@ The hypotheses table contains the following columns:
 - **New**: Hypothesis just created, not yet started
 - **In Progress**: Currently being validated or worked on
 - **Accepted**: Hypothesis has been validated and accepted
+- **Done**: Hypothesis work is complete
 - **Rejected**: Hypothesis has been invalidated or rejected
 
 **Behavior:**
@@ -128,7 +129,7 @@ The hypotheses table contains the following columns:
 
 ### Creating Hypotheses
 
-1. Click the "Add Hypothesis" button at the top
+1. Click the "Add Hypothesis" button in the app header (`HeaderActions`; see [Page actions](./main-application.md#page-actions))
 2. A dialog opens with empty fields:
    - Status: "New" (default)
    - All other fields: Empty
@@ -215,9 +216,9 @@ Cloning a hypothesis copies attachment **links** to the new hypothesis.
 3. The hypothesis editing dialog closes and a feature creation dialog opens with pre-filled data:
    - **Title**: Pre-filled with the hypothesis "Insight"
    - **Description**: Pre-filled with the "Solution Hypothesis" (15-row textarea)
-   - **Column**: Defaults to "Backlog"
+   - **Column**: Defaults to "Backlog". Options use the same labels as the Board (see Board page).
    - **Linked Hypothesis**: Automatically set to the current hypothesis (cannot be changed in this dialog)
-   - **Linked Goal**: Optional, can be selected from dropdown
+   - **Linked Goal**: Optional. Selecting a goal also fills Linked Initiative from that goal (same as the Board feature editor). The initiative can be changed afterwards.
    - **Linked Initiative**: Optional, can be selected from dropdown
 4. Modify any fields as needed (except Linked Hypothesis, which is automatically set)
 5. Click "Create Feature" to add the feature to the Board

@@ -74,7 +74,7 @@ Each goal is displayed as a card within its cell showing:
 
 ### Creating Goals
 
-1. Click the "Add Goal" button in any cell
+1. Click the "Add Goal" button in any cell (not in the app header; see [Page actions](./main-application.md#page-actions))
 2. A dialog opens with goal editing form
 3. Fill in the required fields:
    - **Goal**: The goal text (required)
@@ -141,12 +141,12 @@ The goal editing dialog provides a user-friendly interface for creating and edit
 
 **Dialog Structure (Desktop - Two-Column):**
 - **Header**: Fixed at the top, contains the dialog title
-- **Left Column (70%)**: Contains all text input fields:
+- **Left Column (~67%)**: Contains all text input fields:
   - Goal (Input)
   - Expected Result (Textarea, 6 rows)
   - Achieved Result (Textarea, 6 rows)
   - Target Metrics (Tag input)
-- **Right Column (30%)**: Contains:
+- **Right Column (~33%)**: Contains:
   - Quarter (Select dropdown)
   - Done (Checkbox)
   - Action buttons (fixed at bottom of right column):
@@ -252,7 +252,7 @@ The goal editing dialog provides a user-friendly interface for creating and edit
 ### State Management
 
 - Uses React Query for data fetching
-- Optimistic updates for drag and drop operations
+- Optimistic drag commit via `applyOptimisticUpdate`
 - Automatic refetching after mutations
 - Error handling with rollback on failure
 

@@ -1,170 +1,79 @@
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUp, ArrowDown, Plus, Check, ChevronsUpDown, Copy, Paperclip } from "lucide-react";
+import { ArrowUp, ArrowDown, Plus, Copy, Paperclip } from "lucide-react";
 import { EntityAttachmentsDialog } from "@/components/EntityAttachmentsDialog";
 import { copyAttachmentLinks } from "@/lib/attachmentLinks";
+import { createFeature, type CreateFeatureDraft } from "@/lib/features";
+import { BOARD_COLUMNS, type BoardColumnId } from "@/lib/board";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useProduct } from "@/contexts/ProductContext";
-import { MetricTagInput } from "@/components/MetricTagInput";
 import { EntityDialog } from "@/components/EntityDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { EntityCombobox } from "@/components/EntityCombobox";
+import {
+  HypothesisFormLeftContent,
+  HypothesisFormStatusAndPriority,
+} from "@/components/HypothesisFormFields";
 import { HeaderActions } from "@/components/HeaderActions";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { featuresKey, hypothesesKey, requireProductId, useFeaturesQuery, useGoalsQuery, useHypothesesQuery, type HypothesisRow } from "@/lib/productQueries";
+import { visibleByArchive } from "@/lib/archive";
+import { cascadeInitiativeFromGoal } from "@/lib/goals";
+import { errorToast } from "@/lib/errorToast";
+import {
+  DEFAULT_HYPOTHESIS_PRIORITY,
+  emptyHypothesisForm,
+  hypothesisRowToForm,
+  hypothesisStatusLabel,
+  hypothesisStatusSortValue,
+  parseHypothesisPriorityInput,
+  type HypothesisFormValue,
+} from "@/lib/hypotheses";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type Status = "new" | "inProgress" | "accepted" | "done" | "rejected";
-type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
-
-interface Hypothesis {
-  id: string;
-  status: Status;
-  priority: number;
-  insight: string;
-  problem_hypothesis: string;
-  problem_validation: string;
-  solution_hypothesis: string;
-  solution_validation: string;
-  impact_metrics: string[];
-}
-
-interface Feature {
-  id?: string;
-  title: string;
-  description: string;
-  goal_id?: string;
-  initiative_id?: string;
-  hypothesis_id?: string;
-  board_column: ColumnId;
-  human_readable_id?: string;
-}
-
-interface Goal {
-  id: string;
-  goal: string;
-  initiative_id: string;
-  archived?: boolean;
-}
-
-interface Initiative {
-  id: string;
-  name: string;
-  color?: string;
-  archived?: boolean;
-  target_metric_id?: string | null;
-  priority: number;
-}
-
-/** Priority field: integer 1–99 after trim; empty or non-integer / out of range → invalid. */
-function parseHypothesisPriorityInput(
-  raw: string
-): { ok: true; value: number } | { ok: false } {
-  const trimmed = raw.trim();
-  if (trimmed === "") return { ok: false };
-  if (!/^\d+$/.test(trimmed)) return { ok: false };
-  const n = Number(trimmed);
-  if (!Number.isInteger(n) || n < 1 || n > 99) return { ok: false };
-  return { ok: true, value: n };
-}
-
 const HypothesesPage = () => {
-  const { metrics, currentProductId } = useProduct();
-  const { user } = useAuth();
+  const { metrics, currentProductId, initiatives } = useProduct();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [statusSort, setStatusSort] = useState<"asc" | "desc" | null>(null);
   const [prioritySort, setPrioritySort] = useState<"asc" | "desc" | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingHypothesis, setEditingHypothesis] = useState<Partial<Hypothesis> | null>(null);
+  const [editingHypothesis, setEditingHypothesis] = useState<Partial<HypothesisFormValue> | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
-  const [creatingFeature, setCreatingFeature] = useState<Feature | null>(null);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const [initiativeOpen, setInitiativeOpen] = useState(false);
+  const [creatingFeature, setCreatingFeature] = useState<CreateFeatureDraft | null>(null);
   const [priorityInput, setPriorityInput] = useState("");
   const [priorityFieldError, setPriorityFieldError] = useState(false);
   const [attachmentsDialogOpen, setAttachmentsDialogOpen] = useState(false);
 
-  const columns: { id: ColumnId; label: string }[] = [
-    { id: "inbox", label: "Inbox" },
-    { id: "discovery", label: "Discovery" },
-    { id: "backlog", label: "Backlog" },
-    { id: "design", label: "Design" },
-    { id: "development", label: "Development" },
-    { id: "onHold", label: "On Hold" },
-    { id: "done", label: "Done" },
-    { id: "cancelled", label: "Cancelled" },
-  ];
-
-  const statuses: { value: Status; label: string }[] = [
-    { value: "new", label: "New" },
-    { value: "inProgress", label: "In work" },
-    { value: "accepted", label: "Accepted" },
-    { value: "done", label: "Done" },
-    { value: "rejected", label: "Rejected" },
-  ];
-
-  // Fetch hypotheses
-  const { data: hypotheses = [] } = useQuery({
-    queryKey: ["hypotheses", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("hypotheses")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      // Ensure all fields are properly typed and handle null values
-      return (data || []).map((h: any) => ({
-        id: h.id,
-        status: h.status as Status,
-        priority: h.priority ?? 3,
-        insight: h.insight || "",
-        problem_hypothesis: h.problem_hypothesis || "",
-        problem_validation: h.problem_validation || "",
-        solution_hypothesis: h.solution_hypothesis || "",
-        solution_validation: h.solution_validation || "",
-        impact_metrics: Array.isArray(h.impact_metrics) ? h.impact_metrics : [],
-      })) as Hypothesis[];
-    },
-    enabled: !!currentProductId,
-  });
+  const { data: hypotheses = [] } = useHypothesesQuery(currentProductId);
+  const { data: features = [] } = useFeaturesQuery(currentProductId);
+  const { data: goals = [] } = useGoalsQuery(currentProductId);
 
   // Add hypothesis mutation - теперь открывает диалог
   const handleAddHypothesis = () => {
-    setPriorityInput("3");
+    setPriorityInput(String(DEFAULT_HYPOTHESIS_PRIORITY));
     setPriorityFieldError(false);
-    setEditingHypothesis({
-      status: "new",
-      priority: 3,
-      insight: "",
-      problem_hypothesis: "",
-      problem_validation: "",
-      solution_hypothesis: "",
-      solution_validation: "",
-      impact_metrics: [],
-    });
+    setEditingHypothesis(emptyHypothesisForm());
     setIsDialogOpen(true);
   };
 
   // Save hypothesis mutation (create or update)
   const saveHypothesisMutation = useMutation({
-    mutationFn: async (hypothesis: Partial<Hypothesis>) => {
-      if (!user) throw new Error("No user");
+    mutationFn: async (hypothesis: Partial<HypothesisFormValue>) => {
+      const productId = requireProductId(currentProductId);
       if (hypothesis.id) {
         // Update existing
-        const updates: any = {};
+        const updates: TablesUpdate<"hypotheses"> = {};
         if (hypothesis.status !== undefined) updates.status = hypothesis.status;
         if (hypothesis.priority !== undefined) updates.priority = hypothesis.priority;
         if (hypothesis.insight !== undefined) updates.insight = hypothesis.insight;
@@ -177,17 +86,17 @@ const HypothesesPage = () => {
         const { error } = await supabase
           .from("hypotheses")
           .update(updates)
-          .eq("id", hypothesis.id);
+          .eq("id", hypothesis.id)
+          .eq("product_id", productId);
         if (error) throw error;
       } else {
         // Create new
-        if (!currentProductId) throw new Error("No product selected");
         const { error } = await supabase
           .from("hypotheses")
           .insert({
-            product_id: currentProductId,
+            product_id: productId,
             status: hypothesis.status || "new",
-            priority: hypothesis.priority ?? 3,
+            priority: hypothesis.priority ?? DEFAULT_HYPOTHESIS_PRIORITY,
             insight: hypothesis.insight || "",
             problem_hypothesis: hypothesis.problem_hypothesis || "",
             problem_validation: hypothesis.problem_validation || "",
@@ -199,26 +108,29 @@ const HypothesesPage = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
+      queryClient.invalidateQueries({ queryKey: hypothesesKey(currentProductId) });
       setIsDialogOpen(false);
       setEditingHypothesis(null);
       setPriorityInput("");
       setPriorityFieldError(false);
       toast({ title: "Hypothesis saved successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   // Delete hypothesis mutation
   const deleteHypothesisMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("hypotheses").delete().eq("id", id);
+      const productId = requireProductId(currentProductId);
+      const { error } = await supabase
+        .from("hypotheses")
+        .delete()
+        .eq("id", id)
+        .eq("product_id", productId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
+      queryClient.invalidateQueries({ queryKey: hypothesesKey(currentProductId) });
       setIsDialogOpen(false);
       setEditingHypothesis(null);
       setPriorityInput("");
@@ -226,22 +138,20 @@ const HypothesesPage = () => {
       setDeleteAlertOpen(false);
       toast({ title: "Hypothesis deleted" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   // Clone hypothesis mutation
   const cloneHypothesisMutation = useMutation({
-    mutationFn: async (hypothesis: Hypothesis) => {
-      if (!currentProductId) throw new Error("No product selected");
-      
+    mutationFn: async (hypothesis: HypothesisFormValue & { id: string }) => {
+      const productId = requireProductId(currentProductId);
+
       const { data: cloned, error } = await supabase
         .from("hypotheses")
         .insert({
-          product_id: currentProductId,
+          product_id: productId,
           status: hypothesis.status,
-          priority: hypothesis.priority ?? 3,
+          priority: hypothesis.priority ?? DEFAULT_HYPOTHESIS_PRIORITY,
           insight: hypothesis.insight || "",
           problem_hypothesis: hypothesis.problem_hypothesis || "",
           problem_validation: hypothesis.problem_validation || "",
@@ -257,131 +167,42 @@ const HypothesesPage = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hypotheses"] });
+      queryClient.invalidateQueries({ queryKey: hypothesesKey(currentProductId) });
       queryClient.invalidateQueries({ queryKey: ["hypothesis_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
       toast({ title: "Hypothesis cloned successfully" });
     },
-    onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error.message, 
-        variant: "destructive" 
-      });
-    },
+    onError: errorToast,
   });
 
-
-  // Fetch features to calculate position
-  const { data: features = [] } = useQuery({
-    queryKey: ["features", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("features")
-        .select("*")
-        .eq("product_id", currentProductId);
-      if (error) throw error;
-      return (data || []) as Array<{ id: string; board_column: ColumnId; position: number }>;
-    },
-    enabled: !!currentProductId,
-  });
-
-  // Fetch goals
-  const { data: goals = [] } = useQuery({
-    queryKey: ["goals", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
-
-  // Fetch initiatives
-  const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("initiatives")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
 
   // Create feature mutation
   const createFeatureMutation = useMutation({
-    mutationFn: async (feature: Feature) => {
-      if (!user) throw new Error("No user");
-      
-      const columnFeatures = features.filter(f => f.board_column === feature.board_column);
-      const maxPosition = columnFeatures.length > 0 
-        ? Math.max(...columnFeatures.map(f => f.position)) 
-        : -1;
-      
-      // Generate human_readable_id
-      let prefix = "NNN";
-      if (feature.initiative_id) {
-        const initiative = initiatives.find(i => i.id === feature.initiative_id);
-        if (initiative?.name) {
-          // Take first 3 characters, uppercase
-          prefix = initiative.name
-            .substring(0, 3)
-            .toUpperCase();
-        }
-      }
-      
-      // Get total count of features for this product (sequential numbering)
-      if (!currentProductId) throw new Error("No product selected");
-      const { count } = await supabase
-        .from("features")
-        .select("*", { count: "exact", head: true })
-        .eq("product_id", currentProductId);
-      
-      const featureNumber = (count || 0) + 1;
-      const human_readable_id = `${prefix}-${featureNumber}`;
-      
-      const { data: created, error } = await supabase
-        .from("features")
-        .insert({
-          product_id: currentProductId,
-          title: feature.title,
-          description: feature.description || "",
-          goal_id: feature.goal_id,
-          initiative_id: feature.initiative_id,
-          hypothesis_id: feature.hypothesis_id,
-          board_column: feature.board_column,
-          position: maxPosition + 1,
-          human_readable_id: human_readable_id,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      if (feature.hypothesis_id && created?.id) {
-        await copyAttachmentLinks("hypothesis", feature.hypothesis_id, "feature", created.id);
-      }
+    mutationFn: async (feature: CreateFeatureDraft) => {
+      const productId = requireProductId(currentProductId);
+      if (!feature.hypothesis_id) throw new Error("Hypothesis is required");
+      await createFeature({
+        productId,
+        title: feature.title,
+        description: feature.description,
+        goal_id: feature.goal_id,
+        initiative_id: feature.initiative_id,
+        hypothesis_id: feature.hypothesis_id,
+        board_column: feature.board_column,
+        features,
+        initiatives,
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["features"] });
+      queryClient.invalidateQueries({ queryKey: featuresKey(currentProductId) });
       queryClient.invalidateQueries({ queryKey: ["feature_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["hypothesis_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
       setCreatingFeature(null);
       setIsFeatureDialogOpen(false);
       toast({ title: "Feature created successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   const handleSaveHypothesis = () => {
@@ -399,10 +220,10 @@ const HypothesesPage = () => {
     saveHypothesisMutation.mutate({ ...editingHypothesis, priority: parsed.value });
   };
 
-  const handleEditHypothesis = (hypothesis: Hypothesis) => {
-    setPriorityInput(String(hypothesis.priority));
+  const handleEditHypothesis = (hypothesis: HypothesisRow) => {
+    setPriorityInput(String(hypothesis.priority ?? DEFAULT_HYPOTHESIS_PRIORITY));
     setPriorityFieldError(false);
-    setEditingHypothesis({ ...hypothesis });
+    setEditingHypothesis(hypothesisRowToForm(hypothesis));
     setIsDialogOpen(true);
   };
 
@@ -439,23 +260,15 @@ const HypothesesPage = () => {
   };
 
   const sortedHypotheses = [...hypotheses].sort((a, b) => {
-    const statusOrder: Record<Status, number> = {
-      new: 1,
-      inProgress: 2,
-      accepted: 3,
-      done: 4,
-      rejected: 5,
-    };
-
     // Если активна сортировка по приоритету
     if (prioritySort !== null) {
-      const priorityComparison = (a.priority || 3) - (b.priority || 3);
+      const priorityComparison = (a.priority || DEFAULT_HYPOTHESIS_PRIORITY) - (b.priority || DEFAULT_HYPOTHESIS_PRIORITY);
       if (priorityComparison !== 0) {
         return prioritySort === "asc" ? priorityComparison : -priorityComparison;
       }
       // Если приоритеты равны, сортируем по статусу (если активна сортировка по статусу)
       if (statusSort !== null) {
-        const statusComparison = statusOrder[a.status] - statusOrder[b.status];
+        const statusComparison = hypothesisStatusSortValue(a.status) - hypothesisStatusSortValue(b.status);
         return statusSort === "asc" ? statusComparison : -statusComparison;
       }
       return 0;
@@ -463,12 +276,12 @@ const HypothesesPage = () => {
     
     // Если активна сортировка по статусу
     if (statusSort !== null) {
-      const statusComparison = statusOrder[a.status] - statusOrder[b.status];
+      const statusComparison = hypothesisStatusSortValue(a.status) - hypothesisStatusSortValue(b.status);
       if (statusComparison !== 0) {
         return statusSort === "asc" ? statusComparison : -statusComparison;
       }
       // Если статусы равны, сортируем по приоритету
-      const priorityComparison = (a.priority || 3) - (b.priority || 3);
+      const priorityComparison = (a.priority || DEFAULT_HYPOTHESIS_PRIORITY) - (b.priority || DEFAULT_HYPOTHESIS_PRIORITY);
       return priorityComparison;
     }
     
@@ -476,10 +289,10 @@ const HypothesesPage = () => {
     return 0;
   });
 
-  const handleCreateFeature = (hypothesis: Hypothesis) => {
+  const handleCreateFeature = (hypothesis: HypothesisRow) => {
     setCreatingFeature({
-      title: (hypothesis.insight || "").toString(),
-      description: (hypothesis.solution_hypothesis || "").toString(),
+      title: hypothesis.insight || "",
+      description: hypothesis.solution_hypothesis || "",
       board_column: "backlog",
       hypothesis_id: hypothesis.id,
     });
@@ -491,11 +304,11 @@ const HypothesesPage = () => {
       const parsedPriority = parseHypothesisPriorityInput(priorityInput);
       const priority = parsedPriority.ok
         ? parsedPriority.value
-        : (editingHypothesis.priority ?? 3);
+        : (editingHypothesis.priority ?? DEFAULT_HYPOTHESIS_PRIORITY);
       // Use current state from editor (editingHypothesis) to clone with any unsaved changes
-      const hypothesisToClone: Hypothesis = {
+      const hypothesisToClone: HypothesisFormValue & { id: string } = {
         id: editingHypothesis.id,
-        status: (editingHypothesis.status || "new") as Status,
+        status: editingHypothesis.status || "new",
         priority,
         insight: editingHypothesis.insight || "",
         problem_hypothesis: editingHypothesis.problem_hypothesis || "",
@@ -511,44 +324,23 @@ const HypothesesPage = () => {
   };
 
   const handleSaveFeature = () => {
-    if (creatingFeature && creatingFeature.title) {
+    if (creatingFeature?.title && creatingFeature.hypothesis_id) {
       createFeatureMutation.mutate(creatingFeature);
     }
   };
 
-  const handleGoalSelect = (goalId: string) => {
-    if (creatingFeature) {
-      setCreatingFeature({ ...creatingFeature, goal_id: goalId });
-    }
-    setGoalOpen(false);
-  };
+  const sortedGoals = visibleByArchive(goals, false).sort((a, b) =>
+    (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" }),
+  );
 
-  const handleInitiativeSelect = (initiativeId: string) => {
-    if (creatingFeature) {
-      setCreatingFeature({ ...creatingFeature, initiative_id: initiativeId });
-    }
-    setInitiativeOpen(false);
-  };
+  const sortedInitiatives = visibleByArchive(initiatives, false).sort((a, b) =>
+    (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }),
+  );
 
-  const getGoalName = (id: string) => {
-    return goals.find(i => i.id === id)?.goal || "";
-  };
-
-  const getInitiativeName = (id: string) => {
-    return initiatives.find(i => i.id === id)?.name || "";
-  };
-
-  const sortedGoals = goals
-    .filter(goal => !goal.archived)
-    .sort((a, b) => 
-      a.goal.localeCompare(b.goal)
-    );
-
-  const sortedInitiatives = initiatives
-    .filter(initiative => !initiative.archived)
-    .sort((a, b) => 
-      a.name.localeCompare(b.name)
-    );
+  const linkedHypothesisLabel =
+    (creatingFeature?.hypothesis_id &&
+      hypotheses.find((item) => item.id === creatingFeature.hypothesis_id)?.insight) ||
+    "Untitled hypothesis";
 
   return (
     <div className="flex min-h-0 flex-col gap-4">
@@ -629,7 +421,7 @@ const HypothesesPage = () => {
                   "px-2 overflow-hidden"
                 )}>
                   <span className="text-xs whitespace-nowrap block truncate">
-                    {statuses.find(s => s.value === hypothesis.status)?.label || hypothesis.status}
+                    {hypothesisStatusLabel(hypothesis.status)}
                   </span>
                 </TableCell>
                 <TableCell className={cn(
@@ -638,7 +430,7 @@ const HypothesesPage = () => {
                   "px-2 overflow-hidden"
                 )}>
                   <span className="text-xs whitespace-nowrap block truncate">
-                    {hypothesis.priority ?? 3}
+                    {hypothesis.priority ?? DEFAULT_HYPOTHESIS_PRIORITY}
                   </span>
                 </TableCell>
                 <TableCell className="break-words">
@@ -709,123 +501,22 @@ const HypothesesPage = () => {
         saveLabel="Save Hypothesis"
         saveDisabled={!!editingHypothesis && priorityFieldError}
         leftContent={editingHypothesis && (
-          <>
-            <div>
-              <Label htmlFor="insight">Insight</Label>
-              <Textarea
-                id="insight"
-                value={editingHypothesis.insight || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, insight: e.target.value })}
-                placeholder="Enter insight..."
-                rows={5}
-              />
-            </div>
-            <div>
-              <Label htmlFor="problem_hypothesis">Problem Hypothesis</Label>
-              <Textarea
-                id="problem_hypothesis"
-                value={editingHypothesis.problem_hypothesis || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, problem_hypothesis: e.target.value })}
-                placeholder="Enter problem hypothesis..."
-                rows={5}
-              />
-            </div>
-            <div>
-              <Label htmlFor="problem_validation">Problem Validation</Label>
-              <Textarea
-                id="problem_validation"
-                value={editingHypothesis.problem_validation || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, problem_validation: e.target.value })}
-                placeholder="Enter validation (links supported)..."
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="solution_hypothesis">Solution Hypothesis</Label>
-              <Textarea
-                id="solution_hypothesis"
-                value={editingHypothesis.solution_hypothesis || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, solution_hypothesis: e.target.value })}
-                placeholder="Enter solution hypothesis..."
-                rows={5}
-              />
-            </div>
-            <div>
-              <Label htmlFor="solution_validation">Solution Validation</Label>
-              <Textarea
-                id="solution_validation"
-                value={editingHypothesis.solution_validation || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, solution_validation: e.target.value })}
-                placeholder="Enter validation (links supported)..."
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="impact_metrics">Impact Metrics</Label>
-              <MetricTagInput
-                value={Array.isArray(editingHypothesis.impact_metrics) ? editingHypothesis.impact_metrics : []}
-                onChange={(tags) => setEditingHypothesis({ ...editingHypothesis, impact_metrics: tags })}
-                suggestions={metrics.map(m => m.name).filter(Boolean)}
-                placeholder="Type to add metrics..."
-              />
-            </div>
-          </>
+          <HypothesisFormLeftContent
+            value={editingHypothesis}
+            onChange={setEditingHypothesis}
+            metricSuggestions={metrics.map((m) => m.name).filter(Boolean)}
+          />
         )}
         rightContent={editingHypothesis && (
           <>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={(editingHypothesis.status || "new") as Status}
-                onValueChange={(value: Status) => 
-                  setEditingHypothesis({ ...editingHypothesis, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map(status => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="priority">Priority</Label>
-              <Input
-                id="priority"
-                type="text"
-                inputMode="numeric"
-                value={priorityInput}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setPriorityInput(next);
-                  const parsed = parseHypothesisPriorityInput(next);
-                  if (!parsed.ok) {
-                    setPriorityFieldError(true);
-                  } else {
-                    setPriorityFieldError(false);
-                    setEditingHypothesis((prev) =>
-                      prev ? { ...prev, priority: parsed.value } : prev
-                    );
-                  }
-                }}
-                aria-invalid={priorityFieldError}
-                aria-describedby={priorityFieldError ? "priority-error" : undefined}
-                className={cn(
-                  priorityFieldError &&
-                    "border-destructive/55 focus-visible:ring-0 focus-visible:ring-offset-0"
-                )}
-              />
-              {priorityFieldError && (
-                <p id="priority-error" className="text-sm text-destructive mt-1">
-                  Enter a whole number from 1 to 99.
-                </p>
-              )}
-            </div>
+            <HypothesisFormStatusAndPriority
+              value={editingHypothesis}
+              onChange={setEditingHypothesis}
+              priorityInput={priorityInput}
+              onPriorityInputChange={setPriorityInput}
+              priorityFieldError={priorityFieldError}
+              onPriorityFieldErrorChange={setPriorityFieldError}
+            />
             <div>
               <Button
                 variant="outline"
@@ -883,25 +574,13 @@ const HypothesesPage = () => {
         />
       )}
 
-      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Hypothesis</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this hypothesis? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteHypothesis}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteAlertOpen}
+        onOpenChange={setDeleteAlertOpen}
+        title="Delete Hypothesis"
+        description="Are you sure you want to delete this hypothesis? This action cannot be undone."
+        onConfirm={confirmDeleteHypothesis}
+      />
 
       <EntityDialog
         open={isFeatureDialogOpen}
@@ -934,103 +613,68 @@ const HypothesesPage = () => {
         )}
         rightContent={creatingFeature && (
           <>
+            <div className="min-w-0">
+              <Label>Linked Hypothesis</Label>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full min-w-0 justify-start overflow-hidden"
+                disabled
+                aria-disabled
+                title={linkedHypothesisLabel}
+              >
+                <span className="min-w-0 truncate">{linkedHypothesisLabel}</span>
+              </Button>
+            </div>
             <div>
               <Label>Linked Goal</Label>
-              <Popover open={goalOpen} onOpenChange={setGoalOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={goalOpen}
-                    className="w-full justify-between"
-                  >
-                    {creatingFeature.goal_id
-                      ? getGoalName(creatingFeature.goal_id)
-                      : "Select goal..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search goals..." />
-                    <CommandList>
-                      <CommandEmpty>No goal found.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedGoals.map((goal) => (
-                          <CommandItem
-                            key={goal.id}
-                            value={goal.goal}
-                            onSelect={() => handleGoalSelect(goal.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                creatingFeature.goal_id === goal.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {goal.goal}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <EntityCombobox
+                items={sortedGoals.map((goal) => ({ id: goal.id, label: goal.goal || "" }))}
+                value={creatingFeature.goal_id}
+                fallbackLabel={goals.find((goal) => goal.id === creatingFeature.goal_id)?.goal || undefined}
+                onSelect={(id) => {
+                  if (!id) return;
+                  setCreatingFeature({
+                    ...creatingFeature,
+                    ...cascadeInitiativeFromGoal(goals, id),
+                  });
+                }}
+                placeholder="Select goal..."
+                searchPlaceholder="Search goals..."
+                emptyText="No goal found."
+              />
             </div>
             <div>
               <Label>Linked Initiative</Label>
-              <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={initiativeOpen}
-                    className="w-full justify-between"
-                  >
-                    {creatingFeature.initiative_id
-                      ? getInitiativeName(creatingFeature.initiative_id)
-                      : "Select initiative..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search initiatives..." />
-                    <CommandList>
-                      <CommandEmpty>No initiative found.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedInitiatives.map((initiative) => (
-                          <CommandItem
-                            key={initiative.id}
-                            value={initiative.name}
-                            onSelect={() => handleInitiativeSelect(initiative.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                creatingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {initiative.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <EntityCombobox
+                items={sortedInitiatives.map((initiative) => ({
+                  id: initiative.id,
+                  label: initiative.name || "",
+                }))}
+                value={creatingFeature.initiative_id}
+                fallbackLabel={
+                  initiatives.find((initiative) => initiative.id === creatingFeature.initiative_id)?.name || undefined
+                }
+                onSelect={(id) => {
+                  if (!id) return;
+                  setCreatingFeature({ ...creatingFeature, initiative_id: id });
+                }}
+                placeholder="Select initiative..."
+                searchPlaceholder="Search initiatives..."
+                emptyText="No initiative found."
+              />
             </div>
             <div>
               <Label htmlFor="column">Column</Label>
               <Select
-                value={creatingFeature.board_column}
-                onValueChange={(value: ColumnId) => setCreatingFeature({ ...creatingFeature, board_column: value })}
+                value={creatingFeature.board_column as BoardColumnId}
+                onValueChange={(value: BoardColumnId) => setCreatingFeature({ ...creatingFeature, board_column: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {columns.map(col => (
+                  {BOARD_COLUMNS.map(col => (
                     <SelectItem key={col.id} value={col.id}>
                       {col.label}
                     </SelectItem>

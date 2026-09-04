@@ -47,6 +47,7 @@ The Settings system allows users to control product-level preferences, including
 - When checked:
   - Strategy page: All initiatives are displayed, archived ones at the end with reduced opacity
   - Roadmap page: All initiatives appear as rows (archived at the bottom), all goals are shown (archived with reduced opacity)
+- Goal and Initiative pickers on Board and in Create Feature from Hypothesis always list **non-archived** records only. The toggle does not change those dropdowns.
 
 **State Management:**
 - Setting is stored in `project_settings.show_archived` field in the database
@@ -132,7 +133,7 @@ When the dialog opens:
 
 ### Feedback
 
-- Toast notifications for all actions
+- Toast notifications for rename success and for write errors (including the archive toggle)
 - Visual state changes (toggle, button icons)
 - Loading indicators during operations
 - Error messages for failures
@@ -148,13 +149,14 @@ When the dialog opens:
 ### Database Operations
 
 - Uses Supabase for data persistence
-- Upsert pattern for creating/updating settings
-- Error handling for database operations
+- Archive visibility: select the product's `project_settings` row, then update or insert (no UNIQUE on `product_id`, so not a SQL upsert)
+- Product name: update `products` by `id`
+- Writes go through React Query `useMutation` and invalidate `current_product` / `project_settings` keys
+- Failed archive toggle and failed rename show an error toast; the UI stays on cached values until a successful write
 
 ### State Management
 
-- Local component state for UI
-- React Query for data fetching (if used)
-- Immediate UI updates with database sync
-- Error rollback on failures
+- Local component state for the settings dialog fields
+- React Query for product and `show_archived`
+- Controlled archive switch follows the query cache (no optimistic flip)
 

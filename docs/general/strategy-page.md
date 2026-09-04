@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Strategy Page is where users define the foundational elements of their product strategy: the product formula, core values, metrics hierarchy, and strategic initiatives.
+The Strategy Page is where users define the foundational elements of their product strategy: the product formula, core values, metrics hierarchy, and strategic initiatives. Add Value / Metric / Initiative sit on each section via `SectionHeader`, not in the app header. Product Formula has no Add. See [Page actions](./main-application.md#page-actions).
 
 ## Location
 
@@ -33,7 +33,7 @@ The Strategy Page is where users define the foundational elements of their produ
 **Behavior:**
 - Lists all product values in order
 - Each value displays its text content or "No value" if empty
-- **Add Value**: Button at the top allows adding new values
+- **Add Value**: Button on the Values `SectionHeader` adds a new value
 - **Edit Value**: Click the pencil icon to edit a value
   - Switches to textarea input mode
   - Max length: 1000 characters
@@ -96,9 +96,9 @@ The Strategy Page is where users define the foundational elements of their produ
 - Fill in the required fields:
   - **Name**: Initiative name (required)
   - **Description**: Optional multi-line description
-  - **Priority**: Priority number (default: 3, lower = higher priority)
+  - **Priority**: Whole number from 1 to 99 (default: 3, lower = higher priority)
   - **Target Metric**: Optional reference to a metric (Select dropdown with "None" option)
-  - **Color**: Color picker for visual identification (default: #8B5CF6)
+  - **Color**: Color picker for visual identification (default: `DEFAULT_INITIATIVE_COLOR` / #8B5CF6)
 - Click "Save Initiative" to create the initiative
 - New initiatives are created with `priority = 3` by default
 
@@ -106,28 +106,29 @@ The Strategy Page is where users define the foundational elements of their produ
 - Click on any initiative row in the table to open the editor dialog
 - The dialog uses a two-column layout:
   - **Left Column**: Name (Input) and Description (Textarea)
-  - **Right Column**: Priority (Input type="number"), Target Metric (Select), Color (ColorPicker)
+  - **Right Column**: Priority (text input, `inputMode="numeric"`), Target Metric (Select), Color (ColorPicker)
 - All fields can be edited in the dialog
 - Click "Save Initiative" to save changes
 - Click "Cancel" to close without saving
 
 **Initiative Editor Dialog:**
 - **Layout**: Two-column layout on desktop, single-column stacked on mobile
-- **Left Column (70%)**: Text input fields (Name, Description)
-- **Right Column (30%)**: Selection fields and actions:
-  - Priority (number input without spinner arrows)
+- **Left Column (~67%)**: Text input fields (Name, Description)
+- **Right Column (~33%)**: Selection fields and actions:
+  - Priority (text input, numeric keypad; no spinner)
   - Target Metric (Select with "None" option and list of available metrics)
   - Color (ColorPicker taking full width of column)
   - Action buttons at bottom: Archive/Unarchive, Delete
 - **Footer**: Cancel and Save buttons
-- **Validation**: Name is required, shows error if empty
+- **Validation**: Name is required, shows error if empty. Priority must be a whole number from 1 to 99; invalid input highlights the field and disables Save.
 
 **Priority:**
-- Priority is a number field (integer)
+- Priority is a whole number from 1 to 99 (`DEFAULT_INITIATIVE_PRIORITY` / default 3)
 - Lower number = higher priority (e.g., priority 1 appears before priority 3)
 - Default value: 3
 - Used for sorting initiatives on Strategy and Roadmap pages
 - Can be changed at any time when editing an initiative
+- Empty or non-integer input is an error (not coerced to 3)
 
 **Target Metric:**
 - Optional field linking an initiative to a metric
@@ -189,7 +190,7 @@ The Strategy Page is where users define the foundational elements of their produ
 - Values: Max 1000 characters
 - Metric names: Max 100 characters
 - Initiative names: Required, validated before saving
-- Initiative priority: Integer, minimum 1
+- Initiative priority: Whole number from 1 to 99; invalid value blocks Save and shows “Enter a whole number from 1 to 99.”
 - All required fields are validated before saving
 
 ## User Experience
