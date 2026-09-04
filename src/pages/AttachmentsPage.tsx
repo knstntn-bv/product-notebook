@@ -1,21 +1,24 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { Download, Plus, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { HeaderActions } from "@/components/HeaderActions";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { attachmentLinkFlags } from "@/lib/attachmentLinks";
+import { errorToast } from "@/lib/errorToast";
+import { requireProductId } from "@/lib/productQueries";
 import {
-  ATTACHMENTS_BUCKET,
+  deleteAttachment,
   downloadAttachmentFile,
-  ensureAttachmentFromFile,
   formatBytes,
+  formatQuotaUsed,
+  uploadFiles,
 } from "@/lib/attachments";
 
 type Attachment = Tables<"attachments">;
@@ -61,26 +64,13 @@ const AttachmentsPage = () => {
 
   const uploadMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      if (!currentProductId) throw new Error("No product selected");
-
-      let used = usedBytes;
-      let uploaded = 0;
-
-      for (const file of files) {
-        const result = await ensureAttachmentFromFile(currentProductId, file, used);
-        if (!result.ok) {
-          toast({ title: "Error", description: `${file.name}: ${result.message}`, variant: "destructive" });
-          continue;
-        }
-        if (!result.created) {
+      const productId = requireProductId(currentProductId);
+      const { created } = await uploadFiles(productId, files, usedBytes, {
+        onExisting: (file) => {
           toast({ title: "This file already exists", description: file.name });
-          continue;
-        }
-        used += file.size;
-        uploaded += 1;
-      }
-
-      return { uploaded };
+        },
+      });
+      return { uploaded: created };
     },
     onSuccess: ({ uploaded }) => {
       invalidateAttachmentQueries();
@@ -90,45 +80,30 @@ const AttachmentsPage = () => {
         });
       }
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       invalidateAttachmentQueries();
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      errorToast(error);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (attachment: Attachment) => {
-      const { error: storageError } = await supabase.storage
-        .from(ATTACHMENTS_BUCKET)
-        .remove([attachment.storage_path]);
-      if (storageError) throw storageError;
-
-      const { error } = await supabase.from("attachments").delete().eq("id", attachment.id);
-      if (error) throw error;
+      const productId = requireProductId(currentProductId);
+      await deleteAttachment(attachment, productId);
     },
     onSuccess: () => {
       invalidateAttachmentQueries();
       setAttachmentToDelete(null);
       toast({ title: "Attachment deleted" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   const handleDownload = async (attachment: Attachment) => {
     try {
       await downloadAttachmentFile(attachment);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Download failed",
-        variant: "destructive",
-      });
+      errorToast(error instanceof Error ? error : "Download failed");
     }
   };
 
@@ -169,7 +144,7 @@ const AttachmentsPage = () => {
         <>
           <p className="text-sm text-muted-foreground">No attachments yet.</p>
           <p className="text-sm text-muted-foreground">
-            {formatBytes(usedBytes)} of 200 MB used
+            {formatQuotaUsed(usedBytes)}
           </p>
         </>
       ) : (
@@ -235,43 +210,32 @@ const AttachmentsPage = () => {
             </Table>
           </div>
           <p className="text-sm text-muted-foreground">
-            {formatBytes(usedBytes)} of 200 MB used
+            {formatQuotaUsed(usedBytes)}
           </p>
         </>
       )}
 
-      <AlertDialog
+      <ConfirmDeleteDialog
         open={!!attachmentToDelete}
         onOpenChange={(open) => {
           if (!open) setAttachmentToDelete(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Attachment</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              {attachmentToDelete ? `"${attachmentToDelete.display_name}"` : "this file"}? This
-              detaches it from all hypotheses and features. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteMutation.isPending}
-              onClick={(event) => {
-                event.preventDefault();
-                if (attachmentToDelete) {
-                  deleteMutation.mutate(attachmentToDelete);
-                }
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Delete Attachment"
+        description={
+          <>
+            Are you sure you want to delete{" "}
+            {attachmentToDelete ? `"${attachmentToDelete.display_name}"` : "this file"}? This
+            detaches it from all hypotheses and features. This action cannot be undone.
+          </>
+        }
+        onConfirm={() => {
+          if (attachmentToDelete) {
+            deleteMutation.mutate(attachmentToDelete);
+          }
+        }}
+        confirmDisabled={deleteMutation.isPending}
+        closeOnConfirm={false}
+      />
     </div>
   );
 };

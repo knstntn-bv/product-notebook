@@ -7,39 +7,36 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Archive, ArchiveRestore } from "lucide-react";
 import { useProduct } from "@/contexts/ProductContext";
 import { MetricTagInput } from "@/components/MetricTagInput";
 import { EntityDialog } from "@/components/EntityDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { goalsKey, requireProductId, useGoalsQuery, type GoalRow } from "@/lib/productQueries";
+import { archiveRow, compareArchivedLast, compareByPriorityThenArchive, visibleByArchive } from "@/lib/archive";
+import { GOAL_QUARTERS, isGoalQuarter, type GoalQuarter } from "@/lib/goals";
+import { errorToast } from "@/lib/errorToast";
+import { DEFAULT_INITIATIVE_COLOR } from "@/lib/initiatives";
+import { applyOptimisticUpdate, rollbackOptimisticUpdate } from "@/lib/optimisticQuery";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 
-interface Goal {
-  id: string;
-  goal: string;
-  expected_result: string;
-  achieved_result: string;
-  done: boolean;
-  target_metrics: string[];
-  initiative_id: string;
-  quarter: "current" | "next" | "halfYear";
-  archived?: boolean;
-  archived_at?: string | null;
-}
+const QUARTER_LABELS: Record<GoalQuarter, string> = {
+  current: "Current Quarter",
+  next: "Next Quarter",
+  halfYear: "Next Half-Year",
+};
 
 const RoadmapPage = () => {
   const { initiatives, metrics, showArchived, currentProductId } = useProduct();
-  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [editingGoal, setEditingGoal] = useState<Partial<Goal> | null>(null);
+  const [editingGoal, setEditingGoal] = useState<Partial<GoalRow> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -52,33 +49,15 @@ const RoadmapPage = () => {
     })
   );
 
-  const quarters = [
-    { id: "current", label: "Current Quarter" },
-    { id: "next", label: "Next Quarter" },
-    { id: "halfYear", label: "Next Half-Year" },
-  ];
+  const quarters = GOAL_QUARTERS.map((id) => ({ id, label: QUARTER_LABELS[id] }));
 
-  // Fetch goals
-  const { data: goals = [] } = useQuery({
-    queryKey: ["goals", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
+  const { data: goals = [] } = useGoalsQuery(currentProductId);
 
   // Save goal mutation
   const saveGoalMutation = useMutation({
-    mutationFn: async (goal: Partial<Goal>) => {
-      if (!user) throw new Error("No user");
-      
+    mutationFn: async (goal: Partial<GoalRow>) => {
+      const productId = requireProductId(currentProductId);
+
       if (goal.id) {
         const { error } = await supabase
           .from("goals")
@@ -92,14 +71,14 @@ const RoadmapPage = () => {
             archived: goal.archived,
             archived_at: goal.archived_at,
           })
-          .eq("id", goal.id);
+          .eq("id", goal.id)
+          .eq("product_id", productId);
         if (error) throw error;
       } else {
-        if (!currentProductId) throw new Error("No product selected");
         const { error } = await supabase
           .from("goals")
           .insert({
-            product_id: currentProductId,
+            product_id: productId,
             initiative_id: goal.initiative_id!,
             goal: goal.goal!,
             expected_result: goal.expected_result || "",
@@ -113,91 +92,76 @@ const RoadmapPage = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      queryClient.invalidateQueries({ queryKey: goalsKey(currentProductId) });
       setEditingGoal(null);
       setIsDialogOpen(false);
       toast({ title: "Goal saved successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   // Delete goal mutation
   const deleteGoalMutation = useMutation({
     mutationFn: async (goalId: string) => {
-      if (!user) throw new Error("No user");
+      const productId = requireProductId(currentProductId);
       const { error } = await supabase
         .from("goals")
         .delete()
-        .eq("id", goalId);
+        .eq("id", goalId)
+        .eq("product_id", productId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      queryClient.invalidateQueries({ queryKey: goalsKey(currentProductId) });
       setEditingGoal(null);
       setIsDialogOpen(false);
       setDeleteAlertOpen(false);
       toast({ title: "Goal deleted successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   // Archive goal mutation
   const archiveGoalMutation = useMutation({
     mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
-      const updates: any = { archived };
-      if (archived) {
-        updates.archived_at = new Date().toISOString();
-      } else {
-        updates.archived_at = null;
-      }
-      const { error } = await supabase
-        .from("goals")
-        .update(updates)
-        .eq("id", id);
-      if (error) throw error;
+      const productId = requireProductId(currentProductId);
+      return archiveRow("goals", id, archived, productId);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["goals"] });
-      // Обновляем editingGoal для отображения изменений в диалоге
+    onSuccess: (fields, variables) => {
+      queryClient.invalidateQueries({ queryKey: goalsKey(currentProductId) });
       if (editingGoal?.id === variables.id) {
         setEditingGoal({
           ...editingGoal,
-          archived: variables.archived,
-          archived_at: variables.archived ? new Date().toISOString() : null,
+          archived: fields.archived,
+          archived_at: fields.archived_at,
         });
       }
-      toast({ 
-        title: variables.archived ? "Goal archived successfully" : "Goal unarchived successfully" 
+      toast({
+        title: fields.archived ? "Goal archived successfully" : "Goal unarchived successfully",
       });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   // Move goal mutation - optimistic update is handled in handleDragEnd
   const moveGoalMutation = useMutation({
-    mutationFn: async ({ id, initiative_id, quarter }: { id: string; initiative_id: string; quarter: "current" | "next" | "halfYear" }) => {
+    mutationFn: async ({ id, initiative_id, quarter }: { id: string; initiative_id: string; quarter: GoalQuarter }) => {
+      const productId = requireProductId(currentProductId);
       const { error } = await supabase
         .from("goals")
         .update({ initiative_id, quarter })
-        .eq("id", id);
+        .eq("id", id)
+        .eq("product_id", productId);
       if (error) throw error;
     },
-    onError: (error: any) => {
-      toast({ title: "Error moving goal", description: error.message, variant: "destructive" });
-    },
+    onError: (error) => errorToast(error, "Error moving goal"),
     onSettled: () => {
       // Always refetch after error or success to ensure we have the latest data from server
-      queryClient.invalidateQueries({ queryKey: ["goals", currentProductId] });
+      queryClient.invalidateQueries({ queryKey: goalsKey(currentProductId) });
     },
   });
 
-  const createGoal = (initiativeId: string, quarter: "current" | "next" | "halfYear") => {
+  const createGoal = (initiativeId: string, quarter: GoalQuarter) => {
     setEditingGoal({
       goal: "",
       expected_result: "",
@@ -206,6 +170,7 @@ const RoadmapPage = () => {
       target_metrics: [],
       initiative_id: initiativeId,
       quarter,
+      archived: false,
     });
     setIsDialogOpen(true);
   };
@@ -216,18 +181,9 @@ const RoadmapPage = () => {
     }
   };
 
-  const getGoalsForCell = (initiativeId: string, quarter: "current" | "next" | "halfYear") => {
-    let filteredGoals = goals.filter(i => i.initiative_id === initiativeId && i.quarter === quarter);
-    // Фильтруем архивные цели, если настройка showArchived выключена
-    if (!showArchived) {
-      filteredGoals = filteredGoals.filter(goal => !goal.archived);
-    }
-    // Сортируем: неархивные сначала, затем архивные
-    return filteredGoals.sort((a, b) => {
-      if (a.archived && !b.archived) return 1;
-      if (!a.archived && b.archived) return -1;
-      return 0;
-    });
+  const getGoalsForCell = (initiativeId: string, quarter: GoalQuarter) => {
+    const cellGoals = goals.filter(i => i.initiative_id === initiativeId && i.quarter === quarter);
+    return visibleByArchive(cellGoals, showArchived).sort(compareArchivedLast);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -244,12 +200,13 @@ const RoadmapPage = () => {
     const overId = over.id as string;
 
     let targetInitiativeId: string | null = null;
-    let targetQuarter: "current" | "next" | "halfYear" | null = null;
+    let targetQuarter: GoalQuarter | null = null;
 
     // Case 1: Dropped directly on a cell
     if (overId.startsWith("cell-")) {
       const parts = overId.substring(5).split("-"); // Remove "cell-" prefix
-      targetQuarter = parts[parts.length - 1] as "current" | "next" | "halfYear";
+      const last = parts[parts.length - 1];
+      targetQuarter = isGoalQuarter(last) ? last : null;
       targetInitiativeId = parts.slice(0, -1).join("-"); // Everything except the last part
     }
     // Case 2: Dropped on another card - find which cell that card belongs to
@@ -257,7 +214,7 @@ const RoadmapPage = () => {
       const targetGoal = goals.find(i => i.id === overId);
       if (targetGoal) {
         targetInitiativeId = targetGoal.initiative_id;
-        targetQuarter = targetGoal.quarter as "current" | "next" | "halfYear";
+        targetQuarter = isGoalQuarter(targetGoal.quarter) ? targetGoal.quarter : null;
       }
     }
 
@@ -266,23 +223,14 @@ const RoadmapPage = () => {
       const activeGoal = goals.find(i => i.id === activeId);
       
       if (activeGoal && (activeGoal.initiative_id !== targetInitiativeId || activeGoal.quarter !== targetQuarter)) {
-        // Cancel any outgoing refetches
-        queryClient.cancelQueries({ queryKey: ["goals", currentProductId] });
-
-        // Snapshot the previous value for rollback
-        const previousGoals = queryClient.getQueryData<Goal[]>(["goals", currentProductId]);
-
-        // Optimistically update immediately
-        if (previousGoals) {
-          const updatedGoals = previousGoals.map(goal =>
+        const previous = applyOptimisticUpdate(queryClient, goalsKey(currentProductId), (goals) =>
+          goals.map((goal) =>
             goal.id === activeId
               ? { ...goal, initiative_id: targetInitiativeId, quarter: targetQuarter }
-              : goal
-          );
-          queryClient.setQueryData<Goal[]>(["goals", currentProductId], updatedGoals);
-        }
+              : goal,
+          ),
+        );
 
-        // Then perform the mutation (will rollback on error)
         moveGoalMutation.mutate(
           {
             id: activeId,
@@ -290,11 +238,8 @@ const RoadmapPage = () => {
             quarter: targetQuarter,
           },
           {
-            onError: (error: any) => {
-              // Rollback on error
-              if (previousGoals) {
-                queryClient.setQueryData<Goal[]>(["goals", currentProductId], previousGoals);
-              }
+            onError: () => {
+              rollbackOptimisticUpdate(queryClient, goalsKey(currentProductId), previous);
             },
           }
         );
@@ -305,10 +250,10 @@ const RoadmapPage = () => {
   const activeGoal = activeId ? goals.find(i => i.id === activeId) : null;
 
   // Draggable Goal Card Component
-  const DraggableGoalCard = ({ goal }: { goal: Goal }) => {
+  const DraggableGoalCard = ({ goal }: { goal: GoalRow }) => {
     const isArchived = goal.archived || false;
     const initiativeColor =
-      initiatives.find((initiative) => initiative.id === goal.initiative_id)?.color || "#8B5CF6";
+      initiatives.find((initiative) => initiative.id === goal.initiative_id)?.color || DEFAULT_INITIATIVE_COLOR;
     const {
       attributes,
       listeners,
@@ -384,7 +329,7 @@ const RoadmapPage = () => {
     children 
   }: { 
     initiativeId: string; 
-    quarter: "current" | "next" | "halfYear";
+    quarter: GoalQuarter;
     children: ReactNode;
   }) => {
     const { setNodeRef, isOver } = useDroppable({
@@ -424,44 +369,35 @@ const RoadmapPage = () => {
               </tr>
             </thead>
             <tbody>
-              {initiatives
-                .filter(initiative => showArchived || !initiative.archived)
-                .sort((a, b) => {
-                  // Sort: first by priority ASC, then non-archived before archived
-                  if (a.priority !== b.priority) {
-                    return a.priority - b.priority;
-                  }
-                  if (a.archived && !b.archived) return 1;  // archived should be later
-                  if (!a.archived && b.archived) return -1; // non-archived should be earlier
-                  return 0;
-                })
+              {visibleByArchive(initiatives, showArchived)
+                .sort(compareByPriorityThenArchive)
                 .map(initiative => (
                 <tr key={initiative.id}>
                   <td className="border border-border bg-card p-4 font-medium relative pl-4">
                     <div
                       className="absolute left-0 top-0 bottom-0 w-1"
-                      style={{ backgroundColor: initiative.color || "#8B5CF6" }}
+                      style={{ backgroundColor: initiative.color || DEFAULT_INITIATIVE_COLOR }}
                     />
                     {initiative.name}
                   </td>
                   {quarters.map(quarter => {
-                    const cellGoals = getGoalsForCell(initiative.id, quarter.id as any);
+                    const cellGoals = getGoalsForCell(initiative.id, quarter.id);
                     return (
-                      <DroppableCell key={quarter.id} initiativeId={initiative.id} quarter={quarter.id as any}>
+                      <DroppableCell key={quarter.id} initiativeId={initiative.id} quarter={quarter.id}>
                         <div className="space-y-2 min-h-[200px]">
                           <SortableContext
                             items={cellGoals.map(i => i.id)}
                             strategy={verticalListSortingStrategy}
                           >
                             {cellGoals.map(goal => (
-                              <DraggableGoalCard key={goal.id} goal={goal as Goal} />
+                              <DraggableGoalCard key={goal.id} goal={goal} />
                             ))}
                           </SortableContext>
                           <Button
                             variant="outline"
                               size="sm"
                               className="w-full"
-                              onClick={() => createGoal(initiative.id, quarter.id as any)}
+                              onClick={() => createGoal(initiative.id, quarter.id)}
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Add Goal
@@ -495,7 +431,7 @@ const RoadmapPage = () => {
               <Label htmlFor="goal">Goal *</Label>
               <Input
                 id="goal"
-                value={editingGoal.goal}
+                value={editingGoal.goal || ""}
                 onChange={(e) => setEditingGoal({ ...editingGoal, goal: e.target.value })}
                 placeholder="Enter goal..."
               />
@@ -504,7 +440,7 @@ const RoadmapPage = () => {
               <Label htmlFor="expectedResult">Expected Result</Label>
               <Textarea
                 id="expectedResult"
-                value={editingGoal.expected_result}
+                value={editingGoal.expected_result ?? ""}
                 onChange={(e) => setEditingGoal({ ...editingGoal, expected_result: e.target.value })}
                 placeholder="Enter expected result..."
                 rows={6}
@@ -514,7 +450,7 @@ const RoadmapPage = () => {
               <Label htmlFor="achievedResult">Achieved Result</Label>
               <Textarea
                 id="achievedResult"
-                value={editingGoal.achieved_result}
+                value={editingGoal.achieved_result ?? ""}
                 onChange={(e) => setEditingGoal({ ...editingGoal, achieved_result: e.target.value })}
                 placeholder="Enter achieved result..."
                 rows={6}
@@ -536,8 +472,8 @@ const RoadmapPage = () => {
             <div>
               <Label htmlFor="quarter">Quarter *</Label>
               <Select
-                value={editingGoal.quarter}
-                onValueChange={(value) => setEditingGoal({ ...editingGoal, quarter: value as any })}
+                value={editingGoal.quarter as GoalQuarter | undefined}
+                onValueChange={(value: GoalQuarter) => setEditingGoal({ ...editingGoal, quarter: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select quarter" />
@@ -554,7 +490,7 @@ const RoadmapPage = () => {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="done"
-                checked={editingGoal.done}
+                checked={!!editingGoal.done}
                 onCheckedChange={(checked) => setEditingGoal({ ...editingGoal, done: checked as boolean })}
               />
               <Label htmlFor="done">Done</Label>
@@ -563,25 +499,13 @@ const RoadmapPage = () => {
         )}
       />
 
-      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Goal</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this goal? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => editingGoal?.id && deleteGoalMutation.mutate(editingGoal.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteAlertOpen}
+        onOpenChange={setDeleteAlertOpen}
+        title="Delete Goal"
+        description="Are you sure you want to delete this goal? This action cannot be undone."
+        onConfirm={() => editingGoal?.id && deleteGoalMutation.mutate(editingGoal.id)}
+      />
       </div>
 
       <DragOverlay>
@@ -592,7 +516,7 @@ const RoadmapPage = () => {
               style={{
                 backgroundColor:
                   initiatives.find((initiative) => initiative.id === activeGoal.initiative_id)?.color ||
-                  "#8B5CF6",
+                  DEFAULT_INITIATIVE_COLOR,
               }}
             />
             <CardContent className="p-3 pl-4">

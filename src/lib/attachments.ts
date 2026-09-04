@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { errorToast } from "@/lib/errorToast";
 
 export const ATTACHMENTS_BUCKET = "attachments";
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -42,8 +43,16 @@ export function isBlockedExecutable(filename: string): boolean {
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) {
+    const kb = bytes / 1024;
+    return `${Number.isInteger(kb) ? String(kb) : kb.toFixed(1)} KB`;
+  }
+  const mb = bytes / (1024 * 1024);
+  return `${Number.isInteger(mb) ? String(mb) : mb.toFixed(1)} MB`;
+}
+
+export function formatQuotaUsed(usedBytes: number): string {
+  return `${formatBytes(usedBytes)} of ${formatBytes(MAX_PRODUCT_BYTES)} used`;
 }
 
 export function attachmentStoragePath(productId: string, attachmentId: string): string {
@@ -128,6 +137,44 @@ export async function ensureAttachmentFromFile(
   return { ok: true, attachmentId: id, created: true };
 }
 
+export async function uploadFiles(
+  productId: string,
+  files: File[],
+  usedBytes: number,
+  options?: {
+    onExisting?: (file: File, attachmentId: string) => void | Promise<void>;
+    onAttached?: (
+      file: File,
+      attachmentId: string,
+      created: boolean,
+    ) => void | Promise<void>;
+  },
+): Promise<{ created: number; attached: number }> {
+  let used = usedBytes;
+  let created = 0;
+  let attached = 0;
+
+  for (const file of files) {
+    const result = await ensureAttachmentFromFile(productId, file, used);
+    if (!result.ok) {
+      errorToast(`${file.name}: ${result.message}`);
+      continue;
+    }
+    if (result.created) {
+      used += file.size;
+      created += 1;
+    } else {
+      await options?.onExisting?.(file, result.attachmentId);
+    }
+    if (options?.onAttached) {
+      await options.onAttached(file, result.attachmentId, result.created);
+      attached += 1;
+    }
+  }
+
+  return { created, attached };
+}
+
 export async function downloadAttachmentFile(attachment: {
   storage_path: string;
   original_filename: string;
@@ -145,6 +192,23 @@ export async function downloadAttachmentFile(attachment: {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function deleteAttachment(
+  attachment: { id: string; storage_path: string },
+  productId: string,
+): Promise<void> {
+  const { error: storageError } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .remove([attachment.storage_path]);
+  if (storageError) throw storageError;
+
+  const { error } = await supabase
+    .from("attachments")
+    .delete()
+    .eq("id", attachment.id)
+    .eq("product_id", productId);
+  if (error) throw error;
 }
 
 export function validateAttachmentFile(

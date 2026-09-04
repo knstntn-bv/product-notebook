@@ -1,58 +1,40 @@
 import { createContext, useContext, ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface Metric {
-  id: string;
-  name: string;
-  parent_metric_id?: string;
-}
-
-interface Initiative {
-  id: string;
-  name: string;
-  description: string;
-  color?: string;
-  archived?: boolean;
-  archived_at?: string | null;
-  target_metric_id?: string | null;
-  priority: number;
-}
-
-interface Product {
-  id: string;
-  user_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
-}
+import { errorToast } from "@/lib/errorToast";
+import {
+  currentProductKey,
+  projectSettingsKey,
+  requireProductId,
+  useInitiativesQuery,
+  useMetricsQuery,
+  type InitiativeRow,
+  type MetricRow,
+  type ProductRow,
+} from "@/lib/productQueries";
 
 interface ProductContextType {
-  metrics: Metric[];
-  initiatives: Initiative[];
+  metrics: MetricRow[];
+  initiatives: InitiativeRow[];
   currentProductId: string | null;
   currentProductName: string | null;
   isLoading: boolean;
-  refetchCurrentProduct: () => void;
-  refetchMetrics: () => void;
-  refetchInitiatives: () => void;
   showArchived: boolean;
   setShowArchived: (value: boolean) => void;
-  refetchShowArchived: () => void;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const effectiveUserId = user?.id;
 
-  // Get current product for the user (first/default product)
-  const { data: currentProduct, isLoading: productLoading, refetch: refetchCurrentProduct } = useQuery({
-    queryKey: ["current_product", effectiveUserId],
-    queryFn: async () => {
+  const { data: currentProduct, isLoading: productLoading } = useQuery({
+    queryKey: currentProductKey(effectiveUserId),
+    queryFn: async (): Promise<ProductRow | null> => {
       if (!effectiveUserId) return null;
       const { data, error } = await supabase
         .from("products")
@@ -62,7 +44,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         .limit(1)
         .maybeSingle();
       if (error && error.code !== "PGRST116") throw error;
-      return data as Product | null;
+      return data;
     },
     enabled: !!effectiveUserId,
   });
@@ -70,39 +52,13 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const currentProductId = currentProduct?.id || null;
   const currentProductName = currentProduct?.name || null;
 
-  const { data: metrics = [], isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
-    queryKey: ["metrics", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("metrics")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
+  const { data: metrics = [], isLoading: metricsLoading } = useMetricsQuery(currentProductId);
 
-  const { data: initiatives = [], isLoading: initiativesLoading, refetch: refetchInitiatives } = useQuery({
-    queryKey: ["initiatives", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("initiatives")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("priority", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
+  const { data: initiatives = [], isLoading: initiativesLoading } =
+    useInitiativesQuery(currentProductId);
 
-  // Fetch showArchived setting
-  const { data: showArchivedData, refetch: refetchShowArchived } = useQuery({
-    queryKey: ["project_settings", currentProductId],
+  const { data: showArchivedData } = useQuery({
+    queryKey: projectSettingsKey(currentProductId),
     queryFn: async () => {
       if (!currentProductId) return { show_archived: false };
       const { data, error } = await supabase
@@ -118,27 +74,37 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
 
   const showArchived = showArchivedData?.show_archived ?? false;
 
-  const setShowArchived = async (value: boolean) => {
-    if (!user || !currentProductId) return;
-    
-    const { data: existing } = await supabase
-      .from("project_settings")
-      .select("*")
-      .eq("product_id", currentProductId)
-      .maybeSingle();
+  const setShowArchivedMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      const productId = requireProductId(currentProductId);
+      const { data: existing, error: selectError } = await supabase
+        .from("project_settings")
+        .select("*")
+        .eq("product_id", productId)
+        .maybeSingle();
+      if (selectError && selectError.code !== "PGRST116") throw selectError;
 
-    if (existing) {
-      await supabase
-        .from("project_settings")
-        .update({ show_archived: value })
-        .eq("product_id", currentProductId);
-    } else {
-      await supabase
-        .from("project_settings")
-        .insert({ product_id: currentProductId, show_archived: value });
-    }
-    
-    refetchShowArchived();
+      if (existing) {
+        const { error } = await supabase
+          .from("project_settings")
+          .update({ show_archived: value })
+          .eq("product_id", productId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("project_settings")
+          .insert({ product_id: productId, show_archived: value });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectSettingsKey(currentProductId) });
+    },
+    onError: errorToast,
+  });
+
+  const setShowArchived = (value: boolean) => {
+    setShowArchivedMutation.mutate(value);
   };
 
   return (
@@ -149,12 +115,8 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         currentProductId,
         currentProductName,
         isLoading: productLoading || metricsLoading || initiativesLoading,
-        refetchCurrentProduct,
-        refetchMetrics,
-        refetchInitiatives,
         showArchived,
         setShowArchived,
-        refetchShowArchived
       }}
     >
       {children}

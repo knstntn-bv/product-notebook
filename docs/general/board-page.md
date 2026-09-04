@@ -58,7 +58,7 @@ Each feature card shows:
 
 ### Creating Features
 
-1. Click the "Add" button at the top of any column
+1. Click the "Add" button at the top of any column (not in the app header; see [Page actions](./main-application.md#page-actions))
 2. A dialog opens with feature editing form
 3. Fill in the required fields:
    - **Title**: Feature name (required)
@@ -131,11 +131,11 @@ The feature editing dialog provides a user-friendly interface for creating and e
 
 **Dialog Structure (Desktop - Two-Column):**
 - **Header**: Fixed at the top, contains the dialog title
-- **Left Column (70%)**: Contains all text input fields:
+- **Left Column (~67%)**: Contains all text input fields:
   - Human Readable ID (read-only, displayed for existing features)
   - Title (Input)
   - Description (Textarea)
-- **Right Column (30%)**: Contains:
+- **Right Column (~33%)**: Contains:
   - Linked Goal (Popover dropdown)
   - Linked Initiative (Popover dropdown)
   - Board Column (Select dropdown)
@@ -214,7 +214,7 @@ The feature editing dialog provides a user-friendly interface for creating and e
   - Automatically set when creating a feature from a hypothesis
   - Automatically set when creating a hypothesis from a feature via "Discovery this feature"
   - Many features can reference the same hypothesis (many-to-one relationship)
-- **Attachments**: Button on saved features only. Opens a dialog to attach library files, upload new ones (duplicates are reused), or detach. Does not delete files from the product. Changing **Linked Hypothesis** does not copy or remove file links.
+- **Attachments**: Button on saved features only. Opens a dialog to attach library files, upload new ones (duplicates are reused), or detach. Does not delete files from the product. Choosing a **Linked Hypothesis** copies attachment links both ways (union; existing links are not removed). Clearing to None or saving without changing the hypothesis does not copy or detach files.
 - **Discovery this feature**: Button to create a hypothesis from the current feature
   - Only available for saved features (disabled for unsaved features)
   - Opens hypothesis creation dialog with pre-filled fields:
@@ -223,7 +223,7 @@ The feature editing dialog provides a user-friendly interface for creating and e
   - After saving the hypothesis:
     - Feature is automatically linked to the created hypothesis
     - Feature is automatically moved to "Discovery" column
-    - Files attached to the feature are attached to the new hypothesis
+    - Attachment links are copied both ways (feature files appear on the new hypothesis; hypothesis files, if any, appear on the feature)
     - Both dialogs close automatically
 - **Board Column**: Current board column (required, Select dropdown)
 
@@ -334,7 +334,7 @@ Each feature has a unique human-readable identifier that is automatically genera
 ### State Management
 
 - Uses React Query for data fetching
-- Optimistic updates for drag and drop operations
+- Optimistic drag commit via `applyOptimisticUpdate` (preview during the gesture still writes the cache locally)
 - Automatic position recalculation
 - Error handling with rollback on failure
 - Refetching after mutations to ensure consistency

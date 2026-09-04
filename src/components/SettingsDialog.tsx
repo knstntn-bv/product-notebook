@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
+import { errorToast } from "@/lib/errorToast";
+import { currentProductKey, requireProductId } from "@/lib/productQueries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,9 +18,10 @@ interface SettingsDialogProps {
 
 export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const { toast } = useToast();
-  const { currentProductId, currentProductName, refetchCurrentProduct } = useProduct();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { currentProductId, currentProductName } = useProduct();
   const [productNameInput, setProductNameInput] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -27,34 +32,30 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const trimmedName = useMemo(() => productNameInput.trim(), [productNameInput]);
   const hasLengthError = trimmedName.length < 1 || trimmedName.length > 100;
   const isUnchanged = trimmedName === (currentProductName ?? "").trim();
-  const saveDisabled = !currentProductId || hasLengthError || isUnchanged || isSaving;
 
-  const handleSave = async () => {
-    if (!currentProductId || hasLengthError || isUnchanged) return;
-
-    setIsSaving(true);
-    const { error } = await supabase
-      .from("products")
-      .update({ name: trimmedName })
-      .eq("id", currentProductId);
-
-    if (error) {
+  const saveNameMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const productId = requireProductId(currentProductId);
+      const { error } = await supabase.from("products").update({ name }).eq("id", productId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: currentProductKey(user?.id) });
       toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+        title: "Saved",
+        description: "Product name has been updated.",
       });
-      setIsSaving(false);
-      return;
-    }
+      onOpenChange(false);
+    },
+    onError: errorToast,
+  });
 
-    await refetchCurrentProduct();
-    toast({
-      title: "Saved",
-      description: "Product name has been updated.",
-    });
-    setIsSaving(false);
-    onOpenChange(false);
+  const saveDisabled =
+    !currentProductId || hasLengthError || isUnchanged || saveNameMutation.isPending;
+
+  const handleSave = () => {
+    if (!currentProductId || hasLengthError || isUnchanged) return;
+    saveNameMutation.mutate(trimmedName);
   };
 
   return (
@@ -81,11 +82,15 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saveNameMutation.isPending}
+            >
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saveDisabled}>
-              {isSaving ? "Saving..." : "Save"}
+              {saveNameMutation.isPending ? "Saving..." : "Save"}
             </Button>
           </div>
         </div>

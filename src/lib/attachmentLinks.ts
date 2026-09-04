@@ -2,23 +2,39 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AttachmentLinkKind = "hypothesis" | "feature";
 
+const ATTACHMENT_LINK_TARGETS = {
+  hypothesis: {
+    table: "hypothesis_attachments",
+    entityColumn: "hypothesis_id",
+  },
+  feature: {
+    table: "feature_attachments",
+    entityColumn: "feature_id",
+  },
+} as const;
+
+function attachmentLinkTarget(kind: AttachmentLinkKind) {
+  return ATTACHMENT_LINK_TARGETS[kind];
+}
+
+function linkRow(
+  kind: AttachmentLinkKind,
+  entityId: string,
+  attachmentId: string,
+) {
+  const { entityColumn } = attachmentLinkTarget(kind);
+  return { [entityColumn]: entityId, attachment_id: attachmentId } as never;
+}
+
 export async function listLinkedAttachmentIds(
   kind: AttachmentLinkKind,
   entityId: string,
 ): Promise<string[]> {
-  if (kind === "hypothesis") {
-    const { data, error } = await supabase
-      .from("hypothesis_attachments")
-      .select("attachment_id")
-      .eq("hypothesis_id", entityId);
-    if (error) throw error;
-    return (data ?? []).map((row) => row.attachment_id);
-  }
-
+  const { table, entityColumn } = attachmentLinkTarget(kind);
   const { data, error } = await supabase
-    .from("feature_attachments")
+    .from(table)
     .select("attachment_id")
-    .eq("feature_id", entityId);
+    .eq(entityColumn, entityId);
   if (error) throw error;
   return (data ?? []).map((row) => row.attachment_id);
 }
@@ -28,19 +44,8 @@ export async function attachToEntity(
   entityId: string,
   attachmentId: string,
 ): Promise<void> {
-  if (kind === "hypothesis") {
-    const { error } = await supabase.from("hypothesis_attachments").insert({
-      hypothesis_id: entityId,
-      attachment_id: attachmentId,
-    });
-    if (error && error.code !== "23505") throw error;
-    return;
-  }
-
-  const { error } = await supabase.from("feature_attachments").insert({
-    feature_id: entityId,
-    attachment_id: attachmentId,
-  });
+  const { table } = attachmentLinkTarget(kind);
+  const { error } = await supabase.from(table).insert(linkRow(kind, entityId, attachmentId));
   if (error && error.code !== "23505") throw error;
 }
 
@@ -49,20 +54,11 @@ export async function detachFromEntity(
   entityId: string,
   attachmentId: string,
 ): Promise<void> {
-  if (kind === "hypothesis") {
-    const { error } = await supabase
-      .from("hypothesis_attachments")
-      .delete()
-      .eq("hypothesis_id", entityId)
-      .eq("attachment_id", attachmentId);
-    if (error) throw error;
-    return;
-  }
-
+  const { table, entityColumn } = attachmentLinkTarget(kind);
   const { error } = await supabase
-    .from("feature_attachments")
+    .from(table)
     .delete()
-    .eq("feature_id", entityId)
+    .eq(entityColumn, entityId)
     .eq("attachment_id", attachmentId);
   if (error) throw error;
 }
@@ -76,26 +72,20 @@ export async function copyAttachmentLinks(
   const attachmentIds = await listLinkedAttachmentIds(fromKind, fromId);
   if (attachmentIds.length === 0) return;
 
-  if (toKind === "hypothesis") {
-    const { error } = await supabase.from("hypothesis_attachments").upsert(
-      attachmentIds.map((attachment_id) => ({
-        hypothesis_id: toId,
-        attachment_id,
-      })),
-      { ignoreDuplicates: true },
-    );
-    if (error) throw error;
-    return;
-  }
-
-  const { error } = await supabase.from("feature_attachments").upsert(
-    attachmentIds.map((attachment_id) => ({
-      feature_id: toId,
-      attachment_id,
-    })),
+  const { table } = attachmentLinkTarget(toKind);
+  const { error } = await supabase.from(table).upsert(
+    attachmentIds.map((attachmentId) => linkRow(toKind, toId, attachmentId)),
     { ignoreDuplicates: true },
   );
   if (error) throw error;
+}
+
+export async function syncAttachmentLinksForFeatureHypothesis(
+  featureId: string,
+  hypothesisId: string,
+): Promise<void> {
+  await copyAttachmentLinks("hypothesis", hypothesisId, "feature", featureId);
+  await copyAttachmentLinks("feature", featureId, "hypothesis", hypothesisId);
 }
 
 export async function attachmentLinkFlags(attachmentIds: string[]): Promise<{
@@ -108,11 +98,11 @@ export async function attachmentLinkFlags(attachmentIds: string[]): Promise<{
 
   const [hypotheses, features] = await Promise.all([
     supabase
-      .from("hypothesis_attachments")
+      .from(ATTACHMENT_LINK_TARGETS.hypothesis.table)
       .select("attachment_id")
       .in("attachment_id", attachmentIds),
     supabase
-      .from("feature_attachments")
+      .from(ATTACHMENT_LINK_TARGETS.feature.table)
       .select("attachment_id")
       .in("attachment_id", attachmentIds),
   ]);

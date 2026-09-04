@@ -49,7 +49,7 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 
 - **Current Product Selection**: Tracks which product is currently active (`currentProductId`)
 - **Automatic Product Selection**: Automatically selects the user's first product (by creation date)
-- **Data Fetching**: All queries are filtered by `product_id`
+- **Data Fetching and Writes**: Select, insert, update, and delete on tables with `product_id` are scoped to the current product. Lists use `.eq("product_id", …)`; inserts set `product_id` in the payload; updates and deletes use `.eq("id", …)` **and** `.eq("product_id", …)`
 - **Settings Management**: Manages product-specific settings (e.g., `show_archived`)
 
 ## Data Tables
@@ -66,7 +66,7 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 - `board_column`: Current stage in workflow
 - `position`: Order within column
 - `human_readable_id`: Unique identifier per product (format: `XXX-N`)
-- `closed_at`: Timestamp when feature was closed (moved to Done or Cancelled column) - nullable, updated on each move to these columns
+- `closed_at`: Timestamp when the feature was last closed (Done or Cancelled); `null` when the card is in any other column
 
 **Relationships:**
 - **Many-to-One with Hypotheses**: Multiple features can reference the same hypothesis
@@ -78,10 +78,11 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
   - Deleting a feature removes only the links; files stay in the product library
 
 **Closed At Field:**
-- `closed_at` is automatically set to the current timestamp when a feature is moved to "Done" or "Cancelled" columns
-- The field is updated (not reset) each time a feature is moved to these columns
-- When a feature is moved from "Done"/"Cancelled" to another column, `closed_at` remains unchanged
-- This field is used for tracking when features were completed or cancelled (technical requirement for future functionality)
+- `closed_at` is set to the current timestamp when a feature is created in or moved to "Done" or "Cancelled"
+- Moving again into "Done" or "Cancelled" overwrites the timestamp
+- Moving from "Done"/"Cancelled" to any other column (drag, save, Discover) sets `closed_at` to `null`
+- Reordering inside the same column does not change `closed_at`
+- The field is for tracking when features were completed or cancelled (technical requirement for future functionality)
 
 **Note**: Sequential numbering in `human_readable_id` is scoped to the product.
 
@@ -107,7 +108,7 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 - `impact_metrics`: Array of metric names (not foreign keys)
 
 **Status Order:**
-- Statuses have a defined order for sorting: New → In work → Accepted → Done → Rejected
+- Statuses have a defined order for sorting: New → In Progress → Accepted → Done → Rejected
 - This order is used in the status selection menu and when sorting by status
 
 **Sorting:**
@@ -162,9 +163,9 @@ Both use `ON DELETE CASCADE` from the entity and from the attachment. A trigger 
 - `product_id`: Foreign key to products (NOT NULL)
 - `name`: Initiative name
 - `description`: Initiative description (optional)
-- `color`: Visual color identifier (default: #8B5CF6)
+- `color`: Visual color identifier (default: `DEFAULT_INITIATIVE_COLOR` / #8B5CF6; SQL DEFAULT '#8B5CF6')
 - `target_metric_id`: Optional reference to target metric (FK to metrics.id)
-- `priority`: Priority number (integer, NOT NULL, DEFAULT 3) - lower number = higher priority
+- `priority`: Priority number (integer, NOT NULL, DEFAULT 3) - lower number = higher priority. The client accepts integers 1–99; there is no SQL CHECK on the column.
 - `archived`: Archive status
 - `archived_at`: Archive timestamp
 

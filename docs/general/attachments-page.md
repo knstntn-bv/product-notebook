@@ -12,6 +12,7 @@ The Attachments page is the product file library: upload, list, download, and de
 
 ## Behavior
 
+- **Upload** is a page-level action in the app header (`HeaderActions`; see [Page actions](./main-application.md#page-actions)). Linking files to a hypothesis or feature uses the editor dialog, not this button.
 - Files belong to the current product (`product_id`).
 - Upload is limited to 10 MB per file and 200 MB per product. Executables are rejected.
 - Duplicate content (SHA-256) does not create a second Storage object; the user is told the file already exists.

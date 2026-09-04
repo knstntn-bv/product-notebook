@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DEFAULT_INITIATIVE_COLOR } from "@/lib/initiatives";
 
 const INITIATIVE_COLORS: { value: string; label: string }[] = [
   { value: "#EF4444", label: "Red" },
@@ -10,7 +11,7 @@ const INITIATIVE_COLORS: { value: string; label: string }[] = [
   { value: "#14B8A6", label: "Teal" },
   { value: "#06B6D4", label: "Cyan" },
   { value: "#3B82F6", label: "Blue" },
-  { value: "#8B5CF6", label: "Violet" },
+  { value: DEFAULT_INITIATIVE_COLOR, label: "Violet" },
   { value: "#EC4899", label: "Pink" },
 ];
 
@@ -21,7 +22,10 @@ interface ColorPickerProps {
 }
 
 export const ColorPicker = ({ value, onChange, className }: ColorPickerProps) => {
-  const current = INITIATIVE_COLORS.find((c) => c.value === value) || INITIATIVE_COLORS[0];
+  const current =
+    INITIATIVE_COLORS.find((c) => c.value === value) ??
+    INITIATIVE_COLORS.find((c) => c.value === DEFAULT_INITIATIVE_COLOR) ??
+    INITIATIVE_COLORS[0];
 
   return (
     <Select value={current.value} onValueChange={(val) => onChange(val)}>

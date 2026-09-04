@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { errorToast } from "@/lib/errorToast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import {
@@ -14,8 +15,9 @@ import {
 } from "@/lib/attachmentLinks";
 import {
   downloadAttachmentFile,
-  ensureAttachmentFromFile,
   formatBytes,
+  formatQuotaUsed,
+  uploadFiles,
 } from "@/lib/attachments";
 
 type Attachment = Tables<"attachments">;
@@ -84,9 +86,7 @@ export const EntityAttachmentsDialog = ({
       invalidate();
       toast({ title: "Attachment linked" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
     onSettled: () => setPendingId(null),
   });
 
@@ -99,37 +99,18 @@ export const EntityAttachmentsDialog = ({
       invalidate();
       toast({ title: "Attachment detached" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
     onSettled: () => setPendingId(null),
   });
 
   const uploadMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      let used = usedBytes;
-      let attachedCount = 0;
-      let createdCount = 0;
-
-      for (const file of files) {
-        const result = await ensureAttachmentFromFile(productId, file, used);
-        if (!result.ok) {
-          toast({
-            title: "Error",
-            description: `${file.name}: ${result.message}`,
-            variant: "destructive",
-          });
-          continue;
-        }
-        if (result.created) {
-          used += file.size;
-          createdCount += 1;
-        }
-        await attachToEntity(kind, entityId, result.attachmentId);
-        attachedCount += 1;
-      }
-
-      return { attachedCount, createdCount };
+      const { created, attached } = await uploadFiles(productId, files, usedBytes, {
+        onAttached: async (_file, attachmentId) => {
+          await attachToEntity(kind, entityId, attachmentId);
+        },
+      });
+      return { attachedCount: attached, createdCount: created };
     },
     onSuccess: ({ attachedCount, createdCount }) => {
       invalidate();
@@ -146,9 +127,9 @@ export const EntityAttachmentsDialog = ({
         });
       }
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       invalidate();
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      errorToast(error);
     },
   });
 
@@ -156,11 +137,7 @@ export const EntityAttachmentsDialog = ({
     try {
       await downloadAttachmentFile(attachment);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Download failed",
-        variant: "destructive",
-      });
+      errorToast(error instanceof Error ? error : "Download failed");
     }
   };
 
@@ -227,7 +204,7 @@ export const EntityAttachmentsDialog = ({
 
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">{formatBytes(usedBytes)} of 200 MB used</p>
+            <p className="text-sm text-muted-foreground">{formatQuotaUsed(usedBytes)}</p>
             <Button
               type="button"
               size="sm"

@@ -1,75 +1,55 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Check, ChevronsUpDown, Paperclip } from "lucide-react";
+import { Plus, Paperclip } from "lucide-react";
+import { applyClosedAt, BOARD_COLUMNS, type BoardColumnId } from "@/lib/board";
+import { createFeature as createFeatureRecord } from "@/lib/features";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { EntityDialog } from "@/components/EntityDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { EntityCombobox } from "@/components/EntityCombobox";
 import { EntityAttachmentsDialog } from "@/components/EntityAttachmentsDialog";
-import { copyAttachmentLinks } from "@/lib/attachmentLinks";
-import { MetricTagInput } from "@/components/MetricTagInput";
+import { syncAttachmentLinksForFeatureHypothesis } from "@/lib/attachmentLinks";
+import {
+  HypothesisFormLeftContent,
+  HypothesisFormStatusAndPriority,
+} from "@/components/HypothesisFormFields";
+import {
+  DEFAULT_HYPOTHESIS_PRIORITY,
+  emptyHypothesisForm,
+  parseHypothesisPriorityInput,
+  type HypothesisFormValue,
+} from "@/lib/hypotheses";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useProduct } from "@/contexts/ProductContext";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { featuresKey, hypothesesKey, requireProductId, useFeaturesQuery, useGoalsQuery, useHypothesesQuery, type FeatureRow } from "@/lib/productQueries";
+import { visibleByArchive } from "@/lib/archive";
+import { cascadeInitiativeFromGoal } from "@/lib/goals";
+import { errorToast } from "@/lib/errorToast";
+import { DEFAULT_INITIATIVE_COLOR } from "@/lib/initiatives";
+import { applyOptimisticUpdate, rollbackOptimisticUpdate } from "@/lib/optimisticQuery";
 import { cn } from "@/lib/utils";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, PointerSensor, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type ColumnId = "inbox" | "discovery" | "backlog" | "design" | "development" | "onHold" | "done" | "cancelled";
-type Status = "new" | "inProgress" | "accepted" | "rejected";
-
-interface Feature {
-  id: string;
-  title: string;
-  description: string;
-  goal_id?: string;
-  initiative_id?: string;
-  hypothesis_id?: string;
-  board_column: ColumnId;
-  position: number;
-  human_readable_id?: string;
-  closed_at?: string | null;
-}
-
-interface Goal {
-  id: string;
-  goal: string;
-  initiative_id: string;
-  archived?: boolean;
-}
-
-interface Initiative {
-  id: string;
-  name: string;
-  color?: string;
-  archived?: boolean;
-  target_metric_id?: string | null;
-  priority: number;
-}
-
 const BoardPage = () => {
-  const { user } = useAuth();
-  const { currentProductId, metrics } = useProduct();
+  const { currentProductId, metrics, initiatives } = useProduct();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [editingFeature, setEditingFeature] = useState<Partial<Feature> | null>(null);
+  const [editingFeature, setEditingFeature] = useState<Partial<FeatureRow> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const [initiativeOpen, setInitiativeOpen] = useState(false);
-  const [hypothesisOpen, setHypothesisOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const originalFeaturesRef = useRef<Feature[] | null>(null);
+  const originalFeaturesRef = useRef<FeatureRow[] | null>(null);
   const [creatingHypothesisFromFeature, setCreatingHypothesisFromFeature] = useState<{
     featureId: string;
     title: string;
@@ -77,16 +57,9 @@ const BoardPage = () => {
   } | null>(null);
   const [isHypothesisDialogOpen, setIsHypothesisDialogOpen] = useState(false);
   const [attachmentsDialogOpen, setAttachmentsDialogOpen] = useState(false);
-  const [editingHypothesis, setEditingHypothesis] = useState<Partial<{
-    id: string;
-    status: Status;
-    insight: string;
-    problem_hypothesis: string;
-    problem_validation: string;
-    solution_hypothesis: string;
-    solution_validation: string;
-    impact_metrics: string[];
-  }> | null>(null);
+  const [editingHypothesis, setEditingHypothesis] = useState<Partial<HypothesisFormValue> | null>(null);
+  const [hypothesisPriorityInput, setHypothesisPriorityInput] = useState("");
+  const [hypothesisPriorityFieldError, setHypothesisPriorityFieldError] = useState(false);
 
   const isMobile = useIsMobile();
 
@@ -98,95 +71,17 @@ const BoardPage = () => {
     })
   );
 
-  const columns: { id: ColumnId; label: string }[] = [
-    { id: "inbox", label: "Inbox" },
-    { id: "discovery", label: "Discovery" },
-    { id: "backlog", label: "Backlog" },
-    { id: "design", label: "Design & Analysis" },
-    { id: "development", label: "Development & Testing" },
-    { id: "onHold", label: "On Hold / Blocked" },
-    { id: "done", label: "Done" },
-    { id: "cancelled", label: "Cancelled" },
-  ];
-
-  const statuses: { value: Status; label: string }[] = [
-    { value: "new", label: "New" },
-    { value: "inProgress", label: "In Progress" },
-    { value: "accepted", label: "Accepted" },
-    { value: "rejected", label: "Rejected" },
-  ];
-
-  // Fetch features
-  const { data: features = [] } = useQuery({
-    queryKey: ["features", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("features")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("position", { ascending: true });
-      if (error) throw error;
-      return (data || []) as Feature[];
-    },
-    enabled: !!currentProductId,
-  });
-
-  // Fetch goals
-  const { data: goals = [] } = useQuery({
-    queryKey: ["goals", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
-
-  // Fetch initiatives
-  const { data: initiatives = [] } = useQuery({
-    queryKey: ["initiatives", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("initiatives")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
-
-  // Fetch hypotheses
-  const { data: hypotheses = [] } = useQuery({
-    queryKey: ["hypotheses", currentProductId],
-    queryFn: async () => {
-      if (!currentProductId) return [];
-      const { data, error } = await supabase
-        .from("hypotheses")
-        .select("*")
-        .eq("product_id", currentProductId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProductId,
-  });
+  const { data: features = [] } = useFeaturesQuery(currentProductId);
+  const { data: goals = [] } = useGoalsQuery(currentProductId);
+  const { data: hypotheses = [] } = useHypothesesQuery(currentProductId);
 
   // Save feature mutation
   const saveFeatureMutation = useMutation({
-    mutationFn: async (feature: Partial<Feature>) => {
-      if (!user) throw new Error("No user");
-      
+    mutationFn: async (feature: Partial<FeatureRow>) => {
+      const productId = requireProductId(currentProductId);
+
       if (feature.id) {
-        const updateData: any = {
+        const updateData: TablesUpdate<"features"> = {
           title: feature.title,
           description: feature.description,
           goal_id: feature.goal_id,
@@ -194,133 +89,98 @@ const BoardPage = () => {
           hypothesis_id: feature.hypothesis_id,
           board_column: feature.board_column,
           position: feature.position,
+          closed_at: applyClosedAt(feature.board_column),
         };
-        
-        // Set closed_at when board_column is done or cancelled
-        if (feature.board_column === 'done' || feature.board_column === 'cancelled') {
-          updateData.closed_at = new Date().toISOString();
-        }
         
         const { error } = await supabase
           .from("features")
           .update(updateData)
-          .eq("id", feature.id);
+          .eq("id", feature.id)
+          .eq("product_id", productId);
         if (error) throw error;
-      } else {
-        // Get the max position for the column
-        const columnFeatures = features.filter(f => f.board_column === feature.board_column);
-        const maxPosition = columnFeatures.length > 0 
-          ? Math.max(...columnFeatures.map(f => f.position)) 
-          : -1;
-        
-        // Generate human_readable_id
-        let prefix = "NNN";
-        if (feature.initiative_id) {
-          const initiative = initiatives.find(i => i.id === feature.initiative_id);
-          if (initiative?.name) {
-            // Take first 3 characters, uppercase
-            prefix = initiative.name
-              .substring(0, 3)
-              .toUpperCase();
-          }
+
+        const previousHypothesisId =
+          features.find((item) => item.id === feature.id)?.hypothesis_id ?? null;
+        const nextHypothesisId = feature.hypothesis_id || null;
+        if (nextHypothesisId && nextHypothesisId !== previousHypothesisId) {
+          await syncAttachmentLinksForFeatureHypothesis(feature.id, nextHypothesisId);
         }
-        
-        // Get total count of features for this product (sequential numbering)
-        if (!currentProductId) throw new Error("No product selected");
-        const { count } = await supabase
-          .from("features")
-          .select("*", { count: "exact", head: true })
-          .eq("product_id", currentProductId);
-        
-        const featureNumber = (count || 0) + 1;
-        const human_readable_id = `${prefix}-${featureNumber}`;
-        
-        const insertData: any = {
-          product_id: currentProductId,
-          title: feature.title!,
-          description: feature.description || "",
+      } else {
+        if (!feature.board_column) throw new Error("Column is required");
+        if (!feature.title) throw new Error("Title is required");
+        await createFeatureRecord({
+          productId,
+          title: feature.title,
+          description: feature.description,
           goal_id: feature.goal_id,
           initiative_id: feature.initiative_id,
           hypothesis_id: feature.hypothesis_id,
-          board_column: feature.board_column!,
-          position: maxPosition + 1,
-          human_readable_id: human_readable_id,
-        };
-        
-        // Set closed_at when board_column is done or cancelled
-        if (feature.board_column === 'done' || feature.board_column === 'cancelled') {
-          insertData.closed_at = new Date().toISOString();
-        }
-        
-        const { error } = await supabase
-          .from("features")
-          .insert(insertData);
-        if (error) throw error;
+          board_column: feature.board_column,
+          features,
+          initiatives,
+        });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["features"] });
+      queryClient.invalidateQueries({ queryKey: featuresKey(currentProductId) });
+      queryClient.invalidateQueries({ queryKey: ["feature_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["hypothesis_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
       setEditingFeature(null);
       setIsDialogOpen(false);
       toast({ title: "Feature saved successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   // Delete feature mutation
   const deleteFeatureMutation = useMutation({
     mutationFn: async (featureId: string) => {
-      if (!user) throw new Error("No user");
+      const productId = requireProductId(currentProductId);
       const { error } = await supabase
         .from("features")
         .delete()
-        .eq("id", featureId);
+        .eq("id", featureId)
+        .eq("product_id", productId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["features"] });
+      queryClient.invalidateQueries({ queryKey: featuresKey(currentProductId) });
       setEditingFeature(null);
       setIsDialogOpen(false);
       setDeleteAlertOpen(false);
       toast({ title: "Feature deleted successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   // Drag mutation - optimistic update is handled in handleDragEnd
   const dragFeatureMutation = useMutation({
     mutationFn: async ({ updates }: { updates: Array<{ id: string; position: number; board_column?: string }> }) => {
+      const productId = requireProductId(currentProductId);
       const promises = updates.map(update => {
-        const updateData: any = { 
+        const updateData: TablesUpdate<"features"> = {
           position: update.position,
-          ...(update.board_column && { board_column: update.board_column })
         };
-        
-        // Set closed_at when moving to done or cancelled
-        if (update.board_column === 'done' || update.board_column === 'cancelled') {
-          updateData.closed_at = new Date().toISOString();
+        if (update.board_column) {
+          updateData.board_column = update.board_column;
+          updateData.closed_at = applyClosedAt(update.board_column);
         }
-        
-        return supabase.from("features").update(updateData).eq("id", update.id);
+
+        return supabase.from("features").update(updateData).eq("id", update.id).eq("product_id", productId);
       });
       const results = await Promise.all(promises);
       const errors = results.filter(r => r.error);
       if (errors.length > 0) throw errors[0].error;
     },
-    onError: (error: any) => {
-      toast({ title: "Error moving feature", description: error.message, variant: "destructive" });
-    },
+    onError: (error) => errorToast(error, "Error moving feature"),
     onSettled: () => {
       // Always refetch after error or success to ensure sync
-      queryClient.invalidateQueries({ queryKey: ["features", currentProductId] });
+      queryClient.invalidateQueries({ queryKey: featuresKey(currentProductId) });
     },
   });
 
-  const createFeature = (columnId: ColumnId) => {
+  const createFeature = (columnId: BoardColumnId) => {
     setEditingFeature({
       title: "",
       description: "",
@@ -376,48 +236,12 @@ const BoardPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleGoalSelect = (goalId: string) => {
-    const selectedGoal = goals.find(i => i.id === goalId);
-    setEditingFeature({
-      ...editingFeature,
-      goal_id: goalId,
-      initiative_id: selectedGoal?.initiative_id,
-    });
-    setGoalOpen(false);
-  };
-
-  const handleInitiativeSelect = (initiativeId: string) => {
-    setEditingFeature({
-      ...editingFeature,
-      initiative_id: initiativeId,
-    });
-    setInitiativeOpen(false);
-  };
-
-  const handleHypothesisSelect = (hypothesisId: string | null) => {
-    setEditingFeature({
-      ...editingFeature,
-      hypothesis_id: hypothesisId || undefined,
-    });
-    setHypothesisOpen(false);
-  };
-
-  const getGoalName = (goalId?: string) => {
+  const getGoalName = (goalId?: string | null) => {
     return goals.find(i => i.id === goalId)?.goal || "";
   };
 
-  const getInitiativeName = (initiativeId?: string) => {
-    return initiatives.find(i => i.id === initiativeId)?.name || "";
-  };
-
-  const getInitiativeColor = (initiativeId?: string) => {
-    return initiatives.find(i => i.id === initiativeId)?.color || "#8B5CF6";
-  };
-
-  const getHypothesisName = (hypothesisId?: string) => {
-    if (!hypothesisId) return "";
-    const hypothesis = hypotheses.find((h: any) => h.id === hypothesisId);
-    return hypothesis?.insight || "Untitled hypothesis";
+  const getInitiativeColor = (initiativeId?: string | null) => {
+    return initiatives.find(i => i.id === initiativeId)?.color || DEFAULT_INITIATIVE_COLOR;
   };
 
   const handleDiscoveryThisFeature = () => {
@@ -434,14 +258,12 @@ const BoardPage = () => {
   // Предзаполнение полей гипотезы при открытии диалога
   useEffect(() => {
     if (creatingHypothesisFromFeature && isHypothesisDialogOpen) {
+      setHypothesisPriorityInput(String(DEFAULT_HYPOTHESIS_PRIORITY));
+      setHypothesisPriorityFieldError(false);
       setEditingHypothesis({
-        status: "new",
+        ...emptyHypothesisForm(),
         insight: creatingHypothesisFromFeature.title,
         problem_hypothesis: creatingHypothesisFromFeature.description,
-        problem_validation: "",
-        solution_hypothesis: "",
-        solution_validation: "",
-        impact_metrics: [],
       });
     }
   }, [creatingHypothesisFromFeature, isHypothesisDialogOpen]);
@@ -449,15 +271,16 @@ const BoardPage = () => {
   // Save hypothesis from feature mutation
   const saveHypothesisFromFeatureMutation = useMutation({
     mutationFn: async (hypothesis: NonNullable<typeof editingHypothesis>) => {
-      if (!currentProductId) throw new Error("No product selected");
+      const productId = requireProductId(currentProductId);
       if (!creatingHypothesisFromFeature) throw new Error("No feature context");
       
       // Создаем гипотезу
       const { data: newHypothesis, error: hypothesisError } = await supabase
         .from("hypotheses")
         .insert({
-          product_id: currentProductId,
+          product_id: productId,
           status: hypothesis.status || "new",
+          priority: hypothesis.priority ?? DEFAULT_HYPOTHESIS_PRIORITY,
           insight: hypothesis.insight || "",
           problem_hypothesis: hypothesis.problem_hypothesis || "",
           problem_validation: hypothesis.problem_validation || "",
@@ -476,43 +299,53 @@ const BoardPage = () => {
         .update({
           hypothesis_id: newHypothesis.id,
           board_column: "discovery",
+          closed_at: applyClosedAt("discovery"),
         })
-        .eq("id", creatingHypothesisFromFeature.featureId);
+        .eq("id", creatingHypothesisFromFeature.featureId)
+        .eq("product_id", productId);
       
       if (featureError) throw featureError;
 
-      await copyAttachmentLinks(
-        "feature",
+      await syncAttachmentLinksForFeatureHypothesis(
         creatingHypothesisFromFeature.featureId,
-        "hypothesis",
         newHypothesis.id,
       );
       
       return newHypothesis;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hypotheses", currentProductId] });
-      queryClient.invalidateQueries({ queryKey: ["features", currentProductId] });
+      queryClient.invalidateQueries({ queryKey: hypothesesKey(currentProductId) });
+      queryClient.invalidateQueries({ queryKey: featuresKey(currentProductId) });
+      queryClient.invalidateQueries({ queryKey: ["feature_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["hypothesis_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["attachment_link_flags"] });
       setCreatingHypothesisFromFeature(null);
       setEditingHypothesis(null);
+      setHypothesisPriorityInput("");
+      setHypothesisPriorityFieldError(false);
       setIsHypothesisDialogOpen(false);
       setIsDialogOpen(false); // Закрываем диалог фичи
       toast({ title: "Hypothesis created and feature linked successfully" });
     },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
+    onError: errorToast,
   });
 
   const handleSaveHypothesis = () => {
-    if (editingHypothesis) {
-      saveHypothesisFromFeatureMutation.mutate(editingHypothesis);
+    if (!editingHypothesis) return;
+    const parsed = parseHypothesisPriorityInput(hypothesisPriorityInput);
+    if (!parsed.ok) {
+      setHypothesisPriorityFieldError(true);
+      toast({
+        title: "Invalid priority",
+        description: "Enter a whole number from 1 to 99.",
+        variant: "destructive",
+      });
+      return;
     }
+    saveHypothesisFromFeatureMutation.mutate({ ...editingHypothesis, priority: parsed.value });
   };
 
-  const getFeaturesForColumn = (columnId: ColumnId) => {
+  const getFeaturesForColumn = (columnId: BoardColumnId) => {
     return features
       .filter(f => f.board_column === columnId)
       .sort((a, b) => {
@@ -528,7 +361,7 @@ const BoardPage = () => {
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
     // Store original state for preview
-    originalFeaturesRef.current = queryClient.getQueryData<Feature[]>(["features", currentProductId]) || null;
+    originalFeaturesRef.current = queryClient.getQueryData<FeatureRow[]>(featuresKey(currentProductId)) || null;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -541,7 +374,7 @@ const BoardPage = () => {
     
     if (activeId === overId) {
       // Same position, revert to original
-      queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
+      queryClient.setQueryData(featuresKey(currentProductId), originalFeaturesRef.current);
       setDragOverId(null);
       return;
     }
@@ -549,7 +382,7 @@ const BoardPage = () => {
     // Use original features to determine current state
     const activeFeature = originalFeaturesRef.current.find(f => f.id === activeId);
     const overFeature = originalFeaturesRef.current.find(f => f.id === overId);
-    const overColumn = columns.find(col => col.id === overId);
+    const overColumn = BOARD_COLUMNS.find(col => col.id === overId);
     
     if (!activeFeature) return;
     
@@ -558,7 +391,7 @@ const BoardPage = () => {
     if (dragOverId === currentDragOver) return; // Already showing this preview
     setDragOverId(currentDragOver);
     
-    let updatedFeatures: Feature[] = [];
+    let updatedFeatures: FeatureRow[] = [];
     
     // Case 1: Dragging over a feature (same or different column)
     if (overFeature) {
@@ -626,14 +459,14 @@ const BoardPage = () => {
       });
     } else {
       // No valid drop target, revert to original
-      queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
+      queryClient.setQueryData(featuresKey(currentProductId), originalFeaturesRef.current);
       setDragOverId(null);
       return;
     }
     
     // Apply preview update to show where item will land
     if (updatedFeatures.length > 0) {
-      queryClient.setQueryData(["features", currentProductId], updatedFeatures);
+      queryClient.setQueryData(featuresKey(currentProductId), updatedFeatures);
     }
   };
 
@@ -645,7 +478,7 @@ const BoardPage = () => {
     if (!over) {
       // Drag cancelled, revert to original state
       if (originalFeaturesRef.current) {
-        queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
+        queryClient.setQueryData(featuresKey(currentProductId), originalFeaturesRef.current);
       }
       originalFeaturesRef.current = null;
       return;
@@ -657,28 +490,25 @@ const BoardPage = () => {
     if (activeId === overId) {
       // Same position, revert to original if we had a preview
       if (originalFeaturesRef.current) {
-        queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
+        queryClient.setQueryData(featuresKey(currentProductId), originalFeaturesRef.current);
       }
       originalFeaturesRef.current = null;
       return;
     }
 
-    // Cancel any outgoing refetches
-    queryClient.cancelQueries({ queryKey: ["features", currentProductId] });
-    
-    // Get original state for rollback and feature lookup
-    const originalFeatures = originalFeaturesRef.current || queryClient.getQueryData<Feature[]>(["features", currentProductId]) || [];
+    const snapshot =
+      originalFeaturesRef.current ??
+      queryClient.getQueryData<FeatureRow[]>(featuresKey(currentProductId));
+    const originalFeatures = snapshot ?? [];
     const activeFeature = originalFeatures.find(f => f.id === activeId);
     const overFeature = originalFeatures.find(f => f.id === overId);
-    const overColumn = columns.find(col => col.id === overId);
-    
-    // Store original features for error rollback before clearing ref
-    const previousFeaturesForRollback = originalFeaturesRef.current;
+    const overColumn = BOARD_COLUMNS.find(col => col.id === overId);
+
     originalFeaturesRef.current = null;
 
     if (!activeFeature) return;
     
-    let updatedFeatures: Feature[] = [];
+    let updatedFeatures: FeatureRow[] = [];
     let updates: Array<{ id: string; position: number; board_column?: string }> = [];
 
     // Case 1: Dropped on a feature (same or different column)
@@ -774,13 +604,11 @@ const BoardPage = () => {
             const updatedFeature = {
               ...feature,
               position: update.position,
-              ...(update.board_column && { board_column: update.board_column as ColumnId })
+              ...(update.board_column && { board_column: update.board_column }),
+              ...(update.board_column
+                ? { closed_at: applyClosedAt(update.board_column) }
+                : {}),
             };
-            
-            // Set closed_at when moving to done or cancelled
-            if (update.board_column === 'done' || update.board_column === 'cancelled') {
-              updatedFeature.closed_at = new Date().toISOString();
-            }
             
             return updatedFeature;
           }
@@ -819,13 +647,11 @@ const BoardPage = () => {
           const updatedFeature = {
             ...feature,
             position: update.position,
-            ...(update.board_column && { board_column: update.board_column as ColumnId })
+            ...(update.board_column && { board_column: update.board_column }),
+            ...(update.board_column
+              ? { closed_at: applyClosedAt(update.board_column) }
+              : {}),
           };
-          
-          // Set closed_at when moving to done or cancelled
-          if (update.board_column === 'done' || update.board_column === 'cancelled') {
-            updatedFeature.closed_at = new Date().toISOString();
-          }
           
           return updatedFeature;
         }
@@ -833,24 +659,25 @@ const BoardPage = () => {
       });
     } else {
       // No valid drop, restore original state (should not happen, but safety check)
-      queryClient.setQueryData(["features", currentProductId], originalFeatures);
+      queryClient.setQueryData(featuresKey(currentProductId), originalFeatures);
       return;
     }
 
-    // Apply optimistic update immediately
-    if (updatedFeatures.length > 0) {
-      queryClient.setQueryData(["features", currentProductId], updatedFeatures);
-    }
+    const previous =
+      updatedFeatures.length > 0
+        ? applyOptimisticUpdate(
+            queryClient,
+            featuresKey(currentProductId),
+            () => updatedFeatures,
+            snapshot,
+          )
+        : snapshot;
 
-    // Then perform the mutation (will rollback on error)
     dragFeatureMutation.mutate(
       { updates },
       {
-        onError: (error: any) => {
-          // Rollback on error - use previousFeaturesForRollback that we stored
-          if (previousFeaturesForRollback) {
-            queryClient.setQueryData(["features", currentProductId], previousFeaturesForRollback);
-          }
+        onError: () => {
+          rollbackOptimisticUpdate(queryClient, featuresKey(currentProductId), previous);
         },
       }
     );
@@ -859,17 +686,13 @@ const BoardPage = () => {
   const activeFeature = activeId ? features.find(f => f.id === activeId) : null;
 
   // Sort goals and initiatives alphabetically for dropdowns, excluding archived ones
-  const sortedGoals = goals
-    .filter(goal => !goal.archived)
-    .sort((a, b) => 
-      (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" })
-    );
+  const sortedGoals = visibleByArchive(goals, false).sort((a, b) =>
+    (a.goal || "").localeCompare(b.goal || "", undefined, { sensitivity: "base" }),
+  );
 
-  const sortedInitiatives = initiatives
-    .filter(initiative => !initiative.archived)
-    .sort((a, b) => 
-      (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
-    );
+  const sortedInitiatives = visibleByArchive(initiatives, false).sort((a, b) =>
+    (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }),
+  );
 
   const autoScrollConfig = {
     threshold: {
@@ -932,7 +755,7 @@ const BoardPage = () => {
   const handleDragCancel = () => {
     // Revert to original state if drag is cancelled
     if (originalFeaturesRef.current) {
-      queryClient.setQueryData(["features", currentProductId], originalFeaturesRef.current);
+      queryClient.setQueryData(featuresKey(currentProductId), originalFeaturesRef.current);
       originalFeaturesRef.current = null;
     }
     setActiveId(null);
@@ -952,7 +775,7 @@ const BoardPage = () => {
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
         <div className="w-full min-h-0 flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth">
           <div className="flex h-full items-stretch gap-4 px-[calc(7.5vw-1rem)] md:px-0">
-            {columns.map(column => {
+            {BOARD_COLUMNS.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
                 <DroppableColumn key={column.id} column={column} onAddFeature={createFeature}>
@@ -960,11 +783,11 @@ const BoardPage = () => {
                     {columnFeatures.map(feature => (
                       <SortableFeature
                         key={feature.id}
-                        feature={feature as Feature}
+                        feature={feature}
                         goalName={getGoalName(feature.goal_id)}
                         initiativeColor={getInitiativeColor(feature.initiative_id)}
                         onClick={() => {
-                          setEditingFeature(feature as Feature);
+                          setEditingFeature(feature);
                           setIsDialogOpen(true);
                         }}
                       />
@@ -1021,7 +844,7 @@ const BoardPage = () => {
               <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
-                value={editingFeature.title}
+                value={editingFeature.title || ""}
                 onChange={(e) => setEditingFeature({ ...editingFeature, title: e.target.value })}
                 placeholder="Enter feature title..."
               />
@@ -1030,7 +853,7 @@ const BoardPage = () => {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                value={editingFeature.description}
+                value={editingFeature.description ?? ""}
                 onChange={(e) => setEditingFeature({ ...editingFeature, description: e.target.value })}
                 placeholder="Enter feature description..."
                 rows={15}
@@ -1042,158 +865,74 @@ const BoardPage = () => {
           <>
             <div>
               <Label>Linked Goal</Label>
-              <Popover open={goalOpen} onOpenChange={setGoalOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={goalOpen}
-                    className="w-full justify-between"
-                  >
-                    {editingFeature.goal_id
-                      ? getGoalName(editingFeature.goal_id)
-                      : "Select goal..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search goals..." />
-                    <CommandList>
-                      <CommandEmpty>No goal found.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedGoals.map((goal) => (
-                          <CommandItem
-                            key={goal.id}
-                            value={goal.goal}
-                            onSelect={() => handleGoalSelect(goal.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                editingFeature.goal_id === goal.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {goal.goal}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <EntityCombobox
+                items={sortedGoals.map((goal) => ({ id: goal.id, label: goal.goal || "" }))}
+                value={editingFeature.goal_id}
+                fallbackLabel={goals.find((goal) => goal.id === editingFeature.goal_id)?.goal || undefined}
+                onSelect={(id) => {
+                  if (!id) return;
+                  setEditingFeature({
+                    ...editingFeature,
+                    ...cascadeInitiativeFromGoal(goals, id),
+                  });
+                }}
+                placeholder="Select goal..."
+                searchPlaceholder="Search goals..."
+                emptyText="No goal found."
+              />
             </div>
             <div>
               <Label>Linked Initiative</Label>
-              <Popover open={initiativeOpen} onOpenChange={setInitiativeOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={initiativeOpen}
-                    className="w-full justify-between"
-                  >
-                    {editingFeature.initiative_id
-                      ? getInitiativeName(editingFeature.initiative_id)
-                      : "Select initiative..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search initiatives..." />
-                    <CommandList>
-                      <CommandEmpty>No initiative found.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedInitiatives.map((initiative) => (
-                          <CommandItem
-                            key={initiative.id}
-                            value={initiative.name}
-                            onSelect={() => handleInitiativeSelect(initiative.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                editingFeature.initiative_id === initiative.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {initiative.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <EntityCombobox
+                items={sortedInitiatives.map((initiative) => ({
+                  id: initiative.id,
+                  label: initiative.name || "",
+                }))}
+                value={editingFeature.initiative_id}
+                fallbackLabel={
+                  initiatives.find((initiative) => initiative.id === editingFeature.initiative_id)?.name || undefined
+                }
+                onSelect={(id) => {
+                  if (!id) return;
+                  setEditingFeature({ ...editingFeature, initiative_id: id });
+                }}
+                placeholder="Select initiative..."
+                searchPlaceholder="Search initiatives..."
+                emptyText="No initiative found."
+              />
             </div>
             <div>
               <Label>Linked Hypothesis</Label>
-              <Popover open={hypothesisOpen} onOpenChange={setHypothesisOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={hypothesisOpen}
-                    className="w-full justify-between"
-                  >
-                    {editingFeature.hypothesis_id
-                      ? getHypothesisName(editingFeature.hypothesis_id)
-                      : "Select hypothesis..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search hypothesis..." />
-                    <CommandList>
-                      <CommandEmpty>No hypothesis found.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem
-                          value="none"
-                          onSelect={() => handleHypothesisSelect(null)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              !editingFeature.hypothesis_id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          None
-                        </CommandItem>
-                        {hypotheses.map((hypothesis: any) => (
-                          <CommandItem
-                            key={hypothesis.id}
-                            value={hypothesis.id}
-                            onSelect={() => handleHypothesisSelect(hypothesis.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                editingFeature.hypothesis_id === hypothesis.id
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                            {hypothesis.insight || "Untitled hypothesis"}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <EntityCombobox
+                items={hypotheses.map((hypothesis) => ({
+                  id: hypothesis.id,
+                  label: hypothesis.insight || "Untitled hypothesis",
+                }))}
+                value={editingFeature.hypothesis_id}
+                fallbackLabel={
+                  hypotheses.find((hypothesis) => hypothesis.id === editingFeature.hypothesis_id)?.insight
+                  || (editingFeature.hypothesis_id ? "Untitled hypothesis" : undefined)
+                }
+                onSelect={(id) => {
+                  setEditingFeature({ ...editingFeature, hypothesis_id: id });
+                }}
+                placeholder="Select hypothesis..."
+                searchPlaceholder="Search hypothesis..."
+                emptyText="No hypothesis found."
+                allowNone
+              />
             </div>
             <div>
               <Label htmlFor="column">Column</Label>
               <Select
-                value={editingFeature.board_column}
-                onValueChange={(value: ColumnId) => setEditingFeature({ ...editingFeature, board_column: value })}
+                value={editingFeature.board_column as BoardColumnId | undefined}
+                onValueChange={(value: BoardColumnId) => setEditingFeature({ ...editingFeature, board_column: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {columns.map(col => (
+                  {BOARD_COLUMNS.map(col => (
                     <SelectItem key={col.id} value={col.id}>
                       {col.label}
                     </SelectItem>
@@ -1245,128 +984,66 @@ const BoardPage = () => {
           if (!open) {
             setEditingHypothesis(null);
             setCreatingHypothesisFromFeature(null);
+            setHypothesisPriorityInput("");
+            setHypothesisPriorityFieldError(false);
           }
         }}
         title="New Hypothesis"
         onSave={handleSaveHypothesis}
         isEditing={false}
         saveLabel="Save Hypothesis"
+        saveDisabled={!!editingHypothesis && hypothesisPriorityFieldError}
         leftContent={editingHypothesis && (
-          <>
-            <div>
-              <Label htmlFor="insight">Insight</Label>
-              <Textarea
-                id="insight"
-                value={editingHypothesis.insight || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, insight: e.target.value })}
-                placeholder="Enter insight..."
-                rows={5}
-              />
-            </div>
-            <div>
-              <Label htmlFor="problem_hypothesis">Problem Hypothesis</Label>
-              <Textarea
-                id="problem_hypothesis"
-                value={editingHypothesis.problem_hypothesis || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, problem_hypothesis: e.target.value })}
-                placeholder="Enter problem hypothesis..."
-                rows={5}
-              />
-            </div>
-            <div>
-              <Label htmlFor="problem_validation">Problem Validation</Label>
-              <Textarea
-                id="problem_validation"
-                value={editingHypothesis.problem_validation || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, problem_validation: e.target.value })}
-                placeholder="Enter validation (links supported)..."
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="solution_hypothesis">Solution Hypothesis</Label>
-              <Textarea
-                id="solution_hypothesis"
-                value={editingHypothesis.solution_hypothesis || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, solution_hypothesis: e.target.value })}
-                placeholder="Enter solution hypothesis..."
-                rows={5}
-              />
-            </div>
-            <div>
-              <Label htmlFor="solution_validation">Solution Validation</Label>
-              <Textarea
-                id="solution_validation"
-                value={editingHypothesis.solution_validation || ""}
-                onChange={(e) => setEditingHypothesis({ ...editingHypothesis, solution_validation: e.target.value })}
-                placeholder="Enter validation (links supported)..."
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="impact_metrics">Impact Metrics</Label>
-              <MetricTagInput
-                value={Array.isArray(editingHypothesis.impact_metrics) ? editingHypothesis.impact_metrics : []}
-                onChange={(tags) => setEditingHypothesis({ ...editingHypothesis, impact_metrics: tags })}
-                suggestions={metrics.map(m => m.name).filter(Boolean)}
-                placeholder="Type to add metrics..."
-              />
-            </div>
-          </>
+          <HypothesisFormLeftContent
+            value={editingHypothesis}
+            onChange={setEditingHypothesis}
+            metricSuggestions={metrics.map((m) => m.name).filter(Boolean)}
+          />
         )}
         rightContent={editingHypothesis && (
           <>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={(editingHypothesis.status || "new") as Status}
-                onValueChange={(value: Status) => 
-                  setEditingHypothesis({ ...editingHypothesis, status: value })
-                }
+            <div className="min-w-0">
+              <Label>Linked Feature</Label>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full min-w-0 justify-start overflow-hidden"
+                disabled
+                aria-disabled
+                title={creatingHypothesisFromFeature?.title || "Untitled feature"}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map(status => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <span className="min-w-0 truncate">
+                  {creatingHypothesisFromFeature?.title || "Untitled feature"}
+                </span>
+              </Button>
             </div>
+            <HypothesisFormStatusAndPriority
+              value={editingHypothesis}
+              onChange={setEditingHypothesis}
+              priorityInput={hypothesisPriorityInput}
+              onPriorityInputChange={setHypothesisPriorityInput}
+              priorityFieldError={hypothesisPriorityFieldError}
+              onPriorityFieldErrorChange={setHypothesisPriorityFieldError}
+            />
           </>
         )}
       />
 
-      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Feature</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this feature? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => editingFeature?.id && deleteFeatureMutation.mutate(editingFeature.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteAlertOpen}
+        onOpenChange={setDeleteAlertOpen}
+        title="Delete Feature"
+        description="Are you sure you want to delete this feature? This action cannot be undone."
+        onConfirm={() => editingFeature?.id && deleteFeatureMutation.mutate(editingFeature.id)}
+      />
     </DndContext>
   );
 };
 
 interface DroppableColumnProps {
-  column: { id: ColumnId; label: string };
+  column: { id: BoardColumnId; label: string };
   children: React.ReactNode;
-  onAddFeature?: (columnId: ColumnId) => void;
+  onAddFeature?: (columnId: BoardColumnId) => void;
 }
 
 const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProps) => {
@@ -1405,7 +1082,7 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
 };
 
 interface SortableFeatureProps {
-  feature: Feature;
+  feature: FeatureRow;
   goalName: string;
   initiativeColor: string;
   onClick: () => void;

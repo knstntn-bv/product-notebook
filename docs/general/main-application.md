@@ -35,9 +35,29 @@ On mobile (`< md`), the sidebar opens as a **Sheet drawer** overlay. Selecting a
 The header in the main content area contains:
 - **Sidebar trigger**: Opens/toggles sidebar (drawer on mobile)
 - **Title**: Current product name (fallback: "Product Notebook")
+- **Page actions slot** (`HeaderActionsSlot` in `AppLayout`): a page may portal one route-level action here via `HeaderActions` (see [Page actions](#page-actions))
 - **Action Buttons** (right side):
   - **Settings Button**: Opens settings menu (archive toggle + project settings dialog)
   - **Profile Button**: Dropdown menu with "Sign Out" option
+
+### Page actions
+
+Where the primary **Add** / **Upload** control lives depends on what it creates. These are three intentional patterns, not one missing shared button component.
+
+| Pattern | When | Where today |
+|---------|------|-------------|
+| `HeaderActions` (portal into the header slot) | One action for the whole route | Hypotheses: Add Hypothesis. Attachments: Upload |
+| `SectionHeader` (`onAdd` / `addLabel`) | Add belongs to a block on a multi-section page | Strategy: Add Value / Metric / Initiative. Product Formula has a section header **without** Add |
+| Local button on a column or cell | Create needs a column id or initiative×quarter cell | Board: Add on the column. Roadmap: Add Goal inside the cell |
+
+Do not:
+
+- Merge the three into one `AddButton` widget (different anchors and callbacks)
+- Portal Strategy section Add buttons into the app header (four different mutations)
+- Put Board/Roadmap Add into `HeaderActions` (no single column/cell)
+- Treat dialog actions (Create Feature, Upload in the entity attachments popup) as page-level Add
+
+Components: `src/components/HeaderActions.tsx`, `src/components/SectionHeader.tsx`.
 
 ### Navigation Sections
 

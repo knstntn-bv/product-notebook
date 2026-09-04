@@ -13,9 +13,10 @@ The Authentication page is the entry point for users to access the Product Noteb
 
 ### Initial State
 
-- When a user visits the authentication page, the application checks if they already have an active session
-- If a session exists, the user is automatically redirected to the main application (`/`)
+- When a user visits the authentication page, the application reads the current user from `AuthProvider` (`useAuth()`)
+- If `user` is set, the user is automatically redirected to the main application (`/`)
 - The page displays a card with two tabs: "Sign In" and "Sign Up"
+- Both tabs render the same `AuthForm` (`mode: "signin" | "signup"`): email, password, and submit. Sign Up uses the password label “Password (min 8 characters)” and `minLength={8}`. Email and password state is shared across tabs.
 
 ### Sign In Tab
 
@@ -25,7 +26,7 @@ The Authentication page is the entry point for users to access the Product Noteb
 
 **Behavior:**
 - User enters email and password
-- On form submission, the application validates the input using Zod schema
+- On form submission, credentials are validated with the shared Zod helper (`parseAuthCredentials`)
 - If validation passes, attempts to sign in via Supabase authentication
 - On success, redirects to the main application (`/`)
 - On error, displays a toast notification with the error message
@@ -39,7 +40,7 @@ The Authentication page is the entry point for users to access the Product Noteb
 
 **Behavior:**
 - User enters email and password
-- On form submission, the application validates the input using Zod schema
+- On form submission, credentials are validated with the shared Zod helper (`parseAuthCredentials`)
 - If validation passes, creates a new account via Supabase authentication
 - Sends a confirmation email to the user (if email confirmation is enabled)
 - On success, displays a success toast indicating the account was created and the user can sign in
@@ -48,9 +49,9 @@ The Authentication page is the entry point for users to access the Product Noteb
 
 ### Session Management
 
-- The page listens to Supabase authentication state changes
-- If a user becomes authenticated while on this page (e.g., via email confirmation link), they are automatically redirected to the main application
-- The page checks for existing sessions on mount and redirects authenticated users
+- Session state lives in `AuthProvider` (`onAuthStateChange` and `getSession` only there)
+- AuthPage redirects to `/` when `useAuth().user` is set (already signed in, or a session appears while on `/auth`, e.g. email confirmation)
+- Sign In still navigates to `/` after a successful `signInWithPassword`; Sign Up does not redirect unless a session is created
 
 ### Error Handling
 
