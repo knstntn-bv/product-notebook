@@ -109,7 +109,7 @@ Clone — insert, не update.
 
 ## Вне скоупа
 
-- **M1:** хук удалён (см. `implementation-plan-m1-remove-use-crud-mutations.md`). H7 только выравнивал фильтр внутри него.
+- **M1:** хук удалён (см. `[IMPLEMENTED] implementation-plan-m1-remove-use-crud-mutations.md`). H7 только выравнивал фильтр внутри него.
 - **M7:** стиль `invalidateQueries`.
 - Таблица `products`: `SettingsDialog` уже `.eq("id", currentProductId)` — у продукта нет `product_id`.
 - `project_settings`: `ProductContext.setShowArchived` уже `.eq("product_id", currentProductId)`.

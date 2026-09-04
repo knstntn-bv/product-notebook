@@ -25,12 +25,14 @@
             "id": "fb773be7926162ac",
             "type": "leaf",
             "state": {
-              "type": "release-notes",
+              "type": "markdown",
               "state": {
-                "currentVersion": "1.13.4"
+                "file": "feature_requests/[IMPLEMENTED] BIG-56 Перенос отображения архивных артефактов в меню настроек.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-book-up",
-              "title": "примечания к выпуску 1.13.4"
+              "icon": "lucide-file",
+              "title": "[IMPLEMENTED] BIG-56 Перенос отображения архивных артефактов в меню настроек"
             }
           }
         ],
@@ -198,10 +200,33 @@
       "bases:Создать новую базу": false
     }
   },
-  "active": "fb773be7926162ac",
+  "active": "719964c70aad4c12",
   "lastOpenFiles": [
-    "2026-03-26-github-full-export-import.md",
-    "2025-03-23-br-feature-import-single.md",
-    "2025-03-23-br-feature-export-single.md"
+    "implementation-plans/[IMPLEMENTED] implementation-plan-h7-product-id-on-writes.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m6-error-toast.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m2-archive-row.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m10-closed-at.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-l6-auth-form.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-initiatives.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-h4-types.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-h1-query-cache.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m9-upload-files.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m8-require-product-id-guard.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m7-invalidate-query-keys.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m16-optimistic-update.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m15-auth-state-listener.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m14-initiative-priority.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m13-settings-mutations.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m11-add-button-patterns.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-m1-remove-use-crud-mutations.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-h6-attachment-link-sync.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-h5-board-columns.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-h3-hypothesis-form.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-h2-create-feature.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-feature-closed-at.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-attachment-links.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-hypothesis-priority-status-sort.md",
+    "implementation-plans/[IMPLEMENTED] implementation-plan-hypothesis-priority-input-validation.md",
+    "implementation-plans/[IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] [IMPLEMENTED] implementation-plan-m6-error-toast.md"
   ]
 }

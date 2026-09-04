@@ -108,8 +108,8 @@ The `ProductContext` (`src/contexts/ProductContext.tsx`) manages:
 - `impact_metrics`: Array of metric names (not foreign keys)
 
 **Status Order:**
-- Statuses have a defined order for sorting: New → In Progress → Accepted → Done → Rejected
-- This order is used in the status selection menu and when sorting by status
+- Statuses have a defined order for sorting: New → Accepted → In Progress → Done → Rejected
+- The status selection menu uses: New → In Progress → Accepted → Done → Rejected
 
 **Sorting:**
 - Hypotheses can be sorted by priority (ascending/descending)

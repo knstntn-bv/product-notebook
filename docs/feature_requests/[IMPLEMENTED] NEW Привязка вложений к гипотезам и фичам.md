@@ -48,7 +48,7 @@
 
 ## План реализации
 
-Пошаговый план: [docs/implementation-plans/implementation-plan-attachment-links.md](../docs/implementation-plans/implementation-plan-attachment-links.md).
+Пошаговый план: [docs/implementation-plans/[IMPLEMENTED] implementation-plan-attachment-links.md](../implementation-plans/%5BIMPLEMENTED%5D%20implementation-plan-attachment-links.md).
 
 ---
 
@@ -83,4 +83,4 @@
 - `docs/general/attachments-page.md`
 - `docs/general/main-application.md`
 - `docs/testing-checklists/testing-checklist-attachment-links.md`
-- `docs/implementation-plans/implementation-plan-attachment-links.md`
+- `docs/implementation-plans/[IMPLEMENTED] implementation-plan-attachment-links.md`
