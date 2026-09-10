@@ -38,7 +38,7 @@ The board consists of 8 columns representing different stages:
 - Each column takes 85% of viewport width so neighboring columns peek at the sides
 - Horizontal swipe between columns works from a column header, empty space, or a feature card
 - Columns remain vertically scrollable when the gesture is vertical
-- Touch-optimized scrolling; drag-and-drop on touch is not enabled yet
+- Touch-optimized scrolling; hold a card ~500 ms to drag it to another column
 
 ## Feature Cards
 
@@ -171,8 +171,8 @@ The feature editing dialog provides a user-friendly interface for creating and e
 
 **Drag Behavior:**
 - **Desktop / mouse**: Click and drag with mouse (8px activation distance)
-- **Touch**: Drag-and-drop is not enabled; change column from the feature editor. Swipe the board to move between columns (including from a card). Long-press visual feedback is not used.
-- Drag overlay shows a preview of the card being dragged (mouse)
+- **Touch**: Hold a card about 500 ms without moving more than ~12 px, then drag. The main use is changing column (status). A short tap still opens the editor; a swipe still scrolls the board or column list.
+- Drag overlay shows a preview of the card being dragged
 - Optimistic updates provide immediate visual feedback
 
 **Drop Targets:**
@@ -353,7 +353,7 @@ Each feature has a unique human-readable identifier that is automatically genera
 **Mobile:**
 - Snap scrolling between columns, including when the swipe starts on a feature card
 - Vertical scrolling inside a long column, including when the gesture starts on a card
-- No touch drag-and-drop (mouse drag still works at any viewport width)
+- Long-press (~500 ms) drag-and-drop to change column; mouse drag still works at any viewport width
 - Full-width columns for better visibility
 
 ### Visual Feedback
@@ -369,7 +369,7 @@ Each feature has a unique human-readable identifier that is automatically genera
 - Short tap on a card opens the feature editor
 - Horizontal swipe (from header, empty space, or card) snap-scrolls to the next/previous column
 - Vertical swipe on a card in a long column scrolls that column’s list
-- Touch drag-and-drop is not enabled; a later change will use a long press via `TouchSensor`
+- Hold a card ~500 ms, then drag to move it (primarily to another column). After a drop the editor does not open.
 
 ### Read-Only Mode
 
@@ -392,8 +392,8 @@ Each feature has a unique human-readable identifier that is automatically genera
 ### Drag and Drop Implementation
 
 - Uses `@dnd-kit` library for drag and drop
-- Mouse drag uses `MouseSensor` (8px activation distance); touch does not start a drag
-- Horizontal vs vertical touch scrolling is arbitrated on the board scroller (not `document`, not viewport width)
+- Mouse drag uses `MouseSensor` (8px); touch drag uses `TouchSensor` (500 ms delay, 12 px tolerance)
+- Horizontal vs vertical touch scrolling is arbitrated on the board scroller (not `document`, not viewport width) and pauses while a drag is active
 - Optimistic updates for immediate feedback
 - Position recalculation on drop
 - Handles edge cases (same position, empty columns, etc.)
