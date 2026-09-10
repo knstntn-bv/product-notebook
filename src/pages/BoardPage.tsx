@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ import { errorToast } from "@/lib/errorToast";
 import { DEFAULT_INITIATIVE_COLOR } from "@/lib/initiatives";
 import { applyOptimisticUpdate, rollbackOptimisticUpdate } from "@/lib/optimisticQuery";
 import { cn } from "@/lib/utils";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, MouseSensor, closestCenter, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, MouseSensor, TouchSensor, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -69,7 +69,7 @@ function snapBoardToNearestColumn(scroller: HTMLElement) {
  * listener can retarget it. Capture + preventDefault on the horizontal axis
  * is required; then the board scroller is driven in JS and snapped on end.
  */
-function useBoardColumnScrollAxis() {
+function useBoardColumnScrollAxis(dndActiveRef: RefObject<boolean>) {
   const cleanupRef = useRef<(() => void) | null>(null);
 
   return useCallback((node: HTMLDivElement | null) => {
@@ -89,6 +89,8 @@ function useBoardColumnScrollAxis() {
     };
 
     const handleTouchStart = (event: TouchEvent) => {
+      if (dndActiveRef.current) return;
+
       const target = event.target as HTMLElement | null;
       const column = target?.closest("[data-column-content]");
       if (!(column instanceof HTMLElement) || !scroller.contains(column)) return;
@@ -107,7 +109,7 @@ function useBoardColumnScrollAxis() {
     };
 
     const handleTouchMove = (event: TouchEvent) => {
-      if (!start || axis === "y") return;
+      if (dndActiveRef.current || !start || axis === "y") return;
 
       const touch = event.touches[0];
       if (!touch) return;
@@ -135,7 +137,7 @@ function useBoardColumnScrollAxis() {
     };
 
     const handleTouchEnd = () => {
-      if (axis === "x") {
+      if (!dndActiveRef.current && axis === "x") {
         scroller.style.scrollSnapType = "";
         snapBoardToNearestColumn(scroller);
       }
@@ -154,7 +156,7 @@ function useBoardColumnScrollAxis() {
       scroller.removeEventListener("touchcancel", handleTouchEnd, { capture: true });
       resetGesture();
     };
-  }, []);
+  }, [dndActiveRef]);
 }
 
 const BoardPage = () => {
@@ -178,12 +180,25 @@ const BoardPage = () => {
   const [hypothesisPriorityInput, setHypothesisPriorityInput] = useState("");
   const [hypothesisPriorityFieldError, setHypothesisPriorityFieldError] = useState(false);
 
-  const setBoardScrollerRef = useBoardColumnScrollAxis();
+  const dndActiveRef = useRef(false);
+  const didDragRef = useRef(false);
+  const boardScrollerNodeRef = useRef<HTMLDivElement | null>(null);
+  const attachBoardScroller = useBoardColumnScrollAxis(dndActiveRef);
+  const setBoardScrollerRef = useCallback((node: HTMLDivElement | null) => {
+    boardScrollerNodeRef.current = node;
+    attachBoardScroller(node);
+  }, [attachBoardScroller]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 500,
+        tolerance: 12,
       },
     })
   );
@@ -475,7 +490,30 @@ const BoardPage = () => {
       });
   };
 
+  const beginBoardDragChrome = () => {
+    didDragRef.current = true;
+    dndActiveRef.current = true;
+    const scroller = boardScrollerNodeRef.current;
+    if (!scroller) return;
+    scroller.style.scrollSnapType = "none";
+    scroller.style.scrollBehavior = "auto";
+  };
+
+  const finishBoardDragChrome = () => {
+    const scroller = boardScrollerNodeRef.current;
+    if (scroller) {
+      scroller.style.scrollSnapType = "";
+      scroller.style.scrollBehavior = "";
+      snapBoardToNearestColumn(scroller);
+    }
+    window.setTimeout(() => {
+      dndActiveRef.current = false;
+      didDragRef.current = false;
+    }, 200);
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
+    beginBoardDragChrome();
     setActiveId(event.active.id as string);
     // Store original state for preview
     originalFeaturesRef.current = queryClient.getQueryData<FeatureRow[]>(featuresKey(currentProductId)) || null;
@@ -588,6 +626,7 @@ const BoardPage = () => {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    finishBoardDragChrome();
     const { active, over } = event;
     setActiveId(null);
     setDragOverId(null);
@@ -813,15 +852,16 @@ const BoardPage = () => {
 
   const autoScrollConfig = {
     threshold: {
-      x: 0.2,
+      x: 0.35,
       y: 0.2,
     },
-    acceleration: 1,
-    interval: 20,
+    acceleration: 14,
+    interval: 10,
     enabled: true,
   };
 
   const handleDragCancel = () => {
+    finishBoardDragChrome();
     // Revert to original state if drag is cancelled
     if (originalFeaturesRef.current) {
       queryClient.setQueryData(featuresKey(currentProductId), originalFeaturesRef.current);
@@ -862,6 +902,7 @@ const BoardPage = () => {
                         goalName={getGoalName(feature.goal_id)}
                         initiativeColor={getInitiativeColor(feature.initiative_id)}
                         onClick={() => {
+                          if (didDragRef.current) return;
                           setEditingFeature(feature);
                           setIsDialogOpen(true);
                         }}
@@ -1190,7 +1231,7 @@ const SortableFeature = ({ feature, goalName, initiativeColor, onClick }: Sortab
       {...listeners}
       className={cn(
         "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none",
-        isDragging && "opacity-50 z-50"
+        isDragging && "opacity-50 z-50 ring-2 ring-primary ring-offset-2"
       )}
       onClick={onClick}
     >
