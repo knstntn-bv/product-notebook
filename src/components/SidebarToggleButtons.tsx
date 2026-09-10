@@ -30,9 +30,9 @@ export function HeaderSidebarToggle() {
 
   return (
     <Button
-      variant="ghost"
+      variant="secondary"
       size="icon"
-      className="h-7 w-7 -ml-1"
+      className="h-11 w-12 shrink-0 rounded-none rounded-r-lg border border-l-0 shadow-none focus-visible:ring-offset-0"
       onClick={toggleSidebar}
       aria-label="Open menu"
     >

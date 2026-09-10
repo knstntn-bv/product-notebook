@@ -17,9 +17,9 @@ const AppLayoutContent = () => {
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset className="min-w-0 h-svh overflow-hidden">
-          <header className="z-50 flex h-20 shrink-0 items-center gap-2 bg-background px-20">
+          <header className="z-50 flex h-20 shrink-0 items-center gap-3 bg-background pl-0 pr-4 md:gap-2 md:px-20">
             <HeaderSidebarToggle />
-            <h1 className="flex-1 min-w-0 -translate-y-1 overflow-hidden text-ellipsis whitespace-nowrap pb-1 text-2xl font-semibold leading-normal tracking-tight text-foreground md:text-3xl">
+            <h1 className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-2xl font-semibold leading-none tracking-tight text-foreground md:-translate-y-1 md:pb-1 md:text-3xl md:leading-normal">
               {pageTitle}
             </h1>
             <HeaderActionsSlot />
@@ -28,8 +28,8 @@ const AppLayoutContent = () => {
             className={cn(
               "flex min-h-0 min-w-0 flex-1 flex-col",
               isBoard
-                ? "overflow-hidden px-8 pb-4"
-                : "overflow-y-auto px-20 py-4",
+                ? "overflow-hidden px-1 pb-4 md:px-8"
+                : "overflow-y-auto px-4 py-4 md:px-20",
             )}
           >
             <Outlet />

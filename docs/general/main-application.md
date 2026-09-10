@@ -33,12 +33,9 @@ On mobile (`< md`), the sidebar opens as a **Sheet drawer** overlay. Selecting a
 ### Header
 
 The header in the main content area contains:
-- **Sidebar trigger**: Opens/toggles sidebar (drawer on mobile)
-- **Title**: Current product name (fallback: "Product Notebook")
-- **Page actions slot** (`HeaderActionsSlot` in `AppLayout`): a page may portal one route-level action here via `HeaderActions` (see [Page actions](#page-actions))
-- **Action Buttons** (right side):
-  - **Settings Button**: Opens settings menu (archive toggle + project settings dialog)
-  - **Profile Button**: Dropdown menu with "Sign Out" option
+- **Sidebar trigger**: Opens/toggles sidebar (drawer on mobile). On mobile it is a tab flush with the left screen edge; the icon size is unchanged.
+- **Title**: Current section name, vertically aligned with header controls on mobile
+- **Page actions slot** (`HeaderActionsSlot` in `AppLayout`): a page may portal one route-level action here via `HeaderActions` (see [Page actions](#page-actions)). On mobile the action sits at the right inset.
 
 ### Page actions
 
@@ -79,6 +76,8 @@ Components: `src/components/HeaderActions.tsx`, `src/components/SectionHeader.ts
 - Header includes sidebar trigger (hamburger)
 - Sidebar opens as full-height Sheet drawer
 - Drawer closes automatically after navigation
+- Page content gutter is 16px on mobile; desktop padding is unchanged. The Board stays at 4px.
+- Header on mobile: menu control is a left-edge tab; title sits beside it and is vertically centered with the actions; the page action (e.g. Add Hypothesis) sits at the right with a 16px inset. Desktop header padding is unchanged.
 
 ## Behavior
 
