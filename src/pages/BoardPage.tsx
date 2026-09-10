@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,10 +35,77 @@ import { errorToast } from "@/lib/errorToast";
 import { DEFAULT_INITIATIVE_COLOR } from "@/lib/initiatives";
 import { applyOptimisticUpdate, rollbackOptimisticUpdate } from "@/lib/optimisticQuery";
 import { cn } from "@/lib/utils";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, PointerSensor, closestCenter, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, useSensor, useSensors, MouseSensor, closestCenter, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useIsMobile } from "@/hooks/use-mobile";
+
+const AXIS_LOCK_THRESHOLD_PX = 6;
+const AXIS_LOCK_RATIO = 1.2;
+
+/** Lock column overflow-y until the gesture axis is known, so a swipe from a card can reach the board scroller. */
+function useBoardColumnScrollAxis(scrollerRef: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    let start: { x: number; y: number; column: HTMLElement } | null = null;
+    let axis: "x" | "y" | null = null;
+
+    const restoreColumnOverflow = () => {
+      if (start?.column) {
+        start.column.style.overflowY = "";
+      }
+      start = null;
+      axis = null;
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      const column = target?.closest("[data-column-content]");
+      if (!(column instanceof HTMLElement) || !scroller.contains(column)) return;
+
+      const touch = event.touches[0];
+      if (!touch) return;
+
+      restoreColumnOverflow();
+      start = { x: touch.clientX, y: touch.clientY, column };
+      axis = null;
+      column.style.overflowY = "hidden";
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!start || axis) return;
+
+      const touch = event.touches[0];
+      if (!touch) return;
+
+      const dx = Math.abs(touch.clientX - start.x);
+      const dy = Math.abs(touch.clientY - start.y);
+      if (Math.hypot(dx, dy) < AXIS_LOCK_THRESHOLD_PX) return;
+
+      if (dx > dy * AXIS_LOCK_RATIO) {
+        axis = "x";
+        return;
+      }
+
+      axis = "y";
+      start.column.style.overflowY = "";
+    };
+
+    scroller.addEventListener("touchstart", handleTouchStart, { passive: true });
+    scroller.addEventListener("touchmove", handleTouchMove, { passive: true });
+    scroller.addEventListener("touchend", restoreColumnOverflow, { passive: true });
+    scroller.addEventListener("touchcancel", restoreColumnOverflow, { passive: true });
+
+    return () => {
+      restoreColumnOverflow();
+      scroller.removeEventListener("touchstart", handleTouchStart);
+      scroller.removeEventListener("touchmove", handleTouchMove);
+      scroller.removeEventListener("touchend", restoreColumnOverflow);
+      scroller.removeEventListener("touchcancel", restoreColumnOverflow);
+    };
+  }, [scrollerRef]);
+}
 
 const BoardPage = () => {
   const { currentProductId, metrics, initiatives } = useProduct();
@@ -61,12 +128,13 @@ const BoardPage = () => {
   const [hypothesisPriorityInput, setHypothesisPriorityInput] = useState("");
   const [hypothesisPriorityFieldError, setHypothesisPriorityFieldError] = useState(false);
 
-  const isMobile = useIsMobile();
+  const boardScrollerRef = useRef<HTMLDivElement>(null);
+  useBoardColumnScrollAxis(boardScrollerRef);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: isMobile ? 999999 : 8,
+        distance: 8,
       },
     })
   );
@@ -704,54 +772,6 @@ const BoardPage = () => {
     enabled: true,
   };
 
-  // Minimal touch handling: only prevent vertical scroll in columns when horizontal gesture detected
-  const touchStartRef = useRef<{ x: number; y: number; column: HTMLElement | null } | null>(null);
-
-  useEffect(() => {
-    if (!isMobile) return;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      const target = e.target as HTMLElement;
-      const column = target.closest('[data-column-content]') as HTMLElement;
-      if (column) {
-        const touch = e.touches[0];
-        touchStartRef.current = { x: touch.clientX, y: touch.clientY, column };
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!touchStartRef.current) return;
-      
-      const touch = e.touches[0];
-      const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-
-      // If clearly horizontal, temporarily prevent vertical scroll
-      if (deltaX > 8 && deltaX > deltaY * 1.5 && touchStartRef.current.column) {
-        touchStartRef.current.column.style.overflowY = 'hidden';
-      }
-    };
-
-    const handleTouchEnd = () => {
-      if (touchStartRef.current?.column) {
-        touchStartRef.current.column.style.overflowY = '';
-      }
-      touchStartRef.current = null;
-    };
-
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-    document.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('touchcancel', handleTouchEnd);
-    };
-  }, [isMobile]);
-
   const handleDragCancel = () => {
     // Revert to original state if drag is cancelled
     if (originalFeaturesRef.current) {
@@ -773,7 +793,11 @@ const BoardPage = () => {
       onDragCancel={handleDragCancel}
     >
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
-        <div className="w-full min-h-0 flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth">
+        <div
+          ref={boardScrollerRef}
+          data-board-scroller
+          className="w-full min-h-0 flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth"
+        >
           <div className="flex h-full items-stretch gap-4 px-[calc(7.5vw-1rem)] md:px-0">
             {BOARD_COLUMNS.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
@@ -1093,71 +1117,13 @@ const SortableFeature = ({ feature, goalName, initiativeColor, onClick }: Sortab
     id: feature.id,
   });
 
-  const [isLongTouched, setIsLongTouched] = useState(false);
-  const longPressTimerRef = useRef<number | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const LONG_PRESS_DURATION = 500; // milliseconds
-  const MOVEMENT_THRESHOLD = 10; // pixels
-
-  const clearLongPressTimer = () => {
-    if (longPressTimerRef.current) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    setIsLongTouched(false);
-
-    longPressTimerRef.current = window.setTimeout(() => {
-      setIsLongTouched(true);
-      longPressTimerRef.current = null;
-    }, LONG_PRESS_DURATION);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-
-    const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    // If moved beyond threshold, cancel long press
-    if (distance > MOVEMENT_THRESHOLD) {
-      clearLongPressTimer();
-      setIsLongTouched(false);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    clearLongPressTimer();
-    touchStartRef.current = null;
-    // Reset long touch indication after a short delay
-    window.setTimeout(() => setIsLongTouched(false), 200);
-  };
-
-  const handleTouchCancel = () => {
-    clearLongPressTimer();
-    touchStartRef.current = null;
-    setIsLongTouched(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      clearLongPressTimer();
-    };
-  }, []);
-
   // Disable transition completely to prevent return animation
   // Optimistic update happens immediately, so no animation needed
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: 'none', // Explicitly disable transitions
+    transition: "none",
     opacity: isDragging ? 0.5 : 1,
-    touchAction: 'auto',
+    touchAction: "pan-x pan-y",
   };
 
   return (
@@ -1168,14 +1134,9 @@ const SortableFeature = ({ feature, goalName, initiativeColor, onClick }: Sortab
       {...listeners}
       className={cn(
         "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden select-none",
-        isDragging && "opacity-50 z-50",
-        isLongTouched && "ring-2 ring-primary ring-offset-2 scale-[1.02]"
+        isDragging && "opacity-50 z-50"
       )}
       onClick={onClick}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
     >
       {feature.initiative_id && (
         <div 

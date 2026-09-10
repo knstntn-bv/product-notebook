@@ -35,8 +35,9 @@ The board consists of 8 columns representing different stages:
 **Mobile:**
 - Columns use snap scrolling (snap-x)
 - Each column takes 85% of viewport width
-- Smooth horizontal scrolling between columns
-- Touch-optimized interactions
+- Horizontal swipe between columns works from a column header, empty space, or a feature card
+- Columns remain vertically scrollable when the gesture is vertical
+- Touch-optimized scrolling; drag-and-drop on touch is not enabled yet
 
 ## Feature Cards
 
@@ -51,7 +52,6 @@ Each feature card shows:
 
 - **Normal**: Standard card appearance
 - **Dragging**: Card becomes semi-transparent (50% opacity)
-- **Long Press** (mobile): Card shows ring border and slight scale
 - **Hover**: Shadow effect on desktop
 
 ## Behavior
@@ -169,9 +169,9 @@ The feature editing dialog provides a user-friendly interface for creating and e
 - Visual feedback shows where the feature will be dropped
 
 **Drag Behavior:**
-- **Desktop**: Click and drag with mouse (8px activation distance)
-- **Mobile**: Long press (500ms) then drag
-- Drag overlay shows a preview of the card being dragged
+- **Desktop / mouse**: Click and drag with mouse (8px activation distance)
+- **Touch**: Drag-and-drop is not enabled; change column from the feature editor. Swipe the board to move between columns (including from a card). Long-press visual feedback is not used.
+- Drag overlay shows a preview of the card being dragged (mouse)
 - Optimistic updates provide immediate visual feedback
 
 **Drop Targets:**
@@ -350,10 +350,9 @@ Each feature has a unique human-readable identifier that is automatically genera
 - Hover effects for interactivity
 
 **Mobile:**
-- Snap scrolling between columns
-- Touch-optimized drag and drop
-- Long press to initiate drag
-- Prevents accidental scrolling during drag
+- Snap scrolling between columns, including when the swipe starts on a feature card
+- Vertical scrolling inside a long column, including when the gesture starts on a card
+- No touch drag-and-drop (mouse drag still works at any viewport width)
 - Full-width columns for better visibility
 
 ### Visual Feedback
@@ -366,10 +365,10 @@ Each feature has a unique human-readable identifier that is automatically genera
 
 ### Touch Interactions
 
-- Long press (500ms) to start dragging
-- Movement threshold prevents accidental drags
-- Visual feedback during long press
-- Prevents vertical scrolling during horizontal drag gestures
+- Short tap on a card opens the feature editor
+- Horizontal swipe (from header, empty space, or card) snap-scrolls to the next/previous column
+- Vertical swipe on a card in a long column scrolls that column’s list
+- Touch drag-and-drop is not enabled; a later change will use a long press via `TouchSensor`
 
 ### Read-Only Mode
 
@@ -392,7 +391,8 @@ Each feature has a unique human-readable identifier that is automatically genera
 ### Drag and Drop Implementation
 
 - Uses `@dnd-kit` library for drag and drop
-- Supports both mouse and touch interactions
+- Mouse drag uses `MouseSensor` (8px activation distance); touch does not start a drag
+- Horizontal vs vertical touch scrolling is arbitrated on the board scroller (not `document`, not viewport width)
 - Optimistic updates for immediate feedback
 - Position recalculation on drop
 - Handles edge cases (same position, empty columns, etc.)
