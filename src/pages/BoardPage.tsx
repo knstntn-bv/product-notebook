@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type RefObject } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,20 +41,49 @@ import { CSS } from "@dnd-kit/utilities";
 
 const AXIS_LOCK_THRESHOLD_PX = 6;
 const AXIS_LOCK_RATIO = 1.2;
+const HORIZONTAL_SWIPE_GAIN = 1.5;
 
-/** Lock column overflow-y until the gesture axis is known, so a swipe from a card can reach the board scroller. */
-function useBoardColumnScrollAxis(scrollerRef: RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
+function snapBoardToNearestColumn(scroller: HTMLElement) {
+  const columns = [...scroller.querySelectorAll<HTMLElement>("[data-board-column]")];
+  if (columns.length === 0) return;
 
-    let start: { x: number; y: number; column: HTMLElement } | null = null;
+  const viewCenter = scroller.getBoundingClientRect().left + scroller.clientWidth / 2;
+  let nearestDelta = Number.POSITIVE_INFINITY;
+
+  for (const column of columns) {
+    const rect = column.getBoundingClientRect();
+    const delta = rect.left + rect.width / 2 - viewCenter;
+    if (Math.abs(delta) < Math.abs(nearestDelta)) {
+      nearestDelta = delta;
+    }
+  }
+
+  scroller.scrollTo({
+    left: scroller.scrollLeft + nearestDelta,
+    behavior: "smooth",
+  });
+}
+
+/**
+ * Nested column overflow latches the gesture on iOS/Chrome before a bubble
+ * listener can retarget it. Capture + preventDefault on the horizontal axis
+ * is required; then the board scroller is driven in JS and snapped on end.
+ */
+function useBoardColumnScrollAxis() {
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  return useCallback((node: HTMLDivElement | null) => {
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    if (!node) return;
+
+    const scroller = node;
+    let start: { x: number; y: number; column: HTMLElement; scrollLeft: number; columnScrollTop: number } | null = null;
     let axis: "x" | "y" | null = null;
 
-    const restoreColumnOverflow = () => {
-      if (start?.column) {
-        start.column.style.overflowY = "";
-      }
+    const resetGesture = () => {
+      scroller.style.scrollSnapType = "";
+      scroller.style.scrollBehavior = "";
       start = null;
       axis = null;
     };
@@ -67,44 +96,65 @@ function useBoardColumnScrollAxis(scrollerRef: RefObject<HTMLElement | null>) {
       const touch = event.touches[0];
       if (!touch) return;
 
-      restoreColumnOverflow();
-      start = { x: touch.clientX, y: touch.clientY, column };
+      start = {
+        x: touch.clientX,
+        y: touch.clientY,
+        column,
+        scrollLeft: scroller.scrollLeft,
+        columnScrollTop: column.scrollTop,
+      };
       axis = null;
-      column.style.overflowY = "hidden";
     };
 
     const handleTouchMove = (event: TouchEvent) => {
-      if (!start || axis) return;
+      if (!start || axis === "y") return;
 
       const touch = event.touches[0];
       if (!touch) return;
 
-      const dx = Math.abs(touch.clientX - start.x);
-      const dy = Math.abs(touch.clientY - start.y);
-      if (Math.hypot(dx, dy) < AXIS_LOCK_THRESHOLD_PX) return;
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
 
-      if (dx > dy * AXIS_LOCK_RATIO) {
-        axis = "x";
-        return;
+      if (!axis) {
+        if (Math.hypot(dx, dy) < AXIS_LOCK_THRESHOLD_PX) return;
+        if (Math.abs(dx) > Math.abs(dy) * AXIS_LOCK_RATIO) {
+          axis = "x";
+          scroller.style.scrollSnapType = "none";
+          scroller.style.scrollBehavior = "auto";
+        } else {
+          axis = "y";
+          return;
+        }
       }
 
-      axis = "y";
-      start.column.style.overflowY = "";
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+      start.column.scrollTop = start.columnScrollTop;
+      scroller.scrollLeft = start.scrollLeft - dx * HORIZONTAL_SWIPE_GAIN;
     };
 
-    scroller.addEventListener("touchstart", handleTouchStart, { passive: true });
-    scroller.addEventListener("touchmove", handleTouchMove, { passive: true });
-    scroller.addEventListener("touchend", restoreColumnOverflow, { passive: true });
-    scroller.addEventListener("touchcancel", restoreColumnOverflow, { passive: true });
-
-    return () => {
-      restoreColumnOverflow();
-      scroller.removeEventListener("touchstart", handleTouchStart);
-      scroller.removeEventListener("touchmove", handleTouchMove);
-      scroller.removeEventListener("touchend", restoreColumnOverflow);
-      scroller.removeEventListener("touchcancel", restoreColumnOverflow);
+    const handleTouchEnd = () => {
+      if (axis === "x") {
+        scroller.style.scrollSnapType = "";
+        snapBoardToNearestColumn(scroller);
+      }
+      resetGesture();
     };
-  }, [scrollerRef]);
+
+    scroller.addEventListener("touchstart", handleTouchStart, { capture: true, passive: true });
+    scroller.addEventListener("touchmove", handleTouchMove, { capture: true, passive: false });
+    scroller.addEventListener("touchend", handleTouchEnd, { capture: true, passive: true });
+    scroller.addEventListener("touchcancel", handleTouchEnd, { capture: true, passive: true });
+
+    cleanupRef.current = () => {
+      scroller.removeEventListener("touchstart", handleTouchStart, { capture: true });
+      scroller.removeEventListener("touchmove", handleTouchMove, { capture: true });
+      scroller.removeEventListener("touchend", handleTouchEnd, { capture: true });
+      scroller.removeEventListener("touchcancel", handleTouchEnd, { capture: true });
+      resetGesture();
+    };
+  }, []);
 }
 
 const BoardPage = () => {
@@ -128,8 +178,7 @@ const BoardPage = () => {
   const [hypothesisPriorityInput, setHypothesisPriorityInput] = useState("");
   const [hypothesisPriorityFieldError, setHypothesisPriorityFieldError] = useState(false);
 
-  const boardScrollerRef = useRef<HTMLDivElement>(null);
-  useBoardColumnScrollAxis(boardScrollerRef);
+  const setBoardScrollerRef = useBoardColumnScrollAxis();
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -794,11 +843,13 @@ const BoardPage = () => {
     >
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
         <div
-          ref={boardScrollerRef}
+          ref={setBoardScrollerRef}
           data-board-scroller
           className="w-full min-h-0 flex-1 overflow-x-auto snap-x snap-mandatory scrollbar-hide md:scrollbar-default scroll-smooth"
         >
-          <div className="flex h-full items-stretch gap-4 px-[calc(7.5vw-1rem)] md:px-0">
+          <div className="flex h-full items-stretch">
+            <div className="w-3 shrink-0 md:hidden" aria-hidden />
+            <div className="flex h-full shrink-0 items-stretch gap-4">
             {BOARD_COLUMNS.map(column => {
               const columnFeatures = getFeaturesForColumn(column.id);
               return (
@@ -821,6 +872,8 @@ const BoardPage = () => {
                 </DroppableColumn>
               );
             })}
+            </div>
+            <div className="w-3 shrink-0 md:hidden" aria-hidden />
           </div>
         </div>
       </div>
@@ -1076,7 +1129,10 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
   });
 
   return (
-    <div className="flex flex-col w-[85vw] md:w-80 flex-shrink-0 snap-center snap-always h-full">
+    <div
+      data-board-column
+      className="flex flex-col w-[85vw] md:w-80 flex-shrink-0 snap-center snap-always h-full"
+    >
       <div className="bg-muted p-4 rounded-t-lg border border-border flex-shrink-0">
         <div className="flex justify-between items-center">
           <h3 className="font-semibold text-sm">{column.label}</h3>
@@ -1094,10 +1150,10 @@ const DroppableColumn = ({ column, children, onAddFeature }: DroppableColumnProp
         ref={setNodeRef}
         data-column-content
         className={cn(
-          "bg-card border-x border-b border-border rounded-b-lg p-4 flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 transition-colors",
+          "bg-card border-x border-b border-border rounded-b-lg p-4 flex-1 min-h-0 overflow-y-auto overscroll-y-contain space-y-2 transition-colors",
           isOver && "bg-muted/50"
         )}
-        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
+        style={{ touchAction: "pan-x pan-y" }}
       >
         {children}
       </div>

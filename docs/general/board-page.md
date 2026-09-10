@@ -33,8 +33,9 @@ The board consists of 8 columns representing different stages:
 - Columns are scrollable vertically for long lists
 
 **Mobile:**
+- Page gutter is 4px; the column track has 12px spacers before the first and after the last column
 - Columns use snap scrolling (snap-x)
-- Each column takes 85% of viewport width
+- Each column takes 85% of viewport width so neighboring columns peek at the sides
 - Horizontal swipe between columns works from a column header, empty space, or a feature card
 - Columns remain vertically scrollable when the gesture is vertical
 - Touch-optimized scrolling; drag-and-drop on touch is not enabled yet

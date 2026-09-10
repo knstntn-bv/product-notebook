@@ -10,7 +10,12 @@
 
 - `PointerSensor` заменён на `MouseSensor` (8 px); ветка `isMobile ? 999999` снята.
 - Фальшивый long press на карточке удалён.
-- Арбитраж оси — хук `useBoardColumnScrollAxis` на `[data-board-scroller]`, без `document` и без breakpoint: на `touchstart` в колонке вертикаль спекулятивно гасится, после 6 px выбирается ось.
+- Арбитраж оси — хук `useBoardColumnScrollAxis` на `[data-board-scroller]` в
+  **capture**-фазе: смена `overflow` в bubble слишком поздняя (браузер уже
+  прилипает к вертикали колонки). Горизонталь после порога 6 px —
+  `preventDefault` + `scrollLeft` доски и snap к ближайшей колонке.
+  `-webkit-overflow-scrolling: touch` снят, `overscroll-contain` заменён на
+  `overscroll-y-contain`.
 - У карточки `touch-action: pan-x pan-y`. `overscroll-contain` у колонки оставлен.
 
 Приёмка свайпа на реальном iOS/Android ещё нужна (шаг 5 плана): в среде реализации доска за логином, синтетический touch через CDP недоступен.
